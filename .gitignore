@@ -10,3 +10,6 @@ Thumbs.db
 # Local workspace settings
 .vscode/
 .idea/
+
+# Local settings UX work plan
+/SETTINGS_UX_PLAN.md

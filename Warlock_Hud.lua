@@ -62,7 +62,7 @@ local function IsSoulShardBag(bag)
 end
 local MAIN_KEYS = { "corruption", "bane", "curse", "drain", "immolate" }
 local COOLDOWN_KEYS = { "healthstone", "soulstone", "fear", "racial1", "racial2", "soulsiphon" }
-local BUFF_KEYS = { "fort", "motw", "int", "spirit", "kings", "salv", "armor", "wellfed" }
+local BUFF_KEYS = { "fort", "motw", "int", "spirit", "kings", "salv", "armor", "wellfed", "thorns", "breath" }
 local PROC_KEYS = { "powerinfusion", "nightfall" }
 local PROCS = {
     { key = "powerinfusion", name = "Power Infusion", ids = { 10060 } },
@@ -88,6 +88,11 @@ local BUFFS = {
     { key = "salv", name = "Blessing of Salvation", casterClass = "PALADIN",
         names = { "Blessing of Salvation", "Greater Blessing of Salvation" },
         ids = { 1038, 25895 } },
+    { key = "thorns", name = "Thorns", casterClass = "DRUID",
+        names = { "Thorns" },
+        ids = { 467, 782, 1075, 8914, 9756, 9910, 26992, 53307 } },
+    { key = "breath", name = "Unending Breath", activeOnly = true,
+        names = { "Unending Breath" }, ids = { 5697 } },
 }
 local profile
 local wellFedIDs = { [19705] = true }
@@ -183,6 +188,15 @@ local function NormalizeProfile(p)
     p.mainOrder = NormalizeOrder(p.mainOrder, MAIN_KEYS)
     p.cooldownOrder = NormalizeOrder(p.cooldownOrder, COOLDOWN_KEYS)
     p.buffOrder = NormalizeOrder(p.buffOrder, BUFF_KEYS)
+    -- Unending Breath is optional and its native button is anchored after
+    -- the packed buffs, so keep its settings tile at that same right edge.
+    for index, key in ipairs(p.buffOrder) do
+        if key == "breath" then
+            table.remove(p.buffOrder, index)
+            break
+        end
+    end
+    p.buffOrder[#p.buffOrder + 1] = "breath"
     p.procOrder = NormalizeOrder(p.procOrder, PROC_KEYS)
     if p.notificationChannel ~= "GROUP" then p.notificationChannel = "SELF" end
     if type(p.enabled) ~= "table" then p.enabled = {} end
@@ -359,6 +373,21 @@ local function MakeBorder(anchor, x, iconSize)
         edge:SetColorTexture(0, 0, 0, 1)
     end
     return border
+end
+
+local function MakeNativeButtonBorder(button, iconSize)
+    local edges = {
+        { "TOP", iconSize + 4, 2, 0, 2 },
+        { "BOTTOM", iconSize + 4, 2, 0, -2 },
+        { "LEFT", 2, iconSize + 4, -2, 0 },
+        { "RIGHT", 2, iconSize + 4, 2, 0 },
+    }
+    for _, edgeInfo in ipairs(edges) do
+        local edge = button:CreateTexture(nil, "OVERLAY")
+        edge:SetSize(edgeInfo[2], edgeInfo[3])
+        edge:SetPoint(edgeInfo[1], button, edgeInfo[1], edgeInfo[4], edgeInfo[5])
+        edge:SetColorTexture(0, 0, 0, 1)
+    end
 end
 
 local function MakeReminderGlow(anchor, x, border, iconSize, red)
@@ -584,35 +613,48 @@ end
 local function UpdateGroupBuffs()
     local classes = GroupCasterClasses()
     for _, entry in ipairs(groupBuffIcons) do
-        local hasBuff = ReadGroupBuff(entry.buff)
-        if hasBuff ~= nil then entry.hasBuff = hasBuff end
-        local hasCaster = classes[entry.buff.casterClass] and true or false
-        entry.hasCaster = hasCaster
-        entry.icon:SetShown(hasCaster and entry.hasBuff ~= true)
-        entry.border:SetShown(entry.hasBuff == true or hasCaster)
-        entry.glow:SetShown(hasCaster)
+        if not entry.buff.activeOnly then
+            local hasBuff = ReadGroupBuff(entry.buff)
+            if hasBuff ~= nil then entry.hasBuff = hasBuff end
+            local hasCaster = classes[entry.buff.casterClass] and true or false
+            entry.hasCaster = hasCaster
+            entry.icon:SetShown(hasCaster and entry.hasBuff ~= true)
+            entry.border:SetShown(entry.hasBuff == true or hasCaster)
+            entry.glow:SetShown(hasCaster)
+        end
     end
     local visible = 0
+    local breathHolder
     for _, key in ipairs(profile.buffOrder) do
         local holder = groupBuffIcons.holders and groupBuffIcons.holders[key]
         if holder then
-            local shown = key == "armor" or key == "wellfed"
-            if not shown then
-                for _, entry in ipairs(groupBuffIcons) do
-                    if entry.buff.key == key then
-                        shown = entry.hasBuff == true or entry.hasCaster
-                        break
+            if key == "breath" then
+                breathHolder = holder
+            else
+                local shown = key == "armor" or key == "wellfed"
+                if not shown then
+                    for _, entry in ipairs(groupBuffIcons) do
+                        if entry.buff.key == key then
+                            shown = entry.hasBuff == true or entry.hasCaster
+                            break
+                        end
                     end
                 end
-            end
-            holder:SetShown(shown and true or false)
-            if shown then
-                holder:ClearAllPoints()
-                holder:SetPoint("CENTER", buffAnchor, "LEFT",
-                    visible * (BUFF_ICON_SIZE + ICON_SPACING) + BUFF_ICON_SIZE / 2, 0)
-                visible = visible + 1
+                holder:SetShown(shown and true or false)
+                if shown then
+                    holder:ClearAllPoints()
+                    holder:SetPoint("CENTER", buffAnchor, "LEFT",
+                        visible * (BUFF_ICON_SIZE + ICON_SPACING) + BUFF_ICON_SIZE / 2, 0)
+                    visible = visible + 1
+                end
             end
         end
+    end
+    if breathHolder then
+        breathHolder:ClearAllPoints()
+        breathHolder:SetPoint("CENTER", buffAnchor, "LEFT",
+            visible * (BUFF_ICON_SIZE + ICON_SPACING) + BUFF_ICON_SIZE / 2, 0)
+        breathHolder:Show()
     end
 end
 
@@ -1180,17 +1222,20 @@ local function Build()
                 local spellID = C_Spell.GetSpellIDForSpellIdentifier(name)
                 if spellID then buffIDs[buff.key][spellID] = true end
             end
-            local icon = hudRoot:CreateTexture(nil, "ARTWORK")
-            icon:SetSize(BUFF_ICON_SIZE, BUFF_ICON_SIZE)
-            icon:SetPoint("CENTER", holder, "CENTER")
-            icon:SetTexture(C_Spell.GetSpellTexture(buff.ids[1])
-                or "Interface\\Icons\\INV_Misc_QuestionMark")
-            icon:SetTexCoord(ICON_CROP, 1 - ICON_CROP, ICON_CROP, 1 - ICON_CROP)
-            icon:SetDesaturated(false)
-            icon:SetVertexColor(1, 0.3, 0.3)
-            local border = MakeBorder(holder, 0, BUFF_ICON_SIZE)
-            local glow = MakeReminderGlow(holder, 0, border, BUFF_ICON_SIZE, true)
-            glow.pulseIcon = icon
+            local icon, border, glow
+            if not buff.activeOnly then
+                icon = hudRoot:CreateTexture(nil, "ARTWORK")
+                icon:SetSize(BUFF_ICON_SIZE, BUFF_ICON_SIZE)
+                icon:SetPoint("CENTER", holder, "CENTER")
+                icon:SetTexture(C_Spell.GetSpellTexture(buff.ids[1])
+                    or "Interface\\Icons\\INV_Misc_QuestionMark")
+                icon:SetTexCoord(ICON_CROP, 1 - ICON_CROP, ICON_CROP, 1 - ICON_CROP)
+                icon:SetDesaturated(false)
+                icon:SetVertexColor(1, 0.3, 0.3)
+                border = MakeBorder(holder, 0, BUFF_ICON_SIZE)
+                glow = MakeReminderGlow(holder, 0, border, BUFF_ICON_SIZE, true)
+                glow.pulseIcon = icon
+            end
             groupBuffIcons[#groupBuffIcons + 1] = {
                 buff = buff, icon = icon, border = border, glow = glow,
             }
@@ -1206,6 +1251,9 @@ local function Build()
                     auraIcon:SetDesaturated(true)
                     auraIcon:SetTexCoord(ICON_CROP, 1 - ICON_CROP, ICON_CROP, 1 - ICON_CROP)
                     button:SetIcon(auraIcon)
+                    if buff.activeOnly then
+                        MakeNativeButtonBorder(button, BUFF_ICON_SIZE)
+                    end
                     local cooldown = CreateFrame("Cooldown", nil, button, "CooldownFrameTemplate")
                     cooldown:SetAllPoints(button)
                     cooldown:SetDrawBling(false)
@@ -1431,17 +1479,70 @@ end)
 
 SLASH_WARLOCKHUD1 = "/whud"
 SLASH_WARLOCKHUD2 = "/whub"
+local function DebugState()
+    local db = WarlockHudDB
+    Report("Profile: " .. tostring(db and db.activeProfile or "unavailable")
+        .. "; spec switching: " .. (db and db.autoSpecProfiles and "on" or "off"))
+    if profile then
+        for _, row in ipairs({
+            { "Target DoTs", profile.mainOrder },
+            { "Utility", profile.cooldownOrder },
+            { "Buffs", profile.buffOrder },
+            { "Procs", profile.procOrder },
+        }) do
+            local enabled = {}
+            for _, key in ipairs(row[2]) do
+                if Enabled(key) then enabled[#enabled + 1] = key end
+            end
+            Report(row[1] .. ": " .. (#enabled > 0 and table.concat(enabled, ", ") or "none"))
+        end
+    end
+    Report("Trackers: target " .. (container and "ready" or "not initialized")
+        .. ", player " .. (playerAuraContainer and "ready" or "not initialized")
+        .. "; rebuild pending: " .. ((pendingSpecRebuild or pendingKnownRebuild) and "yes" or "no"))
+    if InCombatLockdown() then
+        Report("Target/range: unavailable during combat.")
+    else
+        local ok, attackable = pcall(function()
+            return UnitExists("target") and not UnitIsDeadOrGhost("target")
+                and UnitCanAttack("player", "target")
+        end)
+        if not ok or (issecretvalue and issecretvalue(attackable)) then
+            Report("Target/range: unavailable.")
+        elseif not attackable then
+            Report("Target/range: no attackable target.")
+        else
+            local spell = icons[1] and icons[1].spell
+            local rangeOK, inRange
+            if spell and C_Spell and C_Spell.IsSpellInRange then
+                rangeOK, inRange = pcall(C_Spell.IsSpellInRange, spell.name, "target")
+            end
+            local range = "unavailable"
+            if rangeOK and (not issecretvalue or not issecretvalue(inRange)) then
+                if inRange == true then range = "in range"
+                elseif inRange == false then range = "out of range" end
+            end
+            Report("Target: attackable; " .. (spell and spell.name or "spell")
+                .. " range: " .. range)
+        end
+    end
+    for _, spell in ipairs(SPELLS) do
+        if Enabled(spell.name) then
+            Report("Tracked " .. spell.name .. " IDs: " .. table.concat(spell.ids, ", "))
+        end
+    end
+end
 SlashCmdList.WARLOCKHUD = function(message)
-    if message ~= "debug" and WarlockHudOpenSettings and WarlockHudOpenSettings() then
+    if message == "debug" then
+        DebugState()
+        return
+    end
+    if WarlockHudOpenSettings and WarlockHudOpenSettings() then
         return
     end
     Build()
-    Report("Container: " .. (container and "ready" or "not built"))
-    for _, spell in ipairs(SPELLS) do
-        local spellID = C_Spell and C_Spell.GetSpellIDForSpellIdentifier
-            and C_Spell.GetSpellIDForSpellIdentifier(spell.name)
-        Report(spell.name .. " spell ID: " .. tostring(spellID))
-    end
+    Report("Settings are unavailable; target tracker: "
+        .. (container and "ready" or "not initialized"))
 end
 
 WarlockHudAPI = {

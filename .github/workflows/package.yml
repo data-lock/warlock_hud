@@ -1,0 +1,61 @@
+name: Package Warlock HUD
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check release version
+        if: startsWith(github.ref, 'refs/tags/')
+        shell: bash
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          grep -Fx "## Version: $version" Warlock_Hud.toc
+
+      - name: Build installable ZIP
+        shell: bash
+        run: |
+          mkdir -p dist/Warlock_Hud
+          cp Warlock_Hud.toc Warlock_Hud.lua Warlock_Hud_Options.lua \
+            Warlock_Hud_Notifications.lua Warlock_Hud_Nameplates.lua \
+            README.md LICENSE dist/Warlock_Hud/
+          (cd dist && zip -q -r "Warlock_Hud-${GITHUB_REF_NAME}.zip" Warlock_Hud)
+          unzip -Z1 "dist/Warlock_Hud-${GITHUB_REF_NAME}.zip"
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Warlock_Hud-${{ github.ref_name }}
+          path: dist/Warlock_Hud-${{ github.ref_name }}.zip
+          if-no-files-found: error
+
+      - name: Publish GitHub Release
+        if: startsWith(github.ref, 'refs/tags/')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          notes="releases/${GITHUB_REF_NAME}.md"
+          if [ -f "$notes" ]; then
+            gh release create "$GITHUB_REF_NAME" \
+              "dist/Warlock_Hud-${GITHUB_REF_NAME}.zip" \
+              --verify-tag --title "Warlock HUD ${GITHUB_REF_NAME}" \
+              --notes-file "$notes"
+          else
+            gh release create "$GITHUB_REF_NAME" \
+              "dist/Warlock_Hud-${GITHUB_REF_NAME}.zip" \
+              --verify-tag --title "Warlock HUD ${GITHUB_REF_NAME}" \
+              --generate-notes
+          fi
