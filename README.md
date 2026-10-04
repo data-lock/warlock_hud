@@ -68,4 +68,25 @@ The `.toc` file defines the addon version and Lua load order. Edit the Lua files
 directly and use `/reload` in game to test changes. The game stores profiles in
 `WarlockHudDB` as a SavedVariable.
 
+### CurseForge automatic packaging
+
+`.pkgmeta` names the addon folder, excludes repository-only files, and uses
+`CHANGELOG.md` for the packaged file's changelog. Update the changelog when
+publishing a new version tag.
+
+To enable CurseForge's packaging webhook, create a private token on your
+CurseForge API tokens page. In this repository's GitHub **Settings → Webhooks**, add
+the payload URL below, replacing both placeholders. Keep the webhook's other
+settings at their defaults. Do not commit or share the token.
+
+```text
+https://www.curseforge.com/api/projects/{projectID}/package?token={token}
+```
+
+Use the CurseForge project ID shown in **About This Project** on its Overview
+page. Configure CurseForge to package tagged commits so ordinary `main` pushes
+do not create alpha files. Version tags without `alpha` or `beta` in their name
+are packaged as releases. The separate GitHub Actions workflow continues to
+make installable ZIPs for GitHub.
+
 See [LICENSE](LICENSE) for the license.

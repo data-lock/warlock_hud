@@ -1,0 +1,11 @@
+package-as: Warlock_Hud
+manual-changelog:
+  filename: CHANGELOG.md
+  markup-type: markdown
+enable-nolib-creation: no
+license-output: LICENSE
+ignore:
+  - AGENTS.md
+  - README.md
+  - screenshots
+  - releases
