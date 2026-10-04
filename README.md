@@ -11,5 +11,5 @@ in `WarlockHudDB` by the game.
 The `.toc` file holds the addon version and load order. No build step is needed;
 after editing the Lua files, use `/reload` in game to load the changes.
 
-The GitHub repository is `git@github.com:arosychuk/warlock_hud.git`. After
-connecting the local `origin` remote, use `git push` to publish commits.
+The GitHub repository is `https://github.com/data-lock/warlock_hud`. Use
+`git push` to publish commits after connecting the local `origin` remote.
