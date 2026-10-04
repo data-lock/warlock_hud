@@ -1,0 +1,12 @@
+# Local editor and operating system files
+.DS_Store
+Thumbs.db
+*.swp
+*.tmp
+*.bak
+*.old
+*.log
+
+# Local workspace settings
+.vscode/
+.idea/
