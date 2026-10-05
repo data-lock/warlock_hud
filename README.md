@@ -88,4 +88,10 @@ missing.
 `.pkgmeta` remains available for repository packaging, but the GitHub Actions
 upload uses the ZIP built by `.github/workflows/package.yml`.
 
+To retry a release after a cancelled or failed tag run, open **Actions > Package
+Warlock HUD > Run workflow** on `main` and enter the existing tag in
+`release_tag`. The workflow checks out that tag, confirms its `.toc` version,
+reuses an existing GitHub Release if present, and then uploads the ZIP to
+CurseForge. Check CurseForge first so a retry does not create a duplicate file.
+
 See [LICENSE](LICENSE) for the license.

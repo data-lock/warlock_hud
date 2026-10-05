@@ -5,6 +5,11 @@ on:
     branches: [main]
     tags: ['v*']
   workflow_dispatch:
+    inputs:
+      release_tag:
+        description: Existing release tag to publish or retry (for example v0.28.0)
+        required: false
+        type: string
 
 permissions:
   contents: read
@@ -12,16 +17,23 @@ permissions:
 jobs:
   package:
     runs-on: ubuntu-latest
+    concurrency:
+      group: release-${{ inputs.release_tag || github.ref_name }}
+      cancel-in-progress: false
+    env:
+      PACKAGE_TAG: ${{ inputs.release_tag || github.ref_name }}
     permissions:
       contents: write
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.release_tag || github.ref }}
 
       - name: Check release version
-        if: startsWith(github.ref, 'refs/tags/')
+        if: startsWith(github.ref, 'refs/tags/') || inputs.release_tag != ''
         shell: bash
         run: |
-          version="${GITHUB_REF_NAME#v}"
+          version="${PACKAGE_TAG#v}"
           grep -Fx "## Version: $version" Warlock_Hud.toc
 
       - name: Build installable ZIP
@@ -31,37 +43,42 @@ jobs:
           cp Warlock_Hud.toc Warlock_Hud.lua Warlock_Hud_Options.lua \
             Warlock_Hud_Notifications.lua Warlock_Hud_Nameplates.lua \
             README.md LICENSE dist/Warlock_Hud/
-          (cd dist && zip -q -r "Warlock_Hud-${GITHUB_REF_NAME}.zip" Warlock_Hud)
-          unzip -Z1 "dist/Warlock_Hud-${GITHUB_REF_NAME}.zip"
+          (cd dist && zip -q -r "Warlock_Hud-${PACKAGE_TAG}.zip" Warlock_Hud)
+          unzip -Z1 "dist/Warlock_Hud-${PACKAGE_TAG}.zip"
 
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Warlock_Hud-${{ github.ref_name }}
-          path: dist/Warlock_Hud-${{ github.ref_name }}.zip
+          name: Warlock_Hud-${{ env.PACKAGE_TAG }}
+          path: dist/Warlock_Hud-${{ env.PACKAGE_TAG }}.zip
           if-no-files-found: error
 
       - name: Publish GitHub Release
-        if: startsWith(github.ref, 'refs/tags/')
+        if: startsWith(github.ref, 'refs/tags/') || inputs.release_tag != ''
         env:
           GH_TOKEN: ${{ github.token }}
         shell: bash
         run: |
-          notes="releases/${GITHUB_REF_NAME}.md"
-          if [ -f "$notes" ]; then
-            gh release create "$GITHUB_REF_NAME" \
-              "dist/Warlock_Hud-${GITHUB_REF_NAME}.zip" \
-              --verify-tag --title "Warlock HUD ${GITHUB_REF_NAME}" \
-              --notes-file "$notes"
+          zip="dist/Warlock_Hud-${PACKAGE_TAG}.zip"
+          if gh release view "$PACKAGE_TAG" >/dev/null 2>&1; then
+            if ! gh release view "$PACKAGE_TAG" --json assets --jq '.assets[].name' | grep -Fx "Warlock_Hud-${PACKAGE_TAG}.zip"; then
+              gh release upload "$PACKAGE_TAG" "$zip"
+            fi
           else
-            gh release create "$GITHUB_REF_NAME" \
-              "dist/Warlock_Hud-${GITHUB_REF_NAME}.zip" \
-              --verify-tag --title "Warlock HUD ${GITHUB_REF_NAME}" \
-              --generate-notes
+            notes="releases/${PACKAGE_TAG}.md"
+            if [ -f "$notes" ]; then
+              gh release create "$PACKAGE_TAG" "$zip" \
+                --verify-tag --title "Warlock HUD ${PACKAGE_TAG}" \
+                --notes-file "$notes"
+            else
+              gh release create "$PACKAGE_TAG" "$zip" \
+                --verify-tag --title "Warlock HUD ${PACKAGE_TAG}" \
+                --generate-notes
+            fi
           fi
 
       - name: Upload the same ZIP to CurseForge
-        if: startsWith(github.ref, 'refs/tags/')
+        if: startsWith(github.ref, 'refs/tags/') || inputs.release_tag != ''
         env:
           CF_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
         shell: bash
@@ -70,15 +87,15 @@ jobs:
             echo "::error::Set the CF_API_TOKEN repository secret before publishing a tag."
             exit 1
           fi
-          notes="releases/${GITHUB_REF_NAME}.md"
+          notes="releases/${PACKAGE_TAG}.md"
           if [ ! -f "$notes" ]; then notes="CHANGELOG.md"; fi
           metadata=$(jq -n --rawfile changelog "$notes" \
-            --arg display_name "Warlock HUD ${GITHUB_REF_NAME}" \
+            --arg display_name "Warlock HUD ${PACKAGE_TAG}" \
             '{changelog: $changelog, changelogType: "markdown",
               displayName: $display_name, gameVersionNames: ["1.60.1"],
               releaseType: "release"}')
           curl --fail-with-body --show-error --silent \
             --header "X-Api-Token: ${CF_API_TOKEN}" \
             --form-string "metadata=${metadata}" \
-            --form "file=@dist/Warlock_Hud-${GITHUB_REF_NAME}.zip" \
+            --form "file=@dist/Warlock_Hud-${PACKAGE_TAG}.zip" \
             https://www.curseforge.com/api/projects/1727219/upload-file
