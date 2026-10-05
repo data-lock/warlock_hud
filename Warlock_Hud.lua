@@ -31,7 +31,6 @@ local hudRoot
 local hudAnchor
 local editMover
 local cooldownAnchor
-local soulstoneLabel
 local cooldownMover
 local buffAnchor
 local buffMover
@@ -263,28 +262,6 @@ local function InitializeProfiles()
     COOLDOWN_ICON_SIZE = profile.cooldownSize
     BUFF_ICON_SIZE = profile.buffSize
     PROC_ICON_SIZE = profile.procSize
-end
-
-local playerClass, playerGUID
-local function PlayerIdentity()
-    if not playerClass then _, playerClass = UnitClass("player") end
-    if not playerGUID then playerGUID = UnitGUID("player") end
-    return playerClass, playerGUID
-end
-
-local function IsAddonEnabled()
-    local class, character = PlayerIdentity()
-    local overrides = WarlockHudDB and WarlockHudDB.characterEnabled
-    local choice = character and overrides and overrides[character]
-    if choice ~= nil then return choice == true end
-    return class == "WARLOCK"
-end
-
-local function SetAddonEnabled(value)
-    local _, character = PlayerIdentity()
-    if not character then return end
-    WarlockHudDB.characterEnabled = WarlockHudDB.characterEnabled or {}
-    WarlockHudDB.characterEnabled[character] = value and true or false
 end
 
 local function Enabled(key)
@@ -709,7 +686,6 @@ local function Build()
     end
 
     InitializeProfiles()
-    if not IsAddonEnabled() then return end
 
     -- Build once at a safe time. The completed container can update in combat.
     if InCombatLockdown() or
@@ -816,6 +792,7 @@ local function Build()
     else
         cooldownAnchor:SetPoint("CENTER", hudAnchor, "CENTER", 0, -60)
     end
+
     cooldownMover = CreateFrame("Button", nil, cooldownAnchor)
     cooldownMover:SetAllPoints(cooldownAnchor)
     cooldownMover:SetFrameStrata("DIALOG")
@@ -960,12 +937,6 @@ local function Build()
         icon:SetPoint("CENTER", cooldownAnchor, "CENTER", x, 0)
         icon:SetTexture(C_Item and C_Item.GetItemIconByID and C_Item.GetItemIconByID(stone.defaultID))
         icon:SetTexCoord(ICON_CROP, 1 - ICON_CROP, ICON_CROP, 1 - ICON_CROP)
-        if stone.name == "Soulstone" then
-            soulstoneLabel = cooldownAnchor:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-            soulstoneLabel:SetPoint("TOP", cooldownAnchor, "BOTTOM", 0, -5)
-            soulstoneLabel:SetWidth(220)
-            soulstoneLabel:SetJustifyH("CENTER")
-        end
         local cooldown = CreateFrame("Cooldown", nil, hudRoot, "CooldownFrameTemplate")
         cooldown:SetAllPoints(icon)
         cooldown:SetDrawBling(false)
@@ -1383,16 +1354,9 @@ local function Rebuild()
     shardState.button, shardState.countText = nil, nil
     shardState.anchor, shardState.mover = nil, nil
     hudAnchor, editMover, cooldownAnchor, cooldownMover = nil, nil, nil, nil
-    soulstoneLabel = nil
     buffAnchor, buffMover = nil, nil
     procAnchor, procMover = nil, nil
     icons, itemIcons, racialIcons, groupBuffIcons = {}, {}, {}, {}
-    if not IsAddonEnabled() then
-        pendingKnownRebuild = false
-        pendingSpecRebuild = false
-        if WarlockHudRefreshNameplates then WarlockHudRefreshNameplates() end
-        return true
-    end
     Build()
     if WarlockHudRefreshNameplates then WarlockHudRefreshNameplates() end
     if container then
@@ -1432,8 +1396,6 @@ events:RegisterEvent("PLAYER_ENTERING_WORLD")
 events:RegisterEvent("ZONE_CHANGED_NEW_AREA")
 events:RegisterUnitEvent("UNIT_AURA", "player")
 events:SetScript("OnEvent", function(_, event)
-    if event == "PLAYER_LOGIN" then InitializeProfiles() end
-    if not IsAddonEnabled() then return end
     if event == "ACTIVE_TALENT_GROUP_CHANGED" then
         if not UpdateSpecProfile() then
             if not Rebuild() then pendingKnownRebuild = true end
@@ -1490,16 +1452,11 @@ end)
 
 local rangeElapsed = 0
 events:SetScript("OnUpdate", function(_, elapsed)
-    if not IsAddonEnabled() then return end
     rangeElapsed = rangeElapsed + elapsed
     if rangeElapsed >= 0.2 then
         rangeElapsed = 0
         if pendingSpecRebuild or pendingKnownRebuild then Rebuild() end
         if container then
-            if soulstoneLabel then
-                local status = WarlockHudSoulstoneText and WarlockHudSoulstoneText()
-                soulstoneLabel:SetText(status or "")
-            end
             UpdateVisualState()
             UpdateRange()
             UpdateStones()
@@ -1582,22 +1539,6 @@ local function DebugState()
     end
 end
 SlashCmdList.WARLOCKHUD = function(message)
-    if message == "stones" and WarlockHudShowStones then
-        WarlockHudShowStones()
-        return
-    end
-    if message == "trace" and WarlockHudOpenDebugTrace then
-        WarlockHudOpenDebugTrace()
-        return
-    end
-    if message == "tradedebug" and WarlockHudToggleTradeDebug then
-        WarlockHudToggleTradeDebug()
-        return
-    end
-    if message == "soulstonedebug" and WarlockHudToggleSoulstoneDebug then
-        WarlockHudToggleSoulstoneDebug()
-        return
-    end
     if message == "debug" then
         DebugState()
         return
@@ -1611,9 +1552,6 @@ SlashCmdList.WARLOCKHUD = function(message)
 end
 
 WarlockHudAPI = {
-    Stones = STONES,
-    IsAddonEnabled = IsAddonEnabled,
-    SetAddonEnabled = SetAddonEnabled,
     InitializeProfiles = InitializeProfiles,
     ActiveTalentGroup = ActiveTalentGroup,
     MainKeys = MAIN_KEYS,

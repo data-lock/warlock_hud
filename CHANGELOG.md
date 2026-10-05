@@ -1,16 +1,5 @@
 # Changelog
 
-## v0.29.0 (in-game review build)
-
-- Added Soulstone recipient tracking with an active-only HUD label and a
-  guarded self-resurrection observer. Unconfirmed outcomes remain unknown.
-- Added a Stones page, completed Healthstone trade records, and optional
-  group-only Healthstone placement. Trade acceptance remains manual.
-- Added a copyable trace window with Trade and Soulstone recording controls.
-- Added per-character enable defaults: on for Warlocks, off for other classes.
-
-Stones behavior still needs in-game verification on Forever.
-
 ## v0.28.0
 
 - Added a Target DoT color toggle under Tracked Auras. Active effects are

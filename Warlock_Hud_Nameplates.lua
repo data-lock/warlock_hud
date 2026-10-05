@@ -5,8 +5,7 @@ local events = CreateFrame("Frame")
 
 local function Enabled()
     local profile = WarlockHudAPI and WarlockHudAPI.GetProfile()
-    return WarlockHudAPI and WarlockHudAPI.IsAddonEnabled()
-        and profile and profile.enabled.executeMarker ~= false
+    return profile and profile.enabled.executeMarker ~= false
 end
 
 local function UpdateMarker(bar, marker)
