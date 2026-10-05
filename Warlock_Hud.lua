@@ -1115,6 +1115,9 @@ local function Build()
                 icon:SetPoint("CENTER", anchor, "CENTER", x, 0)
                 icon:SetTexture(C_Spell.GetSpellTexture(currentSpellID or spell.ids[1]))
                 icon:SetTexCoord(ICON_CROP, 1 - ICON_CROP, ICON_CROP, 1 - ICON_CROP)
+                if spell.group ~= 2 then
+                    icon:SetDesaturated(profile.colorActiveDoTs ~= false)
+                end
                 icons[#icons + 1] = { spell = spell, icon = icon, border = MakeBorder(anchor, x, iconSize) }
                 baseCreated[groupKey] = true
             end
@@ -1131,6 +1134,9 @@ local function Build()
                     local auraIcon = button:CreateTexture(nil, "ARTWORK")
                     auraIcon:SetAllPoints(button)
                     auraIcon:SetTexCoord(ICON_CROP, 1 - ICON_CROP, ICON_CROP, 1 - ICON_CROP)
+                    if spell.group ~= 2 then
+                        auraIcon:SetDesaturated(profile.colorActiveDoTs == false)
+                    end
                     button:SetIcon(auraIcon)
 
                     local cooldown = CreateFrame("Cooldown", nil, button, "CooldownFrameTemplate")

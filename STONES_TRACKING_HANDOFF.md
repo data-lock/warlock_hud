@@ -1,7 +1,7 @@
-# Stones tracking handoff (paused at v0.27.43)
+# Stones tracking handoff (merged review build v0.29.0)
 
-Branch: `feature/stones-tracking`. This branch contains the Soulstone and
-Healthstone work. It has not been merged into `main`.
+The Soulstone and Healthstone work began on `feature/stones-tracking` at
+v0.27.43 and was merged with `main` for the v0.29.0 review build.
 
 ## Implemented
 
@@ -19,7 +19,7 @@ Healthstone work. It has not been merged into `main`.
   observed, not that the recipient still has the item.
 - `/whub trace` opens one copyable trace window with Trade and Soulstone
   recording switches. `/whub stones` prints the distribution list.
-- v0.27.43 adds a guarded, passive observer for
+- The guarded, passive observer for
   `C_DeathInfo.UseSelfResurrectOption` to distinguish confirmed Soulstone use
   from an aura lost on death. It does not invoke the protected action.
 

@@ -21,6 +21,8 @@ other panels.
 Main row icons fade when there is no attackable target and turn red when the target
 is out of range. Demon Armor / Demon Skin and Well Fed have missing-buff reminders.
 The HUD checks known spells and talents when deciding which icons to show.
+On Tracked Auras, the Target DoT color toggle reverses the main row's active
+and missing colors. The default is colored when active and grey when missing.
 
 The addon can announce Ritual of Summoning, a Soulstone cast, and an accepted
 Healthstone trade. Soulstone announcements go to party, raid, or instance chat
@@ -79,25 +81,28 @@ The `.toc` file defines the addon version and Lua load order. Edit the Lua files
 directly and use `/reload` in game to test changes. The game stores profiles in
 `WarlockHudDB` as a SavedVariable.
 
-### CurseForge automatic packaging
+### CurseForge releases
 
-`.pkgmeta` names the addon folder, excludes repository-only files, and uses
-`CHANGELOG.md` for the packaged file's changelog. Update the changelog when
-publishing a new version tag.
+The tag workflow builds `Warlock_Hud-vX.Y.Z.zip`, publishes the GitHub Release,
+then uploads that exact ZIP to CurseForge project `1727219` for Warcraft Forever
+`1.60.1`. This keeps the filename and contents consistent across both sites.
+The upload uses the matching file in `releases/` as its changelog, or
+`CHANGELOG.md` if no release note exists.
 
-To enable CurseForge's packaging webhook, create a private token on your
-CurseForge API tokens page. In this repository's GitHub **Settings → Webhooks**, add
-the payload URL below, replacing both placeholders. Keep the webhook's other
-settings at their defaults. Do not commit or share the token.
+Before publishing a new tag, create a CurseForge API token and store it in the
+repository's GitHub Actions secret named `CF_API_TOKEN`. Disable the old
+CurseForge packaging webhook in GitHub **Settings > Webhooks**; otherwise the
+tag push can create a second CurseForge file before the workflow finishes.
+Do not commit or share the token. The workflow fails visibly if the secret is
+missing.
 
-```text
-https://www.curseforge.com/api/projects/{projectID}/package?token={token}
-```
+`.pkgmeta` remains available for repository packaging, but the GitHub Actions
+upload uses the ZIP built by `.github/workflows/package.yml`.
 
-Use the CurseForge project ID shown in **About This Project** on its Overview
-page. Configure CurseForge to package tagged commits so ordinary `main` pushes
-do not create alpha files. Version tags without `alpha` or `beta` in their name
-are packaged as releases. The separate GitHub Actions workflow continues to
-make installable ZIPs for GitHub.
+To retry a release after a cancelled or failed tag run, open **Actions > Package
+Warlock HUD > Run workflow** on `main` and enter the existing tag in
+`release_tag`. The workflow checks out that tag, confirms its `.toc` version,
+reuses an existing GitHub Release if present, and then uploads the ZIP to
+CurseForge. Check CurseForge first so a retry does not create a duplicate file.
 
 See [LICENSE](LICENSE) for the license.
