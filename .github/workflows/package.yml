@@ -59,3 +59,26 @@ jobs:
               --verify-tag --title "Warlock HUD ${GITHUB_REF_NAME}" \
               --generate-notes
           fi
+
+      - name: Upload the same ZIP to CurseForge
+        if: startsWith(github.ref, 'refs/tags/')
+        env:
+          CF_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+        shell: bash
+        run: |
+          if [ -z "$CF_API_TOKEN" ]; then
+            echo "::error::Set the CF_API_TOKEN repository secret before publishing a tag."
+            exit 1
+          fi
+          notes="releases/${GITHUB_REF_NAME}.md"
+          if [ ! -f "$notes" ]; then notes="CHANGELOG.md"; fi
+          metadata=$(jq -n --rawfile changelog "$notes" \
+            --arg display_name "Warlock HUD ${GITHUB_REF_NAME}" \
+            '{changelog: $changelog, changelogType: "markdown",
+              displayName: $display_name, gameVersionNames: ["1.60.1"],
+              releaseType: "release"}')
+          curl --fail-with-body --show-error --silent \
+            --header "X-Api-Token: ${CF_API_TOKEN}" \
+            --form-string "metadata=${metadata}" \
+            --form "file=@dist/Warlock_Hud-${GITHUB_REF_NAME}.zip" \
+            https://www.curseforge.com/api/projects/1727219/upload-file
