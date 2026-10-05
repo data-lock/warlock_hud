@@ -1,7 +1,8 @@
-# Stones tracking handoff (merged review build v0.29.0)
+# Stones tracking handoff (unfinished review build v0.29.0)
 
-The Soulstone and Healthstone work began on `feature/stones-tracking` at
-v0.27.43 and was merged with `main` for the v0.29.0 review build.
+The Soulstone and Healthstone work remains on `feature/stones-tracking`.
+The branch includes the v0.28.0 changes from `main`; its current review
+version is v0.29.0. The Stones work has not been released.
 
 ## Implemented
 
