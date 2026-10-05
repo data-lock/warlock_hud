@@ -20,6 +20,8 @@ other panels.
 Main row icons fade when there is no attackable target and turn red when the target
 is out of range. Demon Armor / Demon Skin and Well Fed have missing-buff reminders.
 The HUD checks known spells and talents when deciding which icons to show.
+On Tracked Auras, the Target DoT color toggle reverses the main row's active
+and missing colors. The default is colored when active and grey when missing.
 
 The addon can announce Ritual of Summoning, a Soulstone cast, and an accepted
 Healthstone trade. Soulstone announcements go to party, raid, or instance chat

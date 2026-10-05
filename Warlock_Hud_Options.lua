@@ -483,8 +483,19 @@ for _, group in ipairs(spellGroups) do
         end
     end
 end
+Text(spells, "Target DoT colors", 345, -385, "GameFontNormal")
+Check(spells, 345, -415, "Color when active; grey when missing",
+    function() return Profile().colorActiveDoTs ~= false end,
+    function(value)
+        if value then Profile().colorActiveDoTs = nil
+        else Profile().colorActiveDoTs = false end
+    end,
+    "On (default): color when active, grey when missing. This affects the Target DoTs row only.")
+Text(spells, "Saves now; visual update waits until safe.",
+    373, -455, "GameFontHighlightSmall")
 ResetPageButton(spells, "Tracked Auras", function()
     for _, spell in ipairs(api.Spells) do Profile().enabled[spell.name] = nil end
+    Profile().colorActiveDoTs = nil
     MarkChanged()
 end)
 

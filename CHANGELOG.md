@@ -1,5 +1,14 @@
 # Changelog
 
+## v0.28.0
+
+- Added a Target DoT color toggle under Tracked Auras. Active effects are
+  colored and missing effects are grey by default; the previous appearance
+  remains available by turning the toggle off.
+- Kept the color choice scoped to the Target DoTs row and the active profile.
+
+Thanks to Tiny for the suggestion.
+
 ## v0.27.27
 
 - Reorganized settings pages and grouped tracked auras by icon slot.
