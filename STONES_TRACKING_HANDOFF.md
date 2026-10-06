@@ -50,13 +50,13 @@ version is v0.29.2. The Stones work has not been released.
   group trade. The detailed placement trace was not supplied.
 - The user confirmed the Healthstone safety checks passed for a non-group
   trader, an already occupied trade, and stacked/different Healthstone ranks.
+- `/whub stones` showed distribution round 1 with only Rigged-Elections
+  (WARLOCK) supplied at 2026-10-06 20:30 after the completed and cancelled
+  trade tests.
 
 ## Still needs in-game verification
 
-1. Verify `/whub stones` lists only the completed trade after the confirmed
-   success and cancellation sequence, if this was not included in the user's
-   Healthstone checks.
-2. Check Soulstone expiry and loss outside combat, reload recovery, and the
+1. Check Soulstone expiry and loss outside combat, reload recovery, and the
    Stones page options. The Soulstone group announcement also still needs a
    live cast check.
 
