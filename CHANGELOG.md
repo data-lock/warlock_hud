@@ -1,5 +1,12 @@
 # Changelog
 
+## v0.29.1 (in-game review build)
+
+- Confirm Healthstone distribution and its notification after Forever reports
+  trade completion, including when trade slots clear before `TRADE_CLOSED`.
+- Add trace reasons for skipped automatic placement and select an unlocked
+  Healthstone without requiring it to be consumable at the player's health.
+
 ## v0.29.0 (in-game review build)
 
 - Added Soulstone recipient tracking with an active-only HUD label and a

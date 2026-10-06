@@ -1,8 +1,8 @@
-# Stones tracking handoff (unfinished review build v0.29.0)
+# Stones tracking handoff (unfinished review build v0.29.1)
 
 The Soulstone and Healthstone work remains on `feature/stones-tracking`.
 The branch includes the v0.28.0 changes from `main`; its current review
-version is v0.29.0. The Stones work has not been released.
+version is v0.29.1. The Stones work has not been released.
 
 ## Implemented
 
@@ -15,7 +15,7 @@ version is v0.29.0. The Stones work has not been released.
   has been confirmed active. The existing Soulstone icon continues to show
   item readiness and its native cooldown.
 - Healthstone distribution records are committed only after a Healthstone was
-  observed in a group trade at both-sided acceptance and the client reports
+  observed in a group trade when the player accepted and the client reports
   `UI_INFO_MESSAGE` trade completion. The record means a completed trade was
   observed, not that the recipient still has the item.
 - `/whub trace` opens one copyable trace window with Trade and Soulstone
@@ -37,6 +37,10 @@ version is v0.29.0. The Stones work has not been released.
 - On a death test, the Soulstone aura disappeared at `PLAYER_DEAD` and
   `PLAYER_ALIVE` occurred seven seconds later. No post-death player cast was
   recorded. That sequence alone does not prove Soulstone use.
+- A manual Healthstone trade showed item 5512, player acceptance `1/0`, then
+  empty trade slots, `TRADE_CLOSED`, and `UI_INFO_MESSAGE id=251`. v0.29.1
+  handles that sequence; the resulting supplied record and notification still
+  need an in-game check.
 
 ## Still needs in-game verification
 
@@ -46,11 +50,12 @@ version is v0.29.0. The Stones work has not been released.
    recorded only after the Soulstone choice and a return to life. If those
    APIs are unavailable, retain `LOST / UNKNOWN`.
 2. Complete and cancel a Healthstone group trade; verify `/whub stones` adds
-   only the completed trade. The completion event itself was observed, but the
-   distribution state has not been confirmed in game.
+   only the completed trade and the completion notice appears. Capture Trade
+   recording in `/whub trace` for both cases.
 3. Enable auto-placement and test one empty group trade, an outsider, an
    occupied trade, stacked/multiple ranks, and manual Accept. Auto-placement
-   is off by default. The placement API path has not been confirmed in game.
+   is off by default; v0.29.1 traces why an eligible trade was skipped.
+   The placement API path has not been confirmed in game.
 4. Check Soulstone expiry and loss outside combat, reload recovery, and the
    Stones page options. The Soulstone group announcement also still needs a
    live cast check.

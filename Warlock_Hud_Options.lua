@@ -792,7 +792,7 @@ Text(notifications, "Announcements", 20, -85, "GameFontNormal")
 local notificationChoices = {
     { "notifySummon", "Ritual of Summoning", -115 },
     { "notifySoulstone", "Soulstone cast on a player", -180 },
-    { "notifyHealthstone", "Healthstone trade accepted", -245 },
+    { "notifyHealthstone", "Healthstone trade completed", -245 },
 }
 for _, choice in ipairs(notificationChoices) do
     local key = choice[1]
@@ -807,7 +807,7 @@ Text(notifications, "Example: Summoning Player. Please click the portal.",
     48, -148, "GameFontHighlightSmall")
 Text(notifications, "Example: Soulstone cast on Player.",
     48, -213, "GameFontHighlightSmall")
-Text(notifications, "Example: Healthstone trade accepted with Player.",
+Text(notifications, "Example: Healthstone trade completed with Player.",
     48, -278, "GameFontHighlightSmall")
 Text(notifications, "Delivery", 20, -325, "GameFontNormal")
 Check(notifications, 20, -355, "Send summon and Healthstone trade notices to group chat",

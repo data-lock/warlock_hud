@@ -2,8 +2,9 @@ local api = WarlockHudAPI
 local events = CreateFrame("Frame")
 local pendingCasts = {}
 local tradeHasHealthstone = false
-local tradeNotified = false
 local tradePartner
+local tradeStoneClearedAt
+local tradeClosedAt
 local lastSoulstoneAt = 0
 local tradeDebug = false
 local soulstoneDebug = false
@@ -526,21 +527,26 @@ end
 local autoPlacedThisTrade = false
 local tradeGeneration = 0
 local function TradeIsEmpty()
-    if not GetTradePlayerItemLink or not GetTradeTargetItemLink then return false end
-    for slot = 1, 6 do
+    if not GetTradePlayerItemLink or not GetTradeTargetItemLink then
+        return false, "trade item API unavailable"
+    end
+    for slot = 1, 7 do
         local okPlayer, playerLink = pcall(GetTradePlayerItemLink, slot)
         local okTarget, targetLink = pcall(GetTradeTargetItemLink, slot)
         if not okPlayer or not okTarget or not Public(playerLink) and playerLink ~= nil
             or not Public(targetLink) and targetLink ~= nil
-            or playerLink or targetLink then return false end
+            or playerLink or targetLink then return false, "trade slots occupied or unavailable" end
     end
-    if GetPlayerTradeMoney then
-        local ok, money = pcall(GetPlayerTradeMoney)
-        if not ok or not Public(money) or money ~= 0 then return false end
+    if not GetPlayerTradeMoney or not GetTargetTradeMoney then
+        return false, "trade money API unavailable"
     end
-    if GetTargetTradeMoney then
-        local ok, money = pcall(GetTargetTradeMoney)
-        if not ok or not Public(money) or money ~= 0 then return false end
+    local okPlayerMoney, playerMoney = pcall(GetPlayerTradeMoney)
+    if not okPlayerMoney or not Public(playerMoney) or playerMoney ~= 0 then
+        return false, "player money occupied or unavailable"
+    end
+    local okTargetMoney, targetMoney = pcall(GetTargetTradeMoney)
+    if not okTargetMoney or not Public(targetMoney) or targetMoney ~= 0 then
+        return false, "partner money occupied or unavailable"
     end
     return true
 end
@@ -559,12 +565,7 @@ local function FindBestHealthstone()
                         and (not issecretvalue or not issecretvalue(info.isLocked))
                         and info.isLocked ~= true
                         and Public(info.stackCount) and info.stackCount > 0 then
-                        local usable = true
-                        if C_Item and C_Item.IsUsableItem then
-                            local checked, result = pcall(C_Item.IsUsableItem, itemID)
-                            usable = checked and Public(result) and result == true
-                        end
-                        if usable then return bag, slot, itemID end
+                        return bag, slot, itemID
                     end
                 end
             end
@@ -573,27 +574,49 @@ local function FindBestHealthstone()
 end
 
 local function AutoPlaceHealthstone()
-    if StoneOptions().autoPlaceHealthstone ~= true or not tradeCandidate
-        or autoPlacedThisTrade or InCombatLockdown() or not TradeIsEmpty()
-        or not C_Container or not C_Container.PickupContainerItem
-        or not ClickTradeButton or not GetCursorInfo then return end
+    if StoneOptions().autoPlaceHealthstone ~= true then
+        TraceTrade("AUTO_PLACE", "skipped: setting off")
+        return
+    end
+    if not tradeCandidate then TraceTrade("AUTO_PLACE", "skipped: group partner unknown"); return end
+    if autoPlacedThisTrade then TraceTrade("AUTO_PLACE", "skipped: already attempted"); return end
+    if InCombatLockdown() then TraceTrade("AUTO_PLACE", "skipped: combat"); return end
+    local empty, reason = TradeIsEmpty()
+    if not empty then TraceTrade("AUTO_PLACE", "skipped: " .. reason); return end
+    if not C_Container or not C_Container.PickupContainerItem
+        or not ClickTradeButton or not GetCursorInfo then
+        TraceTrade("AUTO_PLACE", "skipped: placement API unavailable")
+        return
+    end
     local cursorType = GetCursorInfo()
-    if cursorType ~= nil then return end
+    if cursorType ~= nil then
+        TraceTrade("AUTO_PLACE", "skipped: cursor occupied or unavailable")
+        return
+    end
     local bag, slot = FindBestHealthstone()
-    if not bag then return end
+    if not bag then TraceTrade("AUTO_PLACE", "skipped: no unlocked Healthstone in bags"); return end
     local checked, info = pcall(C_Container.GetContainerItemInfo, bag, slot)
-    if not checked or not Public(info) or not info then return end
+    if not checked or not Public(info) or not info then
+        TraceTrade("AUTO_PLACE", "skipped: bag item unavailable")
+        return
+    end
     local split = info and Public(info.stackCount) and info.stackCount > 1
-    if split and not C_Container.SplitContainerItem then return end
+    if split and not C_Container.SplitContainerItem then
+        TraceTrade("AUTO_PLACE", "skipped: stack split API unavailable")
+        return
+    end
     local picked
     if split then
         picked = pcall(C_Container.SplitContainerItem, bag, slot, 1)
     else
         picked = pcall(C_Container.PickupContainerItem, bag, slot)
     end
-    if not picked then return end
+    if not picked then TraceTrade("AUTO_PLACE", "skipped: pickup failed"); return end
     local cursor = GetCursorInfo()
-    if cursor ~= "item" then return end
+    if not Public(cursor) or cursor ~= "item" then
+        TraceTrade("AUTO_PLACE", "skipped: item not on cursor")
+        return
+    end
     autoPlacedThisTrade = true
     local placed = pcall(ClickTradeButton, 1)
     TraceTrade("AUTO_PLACE", "item=" .. api.Stones[1].name
@@ -723,7 +746,8 @@ events:SetScript("OnEvent", function(_, event, ...)
         tradeGeneration = tradeGeneration + 1
         autoPlacedThisTrade = false
         tradeHasHealthstone = false
-        tradeNotified = false
+        tradeStoneClearedAt = nil
+        tradeClosedAt = nil
         tradeCandidate = nil
         acceptedTrade = nil
         local name = UnitName("NPC")
@@ -739,21 +763,26 @@ events:SetScript("OnEvent", function(_, event, ...)
         end
         if tradeCandidate and C_Timer and C_Timer.After then
             local generation = tradeGeneration
+            TraceTrade("AUTO_PLACE", "scheduled")
             C_Timer.After(0.1, function()
                 if generation == tradeGeneration then AutoPlaceHealthstone() end
             end)
+        elseif tradeCandidate then
+            TraceTrade("AUTO_PLACE", "skipped: timer API unavailable")
         end
     elseif event == "TRADE_PLAYER_ITEM_CHANGED" then
         tradeHasHealthstone = IsHealthstoneInTrade()
-        tradeNotified = false
         if not tradeHasHealthstone then
-            tradeCandidate = nil
+            if acceptedTrade and not tradeStoneClearedAt then
+                tradeStoneClearedAt = GetTime()
+            end
         elseif not tradeCandidate then
             local guid, groupName, class = GroupPartner()
             if guid then
                 tradeCandidate = { guid = guid, name = groupName, class = class }
             end
         end
+        if tradeHasHealthstone then tradeStoneClearedAt = nil end
         if tradeDebug then
             TraceTrade(event, "slots=" .. TradeSlots()
                 .. " healthstone=" .. tostring(tradeHasHealthstone))
@@ -768,32 +797,30 @@ events:SetScript("OnEvent", function(_, event, ...)
             TraceTrade(event, "player=" .. player .. " target=" .. target
                 .. " slots=" .. TradeSlots())
         end
-        if Accepted(playerAccepted) and Accepted(targetAccepted)
-            and tradeHasHealthstone and not tradeNotified then
-            tradeNotified = true
-            Notify("notifyHealthstone", "Healthstone trade accepted with "
-                .. (tradePartner or "your trade partner") .. ".")
-        end
-        if Public(playerAccepted) and Public(targetAccepted)
-            and Accepted(playerAccepted) and Accepted(targetAccepted) then
-            if tradeHasHealthstone and tradeCandidate then
-                acceptedTrade = {
-                    guid = tradeCandidate.guid, name = tradeCandidate.name,
-                    class = tradeCandidate.class, acceptedAt = GetTime(),
-                }
-            else
-                acceptedTrade = nil
-            end
+        if Public(playerAccepted) and Accepted(playerAccepted)
+            and tradeHasHealthstone and tradeCandidate then
+            acceptedTrade = {
+                guid = tradeCandidate.guid, name = tradeCandidate.name,
+                class = tradeCandidate.class, acceptedAt = GetTime(),
+            }
+            tradeStoneClearedAt = nil
+        elseif Public(playerAccepted) and Accepted(playerAccepted) then
+            acceptedTrade = nil
+            tradeStoneClearedAt = nil
         end
     elseif event == "TRADE_CLOSED" or event == "TRADE_REQUEST_CANCEL" then
         tradeGeneration = tradeGeneration + 1
+        if event == "TRADE_CLOSED" then tradeClosedAt = GetTime() end
         if tradeDebug then
             TraceTrade(event, "last healthstone=" .. tostring(tradeHasHealthstone))
         end
         tradeHasHealthstone = false
-        tradeNotified = false
         tradePartner = nil
-        if event == "TRADE_REQUEST_CANCEL" then acceptedTrade = nil end
+        if event == "TRADE_REQUEST_CANCEL" then
+            acceptedTrade = nil
+            tradeStoneClearedAt = nil
+            tradeClosedAt = nil
+        end
     elseif event == "UI_INFO_MESSAGE" or event == "CHAT_MSG_SYSTEM" then
         local first, second = ...
         local message = event == "UI_INFO_MESSAGE" and second or first
@@ -806,21 +833,35 @@ events:SetScript("OnEvent", function(_, event, ...)
                 local id = Public(first) and tostring(first) or "secret"
                 TraceTrade(event, "id=" .. id .. " message=" .. message)
             end
-            if complete and acceptedTrade and GetTime() - acceptedTrade.acceptedAt < 30 then
+            if complete and acceptedTrade and GetTime() - acceptedTrade.acceptedAt < 30
+                and (not tradeClosedAt or GetTime() - tradeClosedAt < 2)
+                and (not tradeStoneClearedAt or GetTime() - tradeStoneClearedAt < 2) then
+                Notify("notifyHealthstone", "Healthstone trade completed with "
+                    .. acceptedTrade.name .. ".")
                 local state = SuppliedPlayers()
                 if state and StoneOptions().distributionTracker ~= false then
                     state.players[acceptedTrade.guid] = {
                         name = acceptedTrade.name, class = acceptedTrade.class,
                         suppliedAt = time(),
                     }
+                    TraceTrade("DISTRIBUTION", "recorded " .. acceptedTrade.name)
                     if StoneOptions().notifyDistribution == true then
                         print("|cffff7a7aWarlock HUD:|r Healthstone supplied to "
                             .. acceptedTrade.name .. ".")
                     end
                 end
                 acceptedTrade = nil
+                tradeStoneClearedAt = nil
+                tradeClosedAt = nil
+            elseif complete then
+                TraceTrade("DISTRIBUTION", "not recorded: no recent accepted Healthstone trade")
+                acceptedTrade = nil
+                tradeStoneClearedAt = nil
+                tradeClosedAt = nil
             elseif cancelled then
                 acceptedTrade = nil
+                tradeStoneClearedAt = nil
+                tradeClosedAt = nil
             end
         end
     elseif event == "UNIT_AURA" then
