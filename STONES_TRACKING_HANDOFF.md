@@ -48,15 +48,15 @@ version is v0.29.2. The Stones work has not been released.
   announce or record a distribution.
 - With automatic placement enabled, the user reported success in an empty
   group trade. The detailed placement trace was not supplied.
+- The user confirmed the Healthstone safety checks passed for a non-group
+  trader, an already occupied trade, and stacked/different Healthstone ranks.
 
 ## Still needs in-game verification
 
 1. Verify `/whub stones` lists only the completed trade after the confirmed
-   success and cancellation sequence.
-2. Test auto-placement safety with an outsider, an occupied trade, and
-   stacked/multiple Healthstone ranks. Confirm one item is placed and Accept
-   remains manual. Auto-placement is off by default.
-3. Check Soulstone expiry and loss outside combat, reload recovery, and the
+   success and cancellation sequence, if this was not included in the user's
+   Healthstone checks.
+2. Check Soulstone expiry and loss outside combat, reload recovery, and the
    Stones page options. The Soulstone group announcement also still needs a
    live cast check.
 
