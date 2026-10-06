@@ -36,6 +36,8 @@ version is v0.29.2. The Stones work has not been released.
   user's request. No READY/UNKNOWN text is shown on the HUD.
 - A new self-applied Soulstone was tracked and its HUD label cleared on death.
   This confirms the active-only display behavior, not whether the stone was used.
+- After the v0.29.2 change removed the unverified `USED` path, the user
+  confirmed the Soulstone label still clears on death.
 - On a death test, the Soulstone aura disappeared at `PLAYER_DEAD` and
   `PLAYER_ALIVE` occurred seven seconds later. No post-death player cast was
   recorded. That sequence alone does not prove Soulstone use.
