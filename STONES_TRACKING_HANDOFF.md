@@ -27,8 +27,8 @@ version is v0.29.1. The Stones work has not been released.
 ## Confirmed in game by the user
 
 - The Druid default-off path and General switch worked after v0.27.31.
-- Forever emitted `UI_INFO_MESSAGE id=251 message=Trade complete.` followed
-  by `TRADE_CLOSED` in a completed trade.
+- Forever emitted `TRADE_CLOSED` before `UI_INFO_MESSAGE id=251 message=Trade
+  complete.` in a completed trade.
 - A Soulstone self-cast fired `UNIT_SPELLCAST_SENT` and
   `UNIT_SPELLCAST_SUCCEEDED` for spell 20707. The recipient matched `player`,
   and the aura was found with `source=player`.
@@ -38,9 +38,12 @@ version is v0.29.1. The Stones work has not been released.
   `PLAYER_ALIVE` occurred seven seconds later. No post-death player cast was
   recorded. That sequence alone does not prove Soulstone use.
 - A manual Healthstone trade showed item 5512, player acceptance `1/0`, then
-  empty trade slots, `TRADE_CLOSED`, and `UI_INFO_MESSAGE id=251`. v0.29.1
-  handles that sequence; the resulting supplied record and notification still
-  need an in-game check.
+  `TRADE_CLOSED`, and `UI_INFO_MESSAGE id=251`. v0.29.1 announced success and
+  logged `DISTRIBUTION recorded Rigged-Elections`. A separate cancelled trade
+  emitted `TRADE_REQUEST_CANCEL` and `UI_INFO_MESSAGE id=250`; it did not
+  announce or record a distribution.
+- With automatic placement enabled, the user reported success in an empty
+  group trade. The detailed placement trace was not supplied.
 
 ## Still needs in-game verification
 
@@ -49,13 +52,11 @@ version is v0.29.1. The Stones work has not been released.
    `C_DeathInfo.UseSelfResurrectOption` for Soulstone. Confirm that `USED` is
    recorded only after the Soulstone choice and a return to life. If those
    APIs are unavailable, retain `LOST / UNKNOWN`.
-2. Complete and cancel a Healthstone group trade; verify `/whub stones` adds
-   only the completed trade and the completion notice appears. Capture Trade
-   recording in `/whub trace` for both cases.
-3. Enable auto-placement and test one empty group trade, an outsider, an
-   occupied trade, stacked/multiple ranks, and manual Accept. Auto-placement
-   is off by default; v0.29.1 traces why an eligible trade was skipped.
-   The placement API path has not been confirmed in game.
+2. Verify `/whub stones` lists only the completed trade after the confirmed
+   success and cancellation sequence.
+3. Test auto-placement safety with an outsider, an occupied trade, and
+   stacked/multiple Healthstone ranks. Confirm one item is placed and Accept
+   remains manual. Auto-placement is off by default.
 4. Check Soulstone expiry and loss outside combat, reload recovery, and the
    Stones page options. The Soulstone group announcement also still needs a
    live cast check.
