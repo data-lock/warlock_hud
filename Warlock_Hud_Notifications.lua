@@ -10,9 +10,6 @@ local tradeDebug = false
 local soulstoneDebug = false
 local TraceSoulstone
 local lastPlayerDeathAt
-local selfResHookInstalled = false
-local selectedSelfResOption
-local soulstoneResOption
 local tradeCandidate
 local acceptedTrade
 local SOULSTONE_AURAS = {
@@ -22,59 +19,6 @@ local SOULSTONE_AURAS = {
 
 local function Public(value)
     return value ~= nil and (not issecretvalue or not issecretvalue(value))
-end
-
-local SOULSTONE_RES_SPELLS = {
-    [3026] = true, [20758] = true, [20759] = true,
-    [20760] = true, [20761] = true, [18976] = true,
-}
-local SOULSTONE_RES_ITEMS = {}
-for _, itemID in ipairs(api.Stones[2].ids) do
-    SOULSTONE_RES_ITEMS[itemID] = true
-end
-
-local function ReadSelfResOptions()
-    if not C_DeathInfo or not C_DeathInfo.GetSelfResurrectOptions then
-        if TraceSoulstone then TraceSoulstone("SELF_RES", "options API unavailable") end
-        return
-    end
-    local ok, options = pcall(C_DeathInfo.GetSelfResurrectOptions)
-    if not ok or not Public(options) or type(options) ~= "table" then
-        if TraceSoulstone then TraceSoulstone("SELF_RES", "options unavailable") end
-        return
-    end
-    for _, option in ipairs(options) do
-        if Public(option) then
-            local name, optionType, id = option.name, option.optionType, option.id
-            if Public(name) and Public(optionType) and Public(id) then
-                TraceSoulstone("SELF_RES_OPTION", "name=" .. tostring(name)
-                    .. " type=" .. tostring(optionType) .. " id=" .. tostring(id))
-                if SOULSTONE_RES_SPELLS[id]
-                    or (type(name) == "string" and name:lower():find("soulstone", 1, true)) then
-                    soulstoneResOption = { optionType = optionType, id = id }
-                end
-            end
-        end
-    end
-end
-
-local function InstallSelfResObserver()
-    if selfResHookInstalled or not hooksecurefunc or not C_DeathInfo
-        or not C_DeathInfo.UseSelfResurrectOption then return end
-    local ok = pcall(hooksecurefunc, C_DeathInfo, "UseSelfResurrectOption",
-        function(optionType, id)
-            if not Public(optionType) or not Public(id) then return end
-            TraceSoulstone("SELF_RES_SELECTED", "type=" .. tostring(optionType)
-                .. " id=" .. tostring(id))
-            if (soulstoneResOption and optionType == soulstoneResOption.optionType
-                and id == soulstoneResOption.id)
-                or (optionType == 0 and SOULSTONE_RES_SPELLS[id])
-                or (optionType == 1 and SOULSTONE_RES_ITEMS[id]) then
-                selectedSelfResOption = true
-            end
-        end)
-    selfResHookInstalled = ok
-    if TraceSoulstone then TraceSoulstone("SELF_RES", ok and "observer ready" or "observer unavailable") end
 end
 
 local function StoneOptions()
@@ -172,17 +116,15 @@ local function ObserveSoulstone(unit)
         state.statusAt = nil
     elseif state.observed and state.status == "APPLIED" then
         local playerGUID = UnitGUID("player")
-        if Public(playerGUID) and state.recipientGUID == playerGUID
-            and lastPlayerDeathAt and GetTime() - lastPlayerDeathAt < 30 then
-            state.status = "PENDING RESURRECTION"
-            state.observed = false
-            TraceSoulstone("OUTCOME", "self aura lost after death; awaiting resurrection choice")
-            return
-        end
-        state.status = state.expiresAt and time() >= state.expiresAt - 2
+        local selfDiedRecently = Public(playerGUID)
+            and state.recipientGUID == playerGUID
+            and lastPlayerDeathAt and GetTime() - lastPlayerDeathAt < 30
+        state.status = not selfDiedRecently
+            and state.expiresAt and time() >= state.expiresAt - 2
             and "EXPIRED" or "LOST / UNKNOWN"
         state.statusAt = time()
         state.observed = false
+        TraceSoulstone("OUTCOME", state.status)
         if StoneOptions().notifySoulstoneLoss == true then
             print("|cffff7a7aWarlock HUD:|r Soulstone on "
                 .. (state.recipientName or "recipient") .. " " .. state.status .. ".")
@@ -645,44 +587,26 @@ events:RegisterEvent("PLAYER_UNGHOST")
 events:SetScript("OnEvent", function(_, event, ...)
     if not api.IsAddonEnabled() then return end
     if event == "PLAYER_LOGIN" then
-        InstallSelfResObserver()
         local state = SoulstoneState()
         if state and state.status == "APPLIED" then
             state.status = "LAST APPLIED / UNKNOWN"
+            state.statusAt = time()
+            state.observed = false
+        elseif state and (state.status == "USED"
+            or state.status == "PENDING RESURRECTION") then
+            state.status = "LOST / UNKNOWN"
             state.statusAt = time()
             state.observed = false
         end
         if C_Timer and C_Timer.After then C_Timer.After(1, RecheckSoulstone) end
     elseif event == "PLAYER_DEAD" then
         if not lastPlayerDeathAt or GetTime() - lastPlayerDeathAt > 1 then
-            selectedSelfResOption = nil
-            soulstoneResOption = nil
             lastPlayerDeathAt = GetTime()
         end
         TraceSoulstone(event, "self died; aura check deferred until safe")
-        ReadSelfResOptions()
-        if C_Timer and C_Timer.After then
-            C_Timer.After(0.2, ReadSelfResOptions)
-        end
     elseif event == "PLAYER_ALIVE" or event == "PLAYER_UNGHOST" then
         TraceSoulstone(event, "self returned; checking aura when safe")
         RecheckSoulstone()
-        local state = SoulstoneState()
-        local playerGUID = UnitGUID("player")
-        if state and selectedSelfResOption and Public(playerGUID)
-            and state.recipientGUID == playerGUID and lastPlayerDeathAt
-            and GetTime() - lastPlayerDeathAt < 60 then
-            state.status = "USED"
-            state.observed = false
-            state.statusAt = time()
-            TraceSoulstone("OUTCOME", state.status)
-        elseif state and state.status == "PENDING RESURRECTION" then
-            state.status = "LOST / UNKNOWN"
-            state.statusAt = time()
-            TraceSoulstone("OUTCOME", state.status)
-        end
-        selectedSelfResOption = nil
-        soulstoneResOption = nil
     elseif event == "UNIT_SPELLCAST_SENT" then
         local unit, target, castGUID, spellID = ...
         if unit ~= "player" or not Public(spellID) then return end

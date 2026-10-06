@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.29.2 (in-game review build)
+
+- Removed the unverified Soulstone self-resurrection observer and `USED` claim.
+  A Soulstone lost around self-death is reported as `LOST / UNKNOWN`.
+
 ## v0.29.1 (in-game review build)
 
 - Confirm Healthstone distribution and its notification after Forever reports

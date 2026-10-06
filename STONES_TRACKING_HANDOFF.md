@@ -1,8 +1,8 @@
-# Stones tracking handoff (unfinished review build v0.29.1)
+# Stones tracking handoff (unfinished review build v0.29.2)
 
 The Soulstone and Healthstone work remains on `feature/stones-tracking`.
 The branch includes the v0.28.0 changes from `main`; its current review
-version is v0.29.1. The Stones work has not been released.
+version is v0.29.2. The Stones work has not been released.
 
 ## Implemented
 
@@ -20,9 +20,9 @@ version is v0.29.1. The Stones work has not been released.
   observed, not that the recipient still has the item.
 - `/whub trace` opens one copyable trace window with Trade and Soulstone
   recording switches. `/whub stones` prints the distribution list.
-- The guarded, passive observer for
-  `C_DeathInfo.UseSelfResurrectOption` to distinguish confirmed Soulstone use
-  from an aura lost on death. It does not invoke the protected action.
+- Soulstone use is not claimed without a reliable Forever signal. The
+  unverified self-resurrection observer was removed in v0.29.2; aura loss
+  around self-death becomes `LOST / UNKNOWN`.
 
 ## Confirmed in game by the user
 
@@ -49,17 +49,12 @@ version is v0.29.1. The Stones work has not been released.
 
 ## Still needs in-game verification
 
-1. v0.27.43 self-resurrection observer: determine whether Forever exposes
-   `C_DeathInfo.GetSelfResurrectOptions` and calls
-   `C_DeathInfo.UseSelfResurrectOption` for Soulstone. Confirm that `USED` is
-   recorded only after the Soulstone choice and a return to life. If those
-   APIs are unavailable, retain `LOST / UNKNOWN`.
-2. Verify `/whub stones` lists only the completed trade after the confirmed
+1. Verify `/whub stones` lists only the completed trade after the confirmed
    success and cancellation sequence.
-3. Test auto-placement safety with an outsider, an occupied trade, and
+2. Test auto-placement safety with an outsider, an occupied trade, and
    stacked/multiple Healthstone ranks. Confirm one item is placed and Accept
    remains manual. Auto-placement is off by default.
-4. Check Soulstone expiry and loss outside combat, reload recovery, and the
+3. Check Soulstone expiry and loss outside combat, reload recovery, and the
    Stones page options. The Soulstone group announcement also still needs a
    live cast check.
 
