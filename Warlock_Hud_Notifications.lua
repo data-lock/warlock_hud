@@ -2,16 +2,14 @@ local api = WarlockHudAPI
 local events = CreateFrame("Frame")
 local pendingCasts = {}
 local tradeHasHealthstone = false
-local tradeNotified = false
 local tradePartner
+local tradeStoneClearedAt
+local tradeClosedAt
 local lastSoulstoneAt = 0
 local tradeDebug = false
 local soulstoneDebug = false
 local TraceSoulstone
 local lastPlayerDeathAt
-local selfResHookInstalled = false
-local selectedSelfResOption
-local soulstoneResOption
 local tradeCandidate
 local acceptedTrade
 local SOULSTONE_AURAS = {
@@ -21,59 +19,6 @@ local SOULSTONE_AURAS = {
 
 local function Public(value)
     return value ~= nil and (not issecretvalue or not issecretvalue(value))
-end
-
-local SOULSTONE_RES_SPELLS = {
-    [3026] = true, [20758] = true, [20759] = true,
-    [20760] = true, [20761] = true, [18976] = true,
-}
-local SOULSTONE_RES_ITEMS = {}
-for _, itemID in ipairs(api.Stones[2].ids) do
-    SOULSTONE_RES_ITEMS[itemID] = true
-end
-
-local function ReadSelfResOptions()
-    if not C_DeathInfo or not C_DeathInfo.GetSelfResurrectOptions then
-        if TraceSoulstone then TraceSoulstone("SELF_RES", "options API unavailable") end
-        return
-    end
-    local ok, options = pcall(C_DeathInfo.GetSelfResurrectOptions)
-    if not ok or not Public(options) or type(options) ~= "table" then
-        if TraceSoulstone then TraceSoulstone("SELF_RES", "options unavailable") end
-        return
-    end
-    for _, option in ipairs(options) do
-        if Public(option) then
-            local name, optionType, id = option.name, option.optionType, option.id
-            if Public(name) and Public(optionType) and Public(id) then
-                TraceSoulstone("SELF_RES_OPTION", "name=" .. tostring(name)
-                    .. " type=" .. tostring(optionType) .. " id=" .. tostring(id))
-                if SOULSTONE_RES_SPELLS[id]
-                    or (type(name) == "string" and name:lower():find("soulstone", 1, true)) then
-                    soulstoneResOption = { optionType = optionType, id = id }
-                end
-            end
-        end
-    end
-end
-
-local function InstallSelfResObserver()
-    if selfResHookInstalled or not hooksecurefunc or not C_DeathInfo
-        or not C_DeathInfo.UseSelfResurrectOption then return end
-    local ok = pcall(hooksecurefunc, C_DeathInfo, "UseSelfResurrectOption",
-        function(optionType, id)
-            if not Public(optionType) or not Public(id) then return end
-            TraceSoulstone("SELF_RES_SELECTED", "type=" .. tostring(optionType)
-                .. " id=" .. tostring(id))
-            if (soulstoneResOption and optionType == soulstoneResOption.optionType
-                and id == soulstoneResOption.id)
-                or (optionType == 0 and SOULSTONE_RES_SPELLS[id])
-                or (optionType == 1 and SOULSTONE_RES_ITEMS[id]) then
-                selectedSelfResOption = true
-            end
-        end)
-    selfResHookInstalled = ok
-    if TraceSoulstone then TraceSoulstone("SELF_RES", ok and "observer ready" or "observer unavailable") end
 end
 
 local function StoneOptions()
@@ -171,17 +116,15 @@ local function ObserveSoulstone(unit)
         state.statusAt = nil
     elseif state.observed and state.status == "APPLIED" then
         local playerGUID = UnitGUID("player")
-        if Public(playerGUID) and state.recipientGUID == playerGUID
-            and lastPlayerDeathAt and GetTime() - lastPlayerDeathAt < 30 then
-            state.status = "PENDING RESURRECTION"
-            state.observed = false
-            TraceSoulstone("OUTCOME", "self aura lost after death; awaiting resurrection choice")
-            return
-        end
-        state.status = state.expiresAt and time() >= state.expiresAt - 2
+        local selfDiedRecently = Public(playerGUID)
+            and state.recipientGUID == playerGUID
+            and lastPlayerDeathAt and GetTime() - lastPlayerDeathAt < 30
+        state.status = not selfDiedRecently
+            and state.expiresAt and time() >= state.expiresAt - 2
             and "EXPIRED" or "LOST / UNKNOWN"
         state.statusAt = time()
         state.observed = false
+        TraceSoulstone("OUTCOME", state.status)
         if StoneOptions().notifySoulstoneLoss == true then
             print("|cffff7a7aWarlock HUD:|r Soulstone on "
                 .. (state.recipientName or "recipient") .. " " .. state.status .. ".")
@@ -526,21 +469,26 @@ end
 local autoPlacedThisTrade = false
 local tradeGeneration = 0
 local function TradeIsEmpty()
-    if not GetTradePlayerItemLink or not GetTradeTargetItemLink then return false end
-    for slot = 1, 6 do
+    if not GetTradePlayerItemLink or not GetTradeTargetItemLink then
+        return false, "trade item API unavailable"
+    end
+    for slot = 1, 7 do
         local okPlayer, playerLink = pcall(GetTradePlayerItemLink, slot)
         local okTarget, targetLink = pcall(GetTradeTargetItemLink, slot)
         if not okPlayer or not okTarget or not Public(playerLink) and playerLink ~= nil
             or not Public(targetLink) and targetLink ~= nil
-            or playerLink or targetLink then return false end
+            or playerLink or targetLink then return false, "trade slots occupied or unavailable" end
     end
-    if GetPlayerTradeMoney then
-        local ok, money = pcall(GetPlayerTradeMoney)
-        if not ok or not Public(money) or money ~= 0 then return false end
+    if not GetPlayerTradeMoney or not GetTargetTradeMoney then
+        return false, "trade money API unavailable"
     end
-    if GetTargetTradeMoney then
-        local ok, money = pcall(GetTargetTradeMoney)
-        if not ok or not Public(money) or money ~= 0 then return false end
+    local okPlayerMoney, playerMoney = pcall(GetPlayerTradeMoney)
+    if not okPlayerMoney or not Public(playerMoney) or playerMoney ~= 0 then
+        return false, "player money occupied or unavailable"
+    end
+    local okTargetMoney, targetMoney = pcall(GetTargetTradeMoney)
+    if not okTargetMoney or not Public(targetMoney) or targetMoney ~= 0 then
+        return false, "partner money occupied or unavailable"
     end
     return true
 end
@@ -559,12 +507,7 @@ local function FindBestHealthstone()
                         and (not issecretvalue or not issecretvalue(info.isLocked))
                         and info.isLocked ~= true
                         and Public(info.stackCount) and info.stackCount > 0 then
-                        local usable = true
-                        if C_Item and C_Item.IsUsableItem then
-                            local checked, result = pcall(C_Item.IsUsableItem, itemID)
-                            usable = checked and Public(result) and result == true
-                        end
-                        if usable then return bag, slot, itemID end
+                        return bag, slot, itemID
                     end
                 end
             end
@@ -573,27 +516,49 @@ local function FindBestHealthstone()
 end
 
 local function AutoPlaceHealthstone()
-    if StoneOptions().autoPlaceHealthstone ~= true or not tradeCandidate
-        or autoPlacedThisTrade or InCombatLockdown() or not TradeIsEmpty()
-        or not C_Container or not C_Container.PickupContainerItem
-        or not ClickTradeButton or not GetCursorInfo then return end
+    if StoneOptions().autoPlaceHealthstone ~= true then
+        TraceTrade("AUTO_PLACE", "skipped: setting off")
+        return
+    end
+    if not tradeCandidate then TraceTrade("AUTO_PLACE", "skipped: group partner unknown"); return end
+    if autoPlacedThisTrade then TraceTrade("AUTO_PLACE", "skipped: already attempted"); return end
+    if InCombatLockdown() then TraceTrade("AUTO_PLACE", "skipped: combat"); return end
+    local empty, reason = TradeIsEmpty()
+    if not empty then TraceTrade("AUTO_PLACE", "skipped: " .. reason); return end
+    if not C_Container or not C_Container.PickupContainerItem
+        or not ClickTradeButton or not GetCursorInfo then
+        TraceTrade("AUTO_PLACE", "skipped: placement API unavailable")
+        return
+    end
     local cursorType = GetCursorInfo()
-    if cursorType ~= nil then return end
+    if cursorType ~= nil then
+        TraceTrade("AUTO_PLACE", "skipped: cursor occupied or unavailable")
+        return
+    end
     local bag, slot = FindBestHealthstone()
-    if not bag then return end
+    if not bag then TraceTrade("AUTO_PLACE", "skipped: no unlocked Healthstone in bags"); return end
     local checked, info = pcall(C_Container.GetContainerItemInfo, bag, slot)
-    if not checked or not Public(info) or not info then return end
+    if not checked or not Public(info) or not info then
+        TraceTrade("AUTO_PLACE", "skipped: bag item unavailable")
+        return
+    end
     local split = info and Public(info.stackCount) and info.stackCount > 1
-    if split and not C_Container.SplitContainerItem then return end
+    if split and not C_Container.SplitContainerItem then
+        TraceTrade("AUTO_PLACE", "skipped: stack split API unavailable")
+        return
+    end
     local picked
     if split then
         picked = pcall(C_Container.SplitContainerItem, bag, slot, 1)
     else
         picked = pcall(C_Container.PickupContainerItem, bag, slot)
     end
-    if not picked then return end
+    if not picked then TraceTrade("AUTO_PLACE", "skipped: pickup failed"); return end
     local cursor = GetCursorInfo()
-    if cursor ~= "item" then return end
+    if not Public(cursor) or cursor ~= "item" then
+        TraceTrade("AUTO_PLACE", "skipped: item not on cursor")
+        return
+    end
     autoPlacedThisTrade = true
     local placed = pcall(ClickTradeButton, 1)
     TraceTrade("AUTO_PLACE", "item=" .. api.Stones[1].name
@@ -622,44 +587,26 @@ events:RegisterEvent("PLAYER_UNGHOST")
 events:SetScript("OnEvent", function(_, event, ...)
     if not api.IsAddonEnabled() then return end
     if event == "PLAYER_LOGIN" then
-        InstallSelfResObserver()
         local state = SoulstoneState()
         if state and state.status == "APPLIED" then
             state.status = "LAST APPLIED / UNKNOWN"
+            state.statusAt = time()
+            state.observed = false
+        elseif state and (state.status == "USED"
+            or state.status == "PENDING RESURRECTION") then
+            state.status = "LOST / UNKNOWN"
             state.statusAt = time()
             state.observed = false
         end
         if C_Timer and C_Timer.After then C_Timer.After(1, RecheckSoulstone) end
     elseif event == "PLAYER_DEAD" then
         if not lastPlayerDeathAt or GetTime() - lastPlayerDeathAt > 1 then
-            selectedSelfResOption = nil
-            soulstoneResOption = nil
             lastPlayerDeathAt = GetTime()
         end
         TraceSoulstone(event, "self died; aura check deferred until safe")
-        ReadSelfResOptions()
-        if C_Timer and C_Timer.After then
-            C_Timer.After(0.2, ReadSelfResOptions)
-        end
     elseif event == "PLAYER_ALIVE" or event == "PLAYER_UNGHOST" then
         TraceSoulstone(event, "self returned; checking aura when safe")
         RecheckSoulstone()
-        local state = SoulstoneState()
-        local playerGUID = UnitGUID("player")
-        if state and selectedSelfResOption and Public(playerGUID)
-            and state.recipientGUID == playerGUID and lastPlayerDeathAt
-            and GetTime() - lastPlayerDeathAt < 60 then
-            state.status = "USED"
-            state.observed = false
-            state.statusAt = time()
-            TraceSoulstone("OUTCOME", state.status)
-        elseif state and state.status == "PENDING RESURRECTION" then
-            state.status = "LOST / UNKNOWN"
-            state.statusAt = time()
-            TraceSoulstone("OUTCOME", state.status)
-        end
-        selectedSelfResOption = nil
-        soulstoneResOption = nil
     elseif event == "UNIT_SPELLCAST_SENT" then
         local unit, target, castGUID, spellID = ...
         if unit ~= "player" or not Public(spellID) then return end
@@ -723,7 +670,8 @@ events:SetScript("OnEvent", function(_, event, ...)
         tradeGeneration = tradeGeneration + 1
         autoPlacedThisTrade = false
         tradeHasHealthstone = false
-        tradeNotified = false
+        tradeStoneClearedAt = nil
+        tradeClosedAt = nil
         tradeCandidate = nil
         acceptedTrade = nil
         local name = UnitName("NPC")
@@ -739,21 +687,26 @@ events:SetScript("OnEvent", function(_, event, ...)
         end
         if tradeCandidate and C_Timer and C_Timer.After then
             local generation = tradeGeneration
+            TraceTrade("AUTO_PLACE", "scheduled")
             C_Timer.After(0.1, function()
                 if generation == tradeGeneration then AutoPlaceHealthstone() end
             end)
+        elseif tradeCandidate then
+            TraceTrade("AUTO_PLACE", "skipped: timer API unavailable")
         end
     elseif event == "TRADE_PLAYER_ITEM_CHANGED" then
         tradeHasHealthstone = IsHealthstoneInTrade()
-        tradeNotified = false
         if not tradeHasHealthstone then
-            tradeCandidate = nil
+            if acceptedTrade and not tradeStoneClearedAt then
+                tradeStoneClearedAt = GetTime()
+            end
         elseif not tradeCandidate then
             local guid, groupName, class = GroupPartner()
             if guid then
                 tradeCandidate = { guid = guid, name = groupName, class = class }
             end
         end
+        if tradeHasHealthstone then tradeStoneClearedAt = nil end
         if tradeDebug then
             TraceTrade(event, "slots=" .. TradeSlots()
                 .. " healthstone=" .. tostring(tradeHasHealthstone))
@@ -768,32 +721,30 @@ events:SetScript("OnEvent", function(_, event, ...)
             TraceTrade(event, "player=" .. player .. " target=" .. target
                 .. " slots=" .. TradeSlots())
         end
-        if Accepted(playerAccepted) and Accepted(targetAccepted)
-            and tradeHasHealthstone and not tradeNotified then
-            tradeNotified = true
-            Notify("notifyHealthstone", "Healthstone trade accepted with "
-                .. (tradePartner or "your trade partner") .. ".")
-        end
-        if Public(playerAccepted) and Public(targetAccepted)
-            and Accepted(playerAccepted) and Accepted(targetAccepted) then
-            if tradeHasHealthstone and tradeCandidate then
-                acceptedTrade = {
-                    guid = tradeCandidate.guid, name = tradeCandidate.name,
-                    class = tradeCandidate.class, acceptedAt = GetTime(),
-                }
-            else
-                acceptedTrade = nil
-            end
+        if Public(playerAccepted) and Accepted(playerAccepted)
+            and tradeHasHealthstone and tradeCandidate then
+            acceptedTrade = {
+                guid = tradeCandidate.guid, name = tradeCandidate.name,
+                class = tradeCandidate.class, acceptedAt = GetTime(),
+            }
+            tradeStoneClearedAt = nil
+        elseif Public(playerAccepted) and Accepted(playerAccepted) then
+            acceptedTrade = nil
+            tradeStoneClearedAt = nil
         end
     elseif event == "TRADE_CLOSED" or event == "TRADE_REQUEST_CANCEL" then
         tradeGeneration = tradeGeneration + 1
+        if event == "TRADE_CLOSED" then tradeClosedAt = GetTime() end
         if tradeDebug then
             TraceTrade(event, "last healthstone=" .. tostring(tradeHasHealthstone))
         end
         tradeHasHealthstone = false
-        tradeNotified = false
         tradePartner = nil
-        if event == "TRADE_REQUEST_CANCEL" then acceptedTrade = nil end
+        if event == "TRADE_REQUEST_CANCEL" then
+            acceptedTrade = nil
+            tradeStoneClearedAt = nil
+            tradeClosedAt = nil
+        end
     elseif event == "UI_INFO_MESSAGE" or event == "CHAT_MSG_SYSTEM" then
         local first, second = ...
         local message = event == "UI_INFO_MESSAGE" and second or first
@@ -806,21 +757,35 @@ events:SetScript("OnEvent", function(_, event, ...)
                 local id = Public(first) and tostring(first) or "secret"
                 TraceTrade(event, "id=" .. id .. " message=" .. message)
             end
-            if complete and acceptedTrade and GetTime() - acceptedTrade.acceptedAt < 30 then
+            if complete and acceptedTrade and GetTime() - acceptedTrade.acceptedAt < 30
+                and (not tradeClosedAt or GetTime() - tradeClosedAt < 2)
+                and (not tradeStoneClearedAt or GetTime() - tradeStoneClearedAt < 2) then
+                Notify("notifyHealthstone", "Healthstone trade completed with "
+                    .. acceptedTrade.name .. ".")
                 local state = SuppliedPlayers()
                 if state and StoneOptions().distributionTracker ~= false then
                     state.players[acceptedTrade.guid] = {
                         name = acceptedTrade.name, class = acceptedTrade.class,
                         suppliedAt = time(),
                     }
+                    TraceTrade("DISTRIBUTION", "recorded " .. acceptedTrade.name)
                     if StoneOptions().notifyDistribution == true then
                         print("|cffff7a7aWarlock HUD:|r Healthstone supplied to "
                             .. acceptedTrade.name .. ".")
                     end
                 end
                 acceptedTrade = nil
+                tradeStoneClearedAt = nil
+                tradeClosedAt = nil
+            elseif complete then
+                TraceTrade("DISTRIBUTION", "not recorded: no recent accepted Healthstone trade")
+                acceptedTrade = nil
+                tradeStoneClearedAt = nil
+                tradeClosedAt = nil
             elseif cancelled then
                 acceptedTrade = nil
+                tradeStoneClearedAt = nil
+                tradeClosedAt = nil
             end
         end
     elseif event == "UNIT_AURA" then

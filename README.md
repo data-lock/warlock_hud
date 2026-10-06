@@ -24,7 +24,7 @@ The HUD checks known spells and talents when deciding which icons to show.
 On Tracked Auras, the Target DoT color toggle reverses the main row's active
 and missing colors. The default is colored when active and grey when missing.
 
-The addon can announce Ritual of Summoning, a Soulstone cast, and an accepted
+The addon can announce Ritual of Summoning, a Soulstone cast, and a completed
 Healthstone trade. Soulstone announcements go to party, raid, or instance chat
 when grouped. Summon and trade notices can be sent to group chat or shown only
 in your own chat window.
