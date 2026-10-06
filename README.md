@@ -4,7 +4,21 @@ A configurable HUD for Warlocks in **World of Warcraft: Forever beta**. It keeps
 target effects, cooldowns, buffs, procs, and Soul Shards visible without opening
 other panels.
 
-![Warlock HUD in game](screenshots/warlock_hud_overview.png)
+### HUD in play
+
+![Warlock HUD with its live icon rows](screenshots/warlock_hud_overview.png)
+
+The live HUD shows only slots that are enabled and relevant to your character.
+Target DoTs and buffs use their normal in-game colors and countdowns.
+
+### All bars demo
+
+![Warlock HUD with all bars shown in demo mode](screenshots/warlock_hud_overview_demo.png)
+
+The demo labels **Buffs**, **Procs**, **Target DoTs**, **Utility**, and **Soul
+Shards** at their on-screen positions. It shows inactive and disabled icon slots
+so you can see the full layout before choosing what to track. Open it from
+**General → Demo all HUD bars** and close it with **End HUD demo**.
 
 ## Features
 
@@ -75,6 +89,100 @@ when the client allows a rebuild; otherwise the HUD updates after combat or can
 be retried from the settings footer when safe.
 Row and page reset actions restore the current profile's settings while keeping
 its Edit Mode positions. Page resets ask for confirmation.
+
+### Settings pages
+
+The screenshots below show the available controls. **About** shows the loaded
+addon and interface versions.
+
+<details>
+<summary>General</summary>
+
+Enable Warlock HUD for this character and start the temporary on-screen demo
+of every HUD bar.
+
+![General settings](screenshots/whud_options_1_general.png)
+
+</details>
+
+<details>
+<summary>Rows & Layout</summary>
+
+Set Target DoT and Utility icon sizes, reorder or hide slots, and toggle the
+nameplate 20% marker.
+
+![Rows and Layout settings](screenshots/whud_options_0_main.png)
+
+</details>
+
+<details>
+<summary>Tracked Auras</summary>
+
+Choose eligible Corruption, Immolate, Siphon Life, Bane, Curse, Drain, and Fear
+auras. Set whether active Target DoTs appear in color or grey.
+
+![Tracked Auras settings](screenshots/whud_options_2_tracked_auras.png)
+
+</details>
+
+<details>
+<summary>Buffs</summary>
+
+Size, reorder, or hide buff slots. The page also explains group buff reminders.
+
+![Buff settings](screenshots/whud_options_3_buffs.png)
+
+</details>
+
+<details>
+<summary>Procs</summary>
+
+Size and arrange the Power Infusion and Nightfall slots. These icons appear in
+the live HUD only while their procs are active.
+
+![Proc settings](screenshots/whud_options_4_procs.png)
+
+</details>
+
+<details>
+<summary>Profiles</summary>
+
+Choose, copy, rename, or delete profiles, and optionally assign them to dual
+specs. The summary shows enabled slots and row sizes.
+
+![Profile settings](screenshots/whud_options_5_profiles.png)
+
+</details>
+
+<details>
+<summary>Notifications</summary>
+
+Choose summon, Soulstone, and completed Healthstone trade notices and where
+eligible notices are sent.
+
+![Notification settings](screenshots/whud_options_6_notifications.png)
+
+</details>
+
+<details>
+<summary>Stones</summary>
+
+Configure the Soulstone tracker, Healthstone trade records, automatic placement
+for group members, and the supplied-player list.
+
+![Stones settings](screenshots/whud_options_7_stones.png)
+
+</details>
+
+<details>
+<summary>Soul Shards</summary>
+
+Set the shard icon size, deletion reserve, red and yellow warning thresholds,
+and optional Soul Bag overflow warning.
+
+![Soul Shards settings](screenshots/whud_options_8_soul_shards.png)
+
+</details>
 
 The addon prints its version and the settings command in chat when it loads.
 For a one-time diagnostic snapshot, use `/whub debug`. It prints the active
