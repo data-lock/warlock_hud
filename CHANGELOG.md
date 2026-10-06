@@ -1,5 +1,19 @@
 # Changelog
 
+## v0.30.0
+
+- Add per-profile Soul Shard warnings: red at 4 or fewer shards and yellow at
+  18 or more by default. A shard in a regular bag alongside an equipped Soul
+  Bag can also trigger yellow. Warning and deletion thresholds are separate.
+- Use sliders for the shard reserve and warning thresholds, and fix the shard
+  visibility checkbox.
+- Add an on-screen demo of every HUD icon slot and label each bar. The demo
+  includes disabled slots and inactive buffs and procs.
+- Add Siphon Life as a native Target DoT slot and remove the passive Soul
+  Siphon icon from Utility.
+- Keep the Buffs row fixed at its left edge as icons appear or disappear.
+- Move the Profiles summary clear of its dropdown.
+
 ## v0.29.2 (in-game review build)
 
 - Removed the unverified Soulstone self-resurrection observer and `USED` claim.

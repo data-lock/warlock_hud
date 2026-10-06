@@ -10,16 +10,17 @@ other panels.
 
 | Display | What it tracks |
 | --- | --- |
-| Main row | Corruption, Immolate, Banes, Curses, and Drain spells. Spells of the same type share an icon slot. Active target effects show a countdown, including milliseconds. |
-| Cooldown row | Healthstone, Soulstone, Fear, available racial abilities, and Soul Siphon when the talent is known. |
+| Main row | Corruption, Immolate, Siphon Life, Banes, Curses, and Drain spells. Banes, Curses, and Drains each share an icon slot. Active target effects show a countdown, including milliseconds. |
+| Cooldown row | Healthstone, Soulstone, Fear, and available racial abilities. |
 | Buff row | Demon Armor / Demon Skin, Well Fed, Fortitude, Mark or Gift of the Wild, Intellect, Spirit, Kings, Salvation, Thorns, and Unending Breath. Active buffs show grey icons with countdowns. Thorns follows the same Druid-aware missing-buff reminder and active-buff formatting as Mark of the Wild. Unending Breath appears at the right end only while active. Visible buffs pack left to right. |
 | Proc row | Power Infusion and Nightfall appear only while active, with a pulsing glow and countdown. |
-| Soul Shards | A separate icon near the Player Frame shows your shard count. Each click destroys one shard from a regular bag, stopping when those bags are clear or your configured minimum remains. The default minimum is 8. Shards cannot be destroyed in combat. |
+| Soul Shards | A separate icon near the Player Frame shows your shard count. It flashes red at or below the low warning threshold (default 4), or yellow at or above the high threshold (default 18) or when shards occupy regular bags alongside an equipped Soul Bag. Each click destroys one shard from a regular bag, stopping when those bags are clear or your configured minimum remains. The default minimum is 8. Shards cannot be destroyed in combat. |
 | Nameplates | A copper tick marks 20% health on attackable enemies' health bars. |
 | Stones | A Soulstone recipient label centered below the Utility row only while the aura is confirmed active; details and a Healthstone distribution list are on the Stones settings page. |
 
 Main row icons fade when there is no attackable target and turn red when the target
 is out of range. Demon Armor / Demon Skin and Well Fed have missing-buff reminders.
+The Buffs row keeps its left edge where you placed it as icons appear or disappear.
 The HUD checks known spells and talents when deciding which icons to show.
 On Tracked Auras, the Target DoT color toggle reverses the main row's active
 and missing colors. The default is colored when active and grey when missing.
@@ -28,6 +29,11 @@ The addon can announce Ritual of Summoning, a Soulstone cast, and a completed
 Healthstone trade. Soulstone announcements go to party, raid, or instance chat
 when grouped. Summon and trade notices can be sent to group chat or shown only
 in your own chat window.
+
+The **General** settings page has **Demo all HUD bars**, which temporarily
+overlays every icon slot at its on-screen HUD position, including disabled or
+inactive buffs and procs. Each bar is labeled. Use **End HUD demo** to close it. The demo does not
+change live aura tracking.
 
 Warlock HUD runs by default on Warlocks and can be turned on or off per character
 under **General**. The **Stones** page controls Soulstone status, Healthstone
@@ -59,7 +65,7 @@ downloadable ZIP in the repository's Actions artifacts.
 
 Open the AddOns settings or type **`/whub`** (also **`/whud`**). Settings include
 icon-size sliders with one-pixel step buttons, icon visibility, drag-to-reorder controls, notification choices,
-Soul Shard minimum, and profiles. Move each row and the Soul Shards icon in Edit
+Soul Shard minimum and warning thresholds, and profiles. Move each row and the Soul Shards icon in Edit
 Mode; they snap to the grid. Profiles save the layout and can switch with your
 active talent spec. The Profiles page validates names as you type and confirms
 deletion of a profile.

@@ -14,6 +14,7 @@ local SPELLS = {
     { name = "Drain Soul", slot = 4, ids = { 1120, 8288, 8289, 11675 } },
     { name = "Drain Life", slot = 4, ids = { 689, 699, 709, 7651, 11699, 11700 } },
     { name = "Drain Mana", slot = 4, ids = { 5138, 6226, 11703, 11704 } },
+    { name = "Siphon Life", slot = 6, ids = { 18265, 18879, 18880, 18881 } },
     { name = "Fear", group = 2, slot = 3, ids = { 5782, 6213, 6215 } },
 }
 local ICON_SIZE = 48
@@ -52,17 +53,17 @@ local pendingKnownRebuild = false
 local events = CreateFrame("Frame")
 local ARMOR_IDS = { 687, 696, 706, 1086, 11733, 11734, 11735 }
 local ARMOR_SPELL = { name = "Demon Armor", ids = ARMOR_IDS }
-local SOUL_SIPHON_IDS = { 17804, 17805, 17806 }
 local SOUL_SHARD_ID = 6265
 local function IsSoulShardBag(bag)
     if bag == 0 then return false end
     if not C_Container or not C_Container.GetContainerNumFreeSlots then return nil end
     local ok, _, family = pcall(C_Container.GetContainerNumFreeSlots, bag)
-    if not ok or type(family) ~= "number" then return nil end
+    if not ok or (issecretvalue and issecretvalue(family))
+        or type(family) ~= "number" then return nil end
     return math.floor(family / 4) % 2 == 1
 end
-local MAIN_KEYS = { "corruption", "bane", "curse", "drain", "immolate" }
-local COOLDOWN_KEYS = { "healthstone", "soulstone", "fear", "racial1", "racial2", "soulsiphon" }
+local MAIN_KEYS = { "corruption", "bane", "curse", "drain", "immolate", "siphonlife" }
+local COOLDOWN_KEYS = { "healthstone", "soulstone", "fear", "racial1", "racial2" }
 local BUFF_KEYS = { "fort", "motw", "int", "spirit", "kings", "salv", "armor", "wellfed", "thorns", "breath" }
 local PROC_KEYS = { "powerinfusion", "nightfall" }
 local PROCS = {
@@ -186,6 +187,18 @@ local function NormalizeProfile(p)
     p.procSize = math.max(20, math.min(64, tonumber(p.procSize) or 32))
     p.shardDestroyCount = nil
     p.shardKeepCount = math.max(0, math.min(64, math.floor(tonumber(p.shardKeepCount) or 8)))
+    p.shardWarningsEnabled = p.shardWarningsEnabled ~= false
+    p.shardWarnOverflow = p.shardWarnOverflow ~= false
+    if not p.shardWarningDefaultsV2 then
+        if p.shardLowThreshold == 5 and p.shardHighThreshold == 20 then
+            p.shardLowThreshold, p.shardHighThreshold = 4, 18
+        end
+        p.shardWarningDefaultsV2 = true
+    end
+    p.shardLowThreshold = math.max(0, math.min(63,
+        math.floor(tonumber(p.shardLowThreshold) or 4)))
+    p.shardHighThreshold = math.max(p.shardLowThreshold + 1, math.min(64,
+        math.floor(tonumber(p.shardHighThreshold) or 18)))
     p.mainOrder = NormalizeOrder(p.mainOrder, MAIN_KEYS)
     p.cooldownOrder = NormalizeOrder(p.cooldownOrder, COOLDOWN_KEYS)
     p.buffOrder = NormalizeOrder(p.buffOrder, BUFF_KEYS)
@@ -316,19 +329,13 @@ local function KnownSpell(spell)
     return not checked
 end
 
-local function KnowsSoulSiphon()
-    for _, spellID in ipairs(SOUL_SIPHON_IDS) do
-        if KnownSpellID(spellID) then return true end
-    end
-    return false
-end
-
 local function VisibleOrder(order)
     local visible = {}
     for _, key in ipairs(order) do
         local hasSpell = true
         if key == "fear" or key == "corruption" or key == "bane"
-            or key == "curse" or key == "drain" or key == "immolate" then
+            or key == "curse" or key == "drain" or key == "immolate"
+            or key == "siphonlife" then
             hasSpell = false
             for _, spell in ipairs(SPELLS) do
                 local spellKey = spell.group == 2 and "fear" or MAIN_KEYS[spell.slot]
@@ -339,8 +346,6 @@ local function VisibleOrder(order)
             end
         elseif key == "armor" then
             hasSpell = KnownSpell(ARMOR_SPELL)
-        elseif key == "soulsiphon" then
-            hasSpell = KnowsSoulSiphon()
         end
         if Enabled(key) and hasSpell then visible[#visible + 1] = key end
     end
@@ -425,6 +430,7 @@ local function MakeReminderGlow(anchor, x, border, iconSize, red)
     texture:SetAllPoints(glow)
     texture:SetTexture("Interface\\Buttons\\UI-ActionButton-Border")
     texture:SetBlendMode("ADD")
+    glow.texture = texture
     if red then
         texture:SetVertexColor(1, 0.12, 0.12, 1)
     else
@@ -444,11 +450,61 @@ local function Report(message)
     print("|cffff7a7aWarlock HUD:|r " .. message)
 end
 
+local function HasShardOverflow()
+    if not C_Container or not C_Container.GetContainerNumSlots
+        or not C_Container.GetContainerItemID then return nil end
+    local soulBagCapacity, regularShards = 0, false
+    for bag = 0, (NUM_BAG_SLOTS or 4) do
+        local ok, slots = pcall(C_Container.GetContainerNumSlots, bag)
+        if not ok or (issecretvalue and issecretvalue(slots))
+            or type(slots) ~= "number" then return nil end
+        if slots > 0 then
+            local isSoulBag = IsSoulShardBag(bag)
+            if isSoulBag == nil then return nil end
+            if isSoulBag then soulBagCapacity = soulBagCapacity + slots end
+            for slot = 1, slots do
+                local itemOK, itemID = pcall(C_Container.GetContainerItemID, bag, slot)
+                if not itemOK or (issecretvalue and issecretvalue(itemID)) then return nil end
+                if itemID == SOUL_SHARD_ID and not isSoulBag then regularShards = true end
+            end
+        end
+    end
+    return soulBagCapacity > 0 and regularShards
+end
+
+local function GetShardWarningState(count)
+    if not profile or not profile.shardWarningsEnabled or type(count) ~= "number" then
+        return "NORMAL"
+    end
+    if count <= profile.shardLowThreshold then return "LOW" end
+    if count >= profile.shardHighThreshold then return "HIGH" end
+    if profile.shardWarnOverflow and HasShardOverflow() then return "HIGH" end
+    return "NORMAL"
+end
+
+local function UpdateShardWarningVisual(state, count)
+    if not shardState.glow or not shardState.icon then return end
+    if state == "NORMAL" then
+        shardState.glow:Hide()
+        shardState.icon:SetAlpha(1)
+        shardState.icon:SetVertexColor(1, 1, 1)
+        shardState.button:SetAlpha(count > 0 and 1 or 0.5)
+        return
+    end
+    shardState.button:SetAlpha(1)
+    shardState.icon:SetVertexColor(1,
+        state == "LOW" and 0.2 or 0.85, state == "LOW" and 0.2 or 0.1)
+    shardState.glow.texture:SetVertexColor(1,
+        state == "LOW" and 0.12 or 0.75, state == "LOW" and 0.12 or 0)
+    shardState.glow:Show()
+end
+
 local function UpdateShardCount()
     if not shardState.countText then return end
     local count = C_Item and C_Item.GetItemCount and C_Item.GetItemCount(SOUL_SHARD_ID) or 0
+    if issecretvalue and issecretvalue(count) then return end
     shardState.countText:SetText(count)
-    if shardState.button then shardState.button:SetAlpha(count > 0 and 1 or 0.5) end
+    UpdateShardWarningVisual(GetShardWarningState(count), count)
 end
 
 local function DestroyOneShard()
@@ -861,12 +917,20 @@ local function Build()
     buffAnchor:SetMovable(true)
     buffAnchor:SetClampedToScreen(true)
     if type(saved.buffX) == "number" and type(saved.buffY) == "number" then
-        buffAnchor:SetPoint("CENTER", UIParent, "BOTTOMLEFT",
+        if not saved.buffLeftAligned then
+            saved.buffX = saved.buffX - buffWidth / (2 * UIParent:GetWidth())
+            saved.buffLeftAligned = true
+        end
+        buffAnchor:SetPoint("LEFT", UIParent, "BOTTOMLEFT",
             saved.buffX * UIParent:GetWidth(), saved.buffY * UIParent:GetHeight())
     elseif PlayerFrame then
-        buffAnchor:SetPoint("BOTTOM", PlayerFrame, "TOP", 0, 12)
+        local fullWidth = #BUFF_KEYS * BUFF_ICON_SIZE
+            + (#BUFF_KEYS - 1) * ICON_SPACING
+        buffAnchor:SetPoint("LEFT", PlayerFrame, "TOP",
+            -fullWidth / 2, 12 + BUFF_ICON_SIZE / 2)
     else
-        buffAnchor:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", 180, 210)
+        buffAnchor:SetPoint("LEFT", UIParent, "BOTTOMLEFT",
+            180, 210 + BUFF_ICON_SIZE / 2)
     end
     buffMover = CreateFrame("Button", nil, buffAnchor)
     buffMover:SetAllPoints(buffAnchor)
@@ -884,22 +948,24 @@ local function Build()
     end)
     buffMover:SetScript("OnDragStop", function()
         buffAnchor:StopMovingOrSizing()
-        local centerX, centerY = buffAnchor:GetCenter()
-        if centerX and centerY then
+        local leftX = buffAnchor:GetLeft()
+        local _, centerY = buffAnchor:GetCenter()
+        if leftX and centerY then
             local grid = EditModeManagerFrame and EditModeManagerFrame.Grid
             if grid and grid:IsShown() and type(grid.gridSpacing) == "number"
                 and grid.gridSpacing > 0 then
                 local gridX, gridY = grid:GetCenter()
                 if gridX and gridY then
                     local spacing = grid.gridSpacing
-                    centerX = gridX + math.floor((centerX - gridX) / spacing + 0.5) * spacing
+                    leftX = gridX + math.floor((leftX - gridX) / spacing + 0.5) * spacing
                     centerY = gridY + math.floor((centerY - gridY) / spacing + 0.5) * spacing
                     buffAnchor:ClearAllPoints()
-                    buffAnchor:SetPoint("CENTER", UIParent, "BOTTOMLEFT", centerX, centerY)
+                    buffAnchor:SetPoint("LEFT", UIParent, "BOTTOMLEFT", leftX, centerY)
                 end
             end
-            profile.buffX = centerX / UIParent:GetWidth()
+            profile.buffX = leftX / UIParent:GetWidth()
             profile.buffY = centerY / UIParent:GetHeight()
+            profile.buffLeftAligned = true
         end
     end)
     buffMover:Hide()
@@ -998,16 +1064,6 @@ local function Build()
         end
     end
 
-    local siphonX = CooldownX("soulsiphon")
-    if siphonX then
-        local icon = hudRoot:CreateTexture(nil, "ARTWORK")
-        icon:SetSize(COOLDOWN_ICON_SIZE, COOLDOWN_ICON_SIZE)
-        icon:SetPoint("CENTER", cooldownAnchor, "CENTER", siphonX, 0)
-        icon:SetTexture(C_Spell.GetSpellTexture(SOUL_SIPHON_IDS[1]))
-        icon:SetTexCoord(ICON_CROP, 1 - ICON_CROP, ICON_CROP, 1 - ICON_CROP)
-        MakeBorder(cooldownAnchor, siphonX, COOLDOWN_ICON_SIZE)
-    end
-
     if profile.enabled.soulshards ~= false then
         local shardSize = profile.shardSize
         local shardAnchor = CreateFrame("Frame", nil, hudRoot)
@@ -1070,6 +1126,7 @@ local function Build()
             and C_Item.GetItemIconByID(SOUL_SHARD_ID)
             or "Interface\\Icons\\INV_Misc_Gem_Amethyst_02")
         icon:SetTexCoord(ICON_CROP, 1 - ICON_CROP, ICON_CROP, 1 - ICON_CROP)
+        shardState.icon = icon
         local shardCountText = shardButton:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
         shardState.countText = shardCountText
         shardCountText:SetPoint("BOTTOMRIGHT", shardButton, "BOTTOMRIGHT", -2, 2)
@@ -1086,6 +1143,8 @@ local function Build()
         end)
         shardButton:SetScript("OnLeave", function() GameTooltip:Hide() end)
         MakeBorder(shardAnchor, 0, shardSize)
+        shardState.glow = MakeReminderGlow(shardAnchor, 0, nil, shardSize)
+        shardState.glow.pulseIcon = icon
         UpdateShardCount()
     end
 
@@ -1382,6 +1441,7 @@ local function Rebuild()
     wellFedGlow = nil
     shardState.button, shardState.countText = nil, nil
     shardState.anchor, shardState.mover = nil, nil
+    shardState.icon, shardState.glow = nil, nil
     hudAnchor, editMover, cooldownAnchor, cooldownMover = nil, nil, nil, nil
     soulstoneLabel = nil
     buffAnchor, buffMover = nil, nil
@@ -1426,6 +1486,7 @@ events:RegisterEvent("PLAYER_REGEN_DISABLED")
 events:RegisterEvent("PLAYER_TARGET_CHANGED")
 events:RegisterEvent("BAG_UPDATE_DELAYED")
 events:RegisterEvent("BAG_UPDATE_COOLDOWN")
+events:RegisterEvent("PLAYER_EQUIPMENT_CHANGED")
 events:RegisterEvent("SPELL_UPDATE_COOLDOWN")
 events:RegisterEvent("GROUP_ROSTER_UPDATE")
 events:RegisterEvent("PLAYER_ENTERING_WORLD")
@@ -1466,6 +1527,8 @@ events:SetScript("OnEvent", function(_, event)
         UpdateGroupBuffs()
     elseif event == "BAG_UPDATE_DELAYED" or event == "BAG_UPDATE_COOLDOWN" then
         UpdateStones()
+        UpdateShardCount()
+    elseif event == "PLAYER_EQUIPMENT_CHANGED" then
         UpdateShardCount()
     elseif event == "SPELL_UPDATE_COOLDOWN" then
         UpdateRacials()
@@ -1625,7 +1688,19 @@ WarlockHudAPI = {
     Spells = SPELLS,
     Racials = RACIALS,
     GetProfile = function() return profile end,
+    GetDemoAnchors = function()
+        if not container or not hudRoot then return nil end
+        return {
+            root = hudRoot,
+            main = hudAnchor,
+            utility = cooldownAnchor,
+            buffs = buffAnchor,
+            procs = procAnchor,
+            shards = shardState.anchor,
+        }
+    end,
     GetDB = function() return WarlockHudDB end,
     NormalizeProfile = NormalizeProfile,
+    RefreshShardWarning = UpdateShardCount,
     Rebuild = Rebuild,
 }

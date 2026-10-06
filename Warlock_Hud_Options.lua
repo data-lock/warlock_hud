@@ -9,9 +9,9 @@ local NUMERIC_DEFAULTS = {
 
 local LABELS = {
     corruption = "Corruption", bane = "Banes", curse = "Curses", drain = "Drains",
-    immolate = "Immolate",
+    immolate = "Immolate", siphonlife = "Siphon Life",
     healthstone = "Healthstone", soulstone = "Soulstone", fear = "Fear",
-    soulsiphon = "Soul Siphon", soulshards = "Soul Shards",
+    soulshards = "Soul Shards",
     armor = "Armor / Skin", wellfed = "Well Fed",
     racial1 = "Racial ability 1", racial2 = "Racial ability 2",
     fort = "Fortitude", motw = "Mark of the Wild", int = "Intellect",
@@ -27,12 +27,12 @@ local ICON_HELP = {
     bane = "Banes share one Target DoTs icon slot. Choose eligible Banes on Tracked Auras.",
     curse = "Curses share one Target DoTs icon slot. Preview icon: Curse of Weakness.",
     drain = "Drains share one Target DoTs icon slot. Choose eligible Drains on Tracked Auras.",
+    siphonlife = "Siphon Life appears when talented and tracks its target DoT.",
     healthstone = "Shows your Healthstone and its item cooldown.",
     soulstone = "Shows your Soulstone and its item cooldown.",
     fear = "Shows Fear in the Utility row when available.",
     racial1 = "Shows an available racial ability and its cooldown.",
     racial2 = "Shows a second racial ability when available.",
-    soulsiphon = "Passive Soul Siphon talent indicator; it has no cooldown.",
     armor = "Demon Armor or Demon Skin. Glows when missing.",
     wellfed = "Well Fed. Glows when missing.",
     fort = "Includes Power Word: Fortitude and Prayer of Fortitude.",
@@ -211,7 +211,7 @@ end
 local function IconForKey(key)
     local spellIDs = {
         corruption = 6222, bane = 1014, drain = 1120, immolate = 348,
-        fear = 5782, armor = 706, wellfed = 19705, soulsiphon = 17804,
+        siphonlife = 18265, fear = 5782, armor = 706, wellfed = 19705,
         fort = 1243, motw = 1126, int = 1459,
         spirit = 14752, kings = 20217, salv = 1038,
         thorns = 467, breath = 5697,
@@ -232,6 +232,108 @@ local function IconForKey(key)
         return "Interface\\Icons\\Spell_Shadow_CurseOfMannoroth"
     end
     return C_Spell and C_Spell.GetSpellTexture(spellIDs[key])
+end
+
+local iconDemo
+local function ShowIconDemo()
+    if iconDemo and iconDemo:IsShown() then
+        iconDemo:Hide()
+        RefreshAll()
+        return
+    end
+    if not CanRebuild() then
+        print("|cffff7a7aWarlock HUD:|r Start the HUD demo after combat.")
+        return
+    end
+    local anchors = api.GetDemoAnchors and api.GetDemoAnchors()
+    if not anchors then
+        print("|cffff7a7aWarlock HUD:|r Enable Warlock HUD to preview its bars on screen.")
+        return
+    end
+    if iconDemo and iconDemo:GetParent() ~= anchors.root then iconDemo = nil end
+    if not iconDemo then
+        local demo = CreateFrame("Frame", nil, anchors.root)
+        demo:SetAllPoints(UIParent)
+        demo:SetFrameStrata("DIALOG")
+        local close = Button(demo, "End HUD demo", 0, 0, 140, function()
+            demo:Hide()
+            RefreshAll()
+        end)
+        close:ClearAllPoints()
+        close:SetPoint("TOP", UIParent, "TOP", 0, -45)
+
+        local function DemoRow(title, keys, orderKey, sizeKey, anchor)
+            local order = orderKey and Profile()[orderKey] or keys
+            local size = Profile()[sizeKey]
+            local width = #order * size + math.max(0, #order - 1) * 4 + 8
+            local row = CreateFrame("Frame", nil, demo)
+            row:SetSize(width, size + 8)
+            if orderKey == "buffOrder" then
+                row:SetPoint("LEFT", anchor, "LEFT", -4, 0)
+            else
+                row:SetPoint("CENTER", anchor, "CENTER")
+            end
+            local background = row:CreateTexture(nil, "BACKGROUND")
+            background:SetAllPoints(row)
+            background:SetColorTexture(0, 0, 0, 0.9)
+            local rowLabel = row:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+            rowLabel:SetSize(95, 18)
+            local rowLeft = orderKey == "buffOrder" and anchor:GetLeft()
+                or (anchor:GetCenter() or 0) - width / 2
+            if rowLeft < 110 then
+                rowLabel:SetPoint("LEFT", row, "RIGHT", 6, 0)
+                rowLabel:SetJustifyH("LEFT")
+            else
+                rowLabel:SetPoint("RIGHT", row, "LEFT", -6, 0)
+                rowLabel:SetJustifyH("RIGHT")
+            end
+            rowLabel:SetText(title)
+            for index = 1, #order do
+                local key = order[index]
+                local button = CreateFrame("Button", nil, row)
+                button:SetSize(size, size)
+                button:SetPoint("CENTER", row, "CENTER",
+                    (index - (#order + 1) / 2) * (size + 4), 0)
+                local icon = button:CreateTexture(nil, "ARTWORK")
+                icon:SetAllPoints(button)
+                icon:SetTexture(IconForKey(key) or "Interface\\Icons\\INV_Misc_QuestionMark")
+                icon:SetTexCoord(0.115, 0.885, 0.115, 0.885)
+                button:SetScript("OnEnter", function(self)
+                    GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+                    GameTooltip:SetText(DisplayName(key))
+                    if ICON_HELP[key] then
+                        GameTooltip:AddLine(ICON_HELP[key], 1, 1, 1, true)
+                    end
+                    GameTooltip:Show()
+                end)
+                button:SetScript("OnLeave", function() GameTooltip:Hide() end)
+            end
+        end
+
+        DemoRow("Target DoTs", api.MainKeys, "mainOrder", "mainSize", anchors.main)
+        DemoRow("Utility", api.CooldownKeys, "cooldownOrder", "cooldownSize", anchors.utility)
+        DemoRow("Buffs", api.BuffKeys, "buffOrder", "buffSize", anchors.buffs)
+        DemoRow("Procs", api.ProcKeys, "procOrder", "procSize", anchors.procs)
+        local shardAnchor = anchors.shards
+        if not shardAnchor then
+            shardAnchor = CreateFrame("Frame", nil, demo)
+            shardAnchor:SetSize(Profile().shardSize, Profile().shardSize)
+            if type(Profile().shardX) == "number" and type(Profile().shardY) == "number" then
+                shardAnchor:SetPoint("CENTER", UIParent, "BOTTOMLEFT",
+                    Profile().shardX * UIParent:GetWidth(),
+                    Profile().shardY * UIParent:GetHeight())
+            elseif PlayerFrame then
+                shardAnchor:SetPoint("RIGHT", PlayerFrame, "TOPLEFT", -8, -44)
+            else
+                shardAnchor:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", 100, 210)
+            end
+        end
+        DemoRow("Soul Shards", { "soulshards" }, nil, "shardSize", shardAnchor)
+        demo:Hide()
+        iconDemo = demo
+    end
+    iconDemo:Show()
+    RefreshAll()
 end
 
 local function OrderSection(parent, title, orderKey, defaults, y, columns, onReset)
@@ -389,6 +491,13 @@ Check(general, 20, -85, "Enable Warlock HUD on this character",
     "Saves immediately. The HUD appears or disappears when a safe visual update is possible.")
 Text(general, "Settings remain available while the HUD is off.",
     48, -125, "GameFontHighlightSmall")
+local demoButton = Button(general, "Demo all HUD bars", 20, -175, 190, ShowIconDemo)
+refreshers[#refreshers + 1] = function()
+    demoButton:SetText(iconDemo and iconDemo:IsShown()
+        and "End HUD demo" or "Demo all HUD bars")
+end
+Text(general, "Shows every icon slot on screen, including inactive buffs and procs.",
+    20, -210, "GameFontHighlightSmall")
 Text(layout, "Move rows in Edit Mode. Drag icons to reorder them; use the checks to show or hide them.",
     20, -50, "GameFontHighlightSmall")
 Text(layout, "Icon sizes", 20, -82, "GameFontNormal")
@@ -453,11 +562,13 @@ local spells = Panel("Warlock HUD - Tracked Auras")
 Text(spells, "Choose which auras can appear. Banes, Curses, and Drains each share one icon slot.",
     20, -50, "GameFontHighlightSmall")
 local spellGroups = {
-    { title = "Corruption & Immolate", x = 20, y = -90,
-        contains = function(spell) return spell.slot == 1 or spell.slot == 5 end },
-    { title = "Banes", x = 20, y = -205,
+    { title = "Core DoTs", x = 20, y = -90,
+        contains = function(spell)
+            return spell.slot == 1 or spell.slot == 5 or spell.slot == 6
+        end },
+    { title = "Banes", x = 20, y = -225,
         contains = function(spell) return spell.slot == 2 end },
-    { title = "Drains", x = 20, y = -360,
+    { title = "Drains", x = 20, y = -370,
         contains = function(spell) return spell.slot == 4 end },
     { title = "Curses", x = 345, y = -90,
         contains = function(spell) return spell.slot == 3 and spell.group ~= 2 end },
@@ -514,9 +625,9 @@ local profiles = Panel("Warlock HUD - Profiles")
 Text(profiles, "Profiles keep row sizes, order, visibility, and Edit Mode positions together.",
     20, -50, "GameFontHighlightSmall")
 Text(profiles, "Active profile", 20, -85, "GameFontNormal")
-Text(profiles, "Profile summary", 350, -85, "GameFontNormal")
-local profileSummary = Text(profiles, "", 350, -115, "GameFontHighlightSmall")
-profileSummary:SetWidth(230)
+Text(profiles, "Profile summary", 430, -85, "GameFontNormal")
+local profileSummary = Text(profiles, "", 430, -115, "GameFontHighlightSmall")
+profileSummary:SetWidth(260)
 profileSummary:SetJustifyH("LEFT")
 Text(profiles, "Current profile", 20, -115, "GameFontHighlight")
 local selector = CreateFrame("Frame", "WarlockHudProfileSelector", profiles, "UIDropDownMenuTemplate")
@@ -876,59 +987,110 @@ end)
 local shards = Panel("Warlock HUD - Soul Shards")
 Text(shards, "Move the shard icon in Edit Mode; it snaps to the grid.",
     20, -50, "GameFontHighlightSmall")
-Text(shards, "Shard icon", 20, -85, "GameFontNormal")
-Check(shards, 20, -110, "Show Soul Shards icon",
+Text(shards, "Shard icon", 20, -80, "GameFontNormal")
+Check(shards, 20, -105, "Show Soul Shards icon",
     function() return Profile().enabled.soulshards ~= false end,
-    function(value) Profile().enabled.soulshards = value and nil or false end)
-SizeSlider(shards, "Shard icon size", "shardSize", 16, 64, 20, -150)
-Text(shards, "Shard reserve", 20, -205, "GameFontNormal")
-Text(shards, "Minimum shards to keep", 20, -235, "GameFontHighlight")
-local shardEdit = CreateFrame("EditBox", nil, shards, "InputBoxTemplate")
-shardEdit:SetSize(55, 24)
-shardEdit:SetPoint("TOPLEFT", shards, "TOPLEFT", 260, -230)
-shardEdit:SetAutoFocus(false)
-shardEdit:SetMaxLetters(2)
-shardEdit:SetNumeric(true)
-shardEdit:SetText(tostring((Profile() and Profile().shardKeepCount) or 8))
-shardEdit:SetScript("OnEditFocusGained", function(self) self:HighlightText() end)
-local function CommitShardReserve()
-    local value = tonumber(shardEdit:GetText())
-    if value then
-        value = math.max(0, math.min(64, math.floor(value)))
-        if Profile().shardKeepCount ~= value then
-            Profile().shardKeepCount = value
+    function(value)
+        if value then
+            Profile().enabled.soulshards = nil
+        else
+            Profile().enabled.soulshards = false
+        end
+    end)
+SizeSlider(shards, "Shard icon size", "shardSize", 16, 64, 20, -140)
+local function ShardNumberSlider(label, key, y, limits, onChange)
+    Text(shards, label, 20, y - 5, "GameFontHighlight")
+    local slider = CreateFrame("Slider", nil, shards, "OptionsSliderTemplate")
+    slider:SetSize(165, 17)
+    slider:SetPoint("TOPLEFT", shards, "TOPLEFT", 245, y - 3)
+    slider:SetValueStep(1)
+    local valueText = Text(shards, "", 470, y - 5, "GameFontHighlight")
+    local function Clamp(value)
+        local minimum, maximum = limits()
+        return math.max(minimum, math.min(maximum, math.floor(value + 0.5)))
+    end
+    local function Commit(value)
+        value = Clamp(value)
+        slider:SetValue(value)
+        if Profile()[key] ~= value then
+            Profile()[key] = value
+            if onChange then onChange() end
             MarkChanged(false)
         end
     end
-    shardEdit:SetText(tostring(Profile().shardKeepCount or 8))
-    shardEdit:ClearFocus()
+    slider:SetScript("OnValueChanged", function(_, value)
+        valueText:SetText(tostring(Clamp(value)))
+    end)
+    slider:SetScript("OnMouseUp", function(self) Commit(self:GetValue()) end)
+    local minus = Button(shards, "-", 210, y, 24, function()
+        Commit(Profile()[key] - 1)
+    end)
+    local plus = Button(shards, "+", 420, y, 24, function()
+        Commit(Profile()[key] + 1)
+    end)
+    refreshers[#refreshers + 1] = function()
+        local minimum, maximum = limits()
+        slider:SetMinMaxValues(minimum, maximum)
+        local value = Profile()[key]
+        slider:SetValue(value)
+        valueText:SetText(tostring(value))
+        minus:SetEnabled(value > minimum)
+        plus:SetEnabled(value < maximum)
+    end
 end
-shardEdit:SetScript("OnEnterPressed", CommitShardReserve)
-shardEdit:SetScript("OnEditFocusLost", CommitShardReserve)
-Button(shards, "Use default 8", 335, -230, 125, function()
+Text(shards, "Shard reserve", 20, -185, "GameFontNormal")
+ShardNumberSlider("Minimum shards to keep", "shardKeepCount", -210,
+    function() return 0, 64 end)
+Button(shards, "Use default 8", 520, -210, 125, function()
     if Profile().shardKeepCount ~= 8 then
         Profile().shardKeepCount = 8
         MarkChanged(false)
     end
 end)
-Text(shards, "Shard deletion", 20, -295, "GameFontNormal")
-local shardWarning = Text(shards, "Each click permanently destroys one Soul Shard.",
-    20, -325, "GameFontHighlight")
+local shardWarning = Text(shards,
+    "Clicking the icon permanently destroys one shard from a regular bag.",
+    20, -480, "GameFontHighlightSmall")
 shardWarning:SetTextColor(1, 0.65, 0.25)
-Text(shards, "Only your backpack and regular bags are affected.",
-    20, -355, "GameFontHighlightSmall")
-Text(shards, "Deletion stops at your minimum and is unavailable in combat.",
-    20, -380, "GameFontHighlightSmall")
-refreshers[#refreshers + 1] = function()
-    if not shardEdit:HasFocus() then
-        shardEdit:SetText(tostring((Profile() and Profile().shardKeepCount) or 8))
-    end
+Text(shards, "Deletion stops at your reserve and is unavailable in combat.",
+    20, -500, "GameFontHighlightSmall")
+Text(shards, "Shard warnings", 20, -265, "GameFontNormal")
+local function RefreshShardWarning()
+    if api.RefreshShardWarning then api.RefreshShardWarning() end
 end
+Check(shards, 20, -290, "Enable shard warnings",
+    function() return Profile().shardWarningsEnabled end,
+    function(value)
+        Profile().shardWarningsEnabled = value
+        RefreshShardWarning()
+    end, nil, false)
+ShardNumberSlider("Red at or below", "shardLowThreshold", -330,
+    function() return 0, Profile().shardHighThreshold - 1 end, RefreshShardWarning)
+ShardNumberSlider("Yellow at or above", "shardHighThreshold", -370,
+    function() return Profile().shardLowThreshold + 1, 64 end, RefreshShardWarning)
+Check(shards, 20, -410, "Warn when shards overflow the Soul Bag",
+    function() return Profile().shardWarnOverflow end,
+    function(value)
+        Profile().shardWarnOverflow = value
+        RefreshShardWarning()
+    end,
+    "Detects shards in regular bags while a Soul Bag is equipped.", false)
+Button(shards, "Use warning defaults", 20, -445, 165, function()
+    local defaults = DefaultProfile()
+    Profile().shardLowThreshold = defaults.shardLowThreshold
+    Profile().shardHighThreshold = defaults.shardHighThreshold
+    RefreshShardWarning()
+    MarkChanged(false)
+end)
 ResetPageButton(shards, "Soul Shards", function()
     local defaults = DefaultProfile()
     Profile().enabled.soulshards = nil
     Profile().shardSize = defaults.shardSize
     Profile().shardKeepCount = defaults.shardKeepCount
+    Profile().shardWarningsEnabled = defaults.shardWarningsEnabled
+    Profile().shardLowThreshold = defaults.shardLowThreshold
+    Profile().shardHighThreshold = defaults.shardHighThreshold
+    Profile().shardWarnOverflow = defaults.shardWarnOverflow
+    RefreshShardWarning()
     MarkChanged()
 end)
 
