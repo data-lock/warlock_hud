@@ -52,6 +52,8 @@ local function Profile()
 end
 
 local function RefreshAll()
+    if not Profile() then api.InitializeProfiles() end
+    if not Profile() then return end
     for _, refresh in ipairs(refreshers) do refresh() end
 end
 
@@ -378,6 +380,15 @@ local function ResetPageButton(parent, pageName, reset)
 end
 
 local layout = Panel("Warlock HUD - Rows & Layout")
+local general = Panel("Warlock HUD - General", false)
+Text(general, "Enabled by default for Warlocks. Other classes can turn it on here.",
+    20, -50, "GameFontHighlightSmall")
+Check(general, 20, -85, "Enable Warlock HUD on this character",
+    function() return api.IsAddonEnabled() end,
+    function(value) api.SetAddonEnabled(value) end,
+    "Saves immediately. The HUD appears or disappears when a safe visual update is possible.")
+Text(general, "Settings remain available while the HUD is off.",
+    48, -125, "GameFontHighlightSmall")
 Text(layout, "Move rows in Edit Mode. Drag icons to reorder them; use the checks to show or hide them.",
     20, -50, "GameFontHighlightSmall")
 Text(layout, "Icon sizes", 20, -82, "GameFontNormal")
@@ -815,6 +826,53 @@ ResetPageButton(notifications, "Notifications", function()
     MarkChanged(false)
 end)
 
+local stones = Panel("Warlock HUD - Stones", false)
+Text(stones, "Soulstone", 20, -55, "GameFontNormal")
+local soulstoneStatus = Text(stones, "", 330, -55, "GameFontHighlightSmall")
+refreshers[#refreshers + 1] = function()
+    local status = WarlockHudSoulstoneText and WarlockHudSoulstoneText()
+    soulstoneStatus:SetText(status and ("Applied: " .. status) or "")
+end
+local function Stones()
+    local profile = Profile()
+    profile.stones = profile.stones or {}
+    return profile.stones
+end
+local function StoneCheck(y, label, key, defaultOn, tooltip)
+    Check(stones, 20, y, label,
+        function()
+            local value = Stones()[key]
+            return value == nil and defaultOn or value == true
+        end,
+        function(value) Stones()[key] = value end,
+        tooltip, false)
+end
+StoneCheck(-80, "Enable Soulstone tracker", "soulstoneTracker", true)
+StoneCheck(-115, "Show recipient name", "showSoulstoneName", true)
+StoneCheck(-150, "Show estimated countdown", "showSoulstoneCountdown", true,
+    "Uses a safe out-of-combat aura observation. It may be stale during combat.")
+StoneCheck(-185, "Notify on expiry or uncertain loss", "notifySoulstoneLoss", false)
+Text(stones, "Details appear only while the Soulstone aura is confirmed active.",
+    48, -223, "GameFontHighlightSmall")
+Text(stones, "Healthstones", 20, -260, "GameFontNormal")
+StoneCheck(-285, "Track completed Healthstone trades", "distributionTracker", true)
+StoneCheck(-320, "Auto-place one Healthstone for group members", "autoPlaceHealthstone", false,
+    "Only in an empty trade with a matched group member. You must press Accept yourself.")
+StoneCheck(-355, "Notify me after a recorded distribution", "notifyDistribution", false)
+Text(stones, "Supplied means a completed trade was recorded; current possession is unknown.",
+    48, -395, "GameFontHighlightSmall")
+local distributionText = Text(stones, "", 20, -425, "GameFontHighlightSmall")
+distributionText:SetWidth(610)
+distributionText:SetJustifyH("LEFT")
+refreshers[#refreshers + 1] = function()
+    distributionText:SetText(WarlockHudDistributionSummary and WarlockHudDistributionSummary()
+        or "Distribution list unavailable")
+end
+Button(stones, "Reset supplied list", 20, -500, 155, function()
+    if WarlockHudResetDistribution then WarlockHudResetDistribution() end
+    RefreshAll()
+end)
+
 local shards = Panel("Warlock HUD - Soul Shards")
 Text(shards, "Move the shard icon in Edit Mode; it snaps to the grid.",
     20, -50, "GameFontHighlightSmall")
@@ -924,11 +982,13 @@ registration:SetScript("OnEvent", function(_, event)
     end
     category = Settings.RegisterCanvasLayoutCategory(layout, "Warlock HUD")
     Settings.RegisterAddOnCategory(category)
+    Settings.RegisterCanvasLayoutSubcategory(category, general, "General")
     Settings.RegisterCanvasLayoutSubcategory(category, spells, "Tracked Auras")
     Settings.RegisterCanvasLayoutSubcategory(category, buffLayout, "Buffs")
     Settings.RegisterCanvasLayoutSubcategory(category, procLayout, "Procs")
     Settings.RegisterCanvasLayoutSubcategory(category, profiles, "Profiles")
     Settings.RegisterCanvasLayoutSubcategory(category, notifications, "Notifications")
+    Settings.RegisterCanvasLayoutSubcategory(category, stones, "Stones")
     Settings.RegisterCanvasLayoutSubcategory(category, shards, "Soul Shards")
     Settings.RegisterCanvasLayoutSubcategory(category, about, "About")
     RefreshAll()
