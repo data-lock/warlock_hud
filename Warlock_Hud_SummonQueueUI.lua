@@ -6,8 +6,14 @@ local pendingRefresh = false
 local manualOpen = false
 local dismissed = false
 local clickedRecipient
+local demoEntries
 local ROW_HEIGHT = 34
 local MAX_VISIBLE = 8
+
+local function SyncContentWidth(frame)
+    content:SetWidth(math.max(350, frame:GetWidth() - 40))
+    for _, row in ipairs(rows) do row.frame:SetWidth(content:GetWidth()) end
+end
 
 local function PositionSettings()
     local profile = api.GetProfile()
@@ -51,6 +57,32 @@ local function WaitText(entry)
     return string.format("%02d:%02d", math.floor(seconds / 60), seconds % 60)
 end
 
+local function MakeDemoEntries()
+    local names = {
+        "Bristle North", "Aelwyn Moonfall", "Thorn Blackwater",
+        "Mira Suncrest", "Kael Emberwood", "Vesper Ash",
+        "Liora Dawnshield", "Garron Stone", "Nyssa Vale",
+        "Torren Dusk", "Selene Bright", "Darian Hollow",
+        "Riven Frost", "Yara Windward", "Mordecai Flint",
+    }
+    local entries = {}
+    local now = GetTime()
+    for index, name in ipairs(names) do
+        entries[index] = {
+            guid = "demo-" .. index,
+            fullName = name:gsub(" ", "-"),
+            chatName = name,
+            requestedAt = now - math.random(15, 900),
+        }
+    end
+    table.sort(entries, function(a, b) return a.requestedAt < b.requestedAt end)
+    for index, entry in ipairs(entries) do
+        entry.summonPending = index == 2 or index == 5
+            or index == 9 or index == 13
+    end
+    return entries
+end
+
 local function CreateRow(index)
     local row = CreateFrame("Frame", nil, content)
     row:SetSize(386, ROW_HEIGHT)
@@ -79,6 +111,10 @@ local function CreateRow(index)
     summon:RegisterForClicks("AnyUp", "AnyDown")
     summon:HookScript("PostClick", function()
         local current = rows[index]
+        if current and current.demo then
+            print("|cffff7a7aWarlock HUD:|r Demo request; no summon was cast.")
+            return
+        end
         if not current or not current.guid or not current.unit then return end
         local guid = UnitGUID(current.unit)
         if not guid or (issecretvalue and issecretvalue(guid))
@@ -96,6 +132,11 @@ local function CreateRow(index)
     remove:SetPoint("RIGHT", row, "RIGHT", -4, 0)
     remove:SetText("X")
     remove:SetScript("OnClick", function()
+        if demoEntries then
+            table.remove(demoEntries, index)
+            WarlockHudSummonQueueChanged()
+            return
+        end
         if rows[index] and rows[index].guid then
             WarlockHudRemoveSummonRequest(rows[index].guid)
         end
@@ -132,6 +173,7 @@ local function MakeWindow()
     local title = frame:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
     title:SetPoint("TOPLEFT", 12, -12)
     title:SetText("Summon Requests")
+    frame.title = title
     lockButton = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate")
     lockButton:SetSize(66, 21)
     lockButton:SetPoint("TOPRIGHT", -42, -9)
@@ -146,6 +188,10 @@ local function MakeWindow()
     announce:SetPoint("TOPRIGHT", -116, -9)
     announce:SetText("Announce")
     announce:SetScript("OnClick", function()
+        if demoEntries then
+            print("|cffff7a7aWarlock HUD:|r Demo request; no chat message was sent.")
+            return
+        end
         if not IsInGroup() and not (LE_PARTY_CATEGORY_INSTANCE
             and IsInGroup(LE_PARTY_CATEGORY_INSTANCE)) then
             print("|cffff7a7aWarlock HUD:|r Join a group before announcing summons.")
@@ -155,12 +201,13 @@ local function MakeWindow()
         local channel = IsInGroup(LE_PARTY_CATEGORY_INSTANCE) and "INSTANCE_CHAT"
             or IsInRaid() and "RAID" or "PARTY"
         local profile = api.GetProfile()
-        local keyword = profile and profile.summonKeyword or "123"
+        local keywords = profile and profile.summonKeywords
+            or api.DefaultSummonKeywords
         local count = api.GetSoulShardCount and api.GetSoulShardCount()
         local shardText = count and (" I have " .. count .. " Soul Shard"
             .. (count == 1 and "" or "s") .. " left.") or ""
         local ok = pcall(C_ChatInfo.SendChatMessage,
-            "Summons available! Type " .. keyword
+            "Summons available! Type " .. keywords
                 .. " here or whisper me to request one." .. shardText, channel)
         if not ok then
             print("|cffff7a7aWarlock HUD:|r Could not send the summon announcement.")
@@ -169,6 +216,7 @@ local function MakeWindow()
     local close = CreateFrame("Button", nil, frame, "UIPanelCloseButton")
     close:SetPoint("TOPRIGHT", 0, 0)
     close:SetScript("OnClick", function()
+        demoEntries = nil
         dismissed = true
         manualOpen = false
         if InCombatLockdown() then
@@ -197,9 +245,9 @@ local function MakeWindow()
     end)
     scroll = CreateFrame("ScrollFrame", nil, frame, "UIPanelScrollFrameTemplate")
     scroll:SetPoint("TOPLEFT", 10, -43)
-    scroll:SetPoint("BOTTOMRIGHT", -10, 10)
+    scroll:SetPoint("BOTTOMRIGHT", -30, 10)
     content = CreateFrame("Frame", nil, scroll)
-    content:SetSize(386, ROW_HEIGHT)
+    content:SetSize(370, ROW_HEIGHT)
     scroll:SetScrollChild(content)
     emptyLabel = frame:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
     emptyLabel:SetPoint("TOPLEFT", frame, "TOPLEFT", 28, -54)
@@ -210,8 +258,7 @@ local function MakeWindow()
             pendingRefresh = true
             return
         end
-        content:SetWidth(math.max(350, scroll:GetWidth()))
-        for _, row in ipairs(rows) do row.frame:SetWidth(content:GetWidth()) end
+        SyncContentWidth(frame)
     end)
     window = frame
     ApplyPosition()
@@ -220,7 +267,7 @@ local function MakeWindow()
         elapsed = elapsed + delta
         if elapsed < 1 then return end
         elapsed = 0
-        local entries = WarlockHudGetSummonQueue()
+        local entries = demoEntries or WarlockHudGetSummonQueue()
         for index, entry in ipairs(entries) do
             if rows[index] then
                 rows[index].waiting:SetText(WaitText(entry))
@@ -238,16 +285,18 @@ function WarlockHudSummonQueueChanged()
     pendingRefresh = false
     local profile = api.GetProfile()
     if not api.IsAddonEnabled() or not profile
-        or profile.summonQueueEnabled == false then
+        or (profile.summonQueueEnabled == false and not demoEntries) then
         if window then window:Hide() end
         return
     end
-    local entries = WarlockHudGetSummonQueue()
+    local entries = demoEntries or WarlockHudGetSummonQueue()
     if #entries == 0 and not manualOpen then
         if window then window:Hide() end
         return
     end
     MakeWindow()
+    SyncContentWidth(window)
+    window.title:SetText(demoEntries and "Summon Demo" or "Summon Requests")
     local visible = math.min(#entries, MAX_VISIBLE)
     local settings = PositionSettings()
     if not settings or not settings.height then
@@ -259,6 +308,7 @@ function WarlockHudSummonQueueChanged()
         row.frame:SetWidth(content:GetWidth())
         row.guid = entry.guid
         row.unit = entry.unit
+        row.demo = demoEntries ~= nil
         row.displayName = entry.chatName or entry.fullName
         row.number:SetText(index .. ".")
         row.name:SetText(row.displayName)
@@ -285,7 +335,7 @@ function WarlockHudSummonQueueChanged()
         else
             row.summon:SetAttribute("macrotext", nil)
         end
-        row.summon:SetEnabled(sameMember and true or false)
+        row.summon:SetEnabled(row.demo or sameMember and true or false)
         row.frame:Show()
     end
     for index = #entries + 1, #rows do rows[index].frame:Hide() end
@@ -302,9 +352,22 @@ function WarlockHudConsumeSummonQueueRecipient()
 end
 
 function WarlockHudOpenSummonQueue()
+    demoEntries = nil
     manualOpen = true
     dismissed = false
     WarlockHudSummonQueueChanged()
+end
+
+function WarlockHudOpenSummonQueueDemo()
+    if InCombatLockdown() then
+        print("|cffff7a7aWarlock HUD:|r Open the summon demo after combat.")
+        return
+    end
+    demoEntries = MakeDemoEntries()
+    manualOpen = true
+    dismissed = false
+    WarlockHudSummonQueueChanged()
+    if scroll then scroll:SetVerticalScroll(0) end
 end
 
 function WarlockHudReopenSummonQueue()

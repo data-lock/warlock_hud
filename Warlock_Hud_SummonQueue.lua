@@ -275,9 +275,18 @@ events:SetScript("OnEvent", function(_, event, ...)
     local message, sender, _, _, _, _, _, _, _, _, _, guid = ...
     if not Readable(message) or type(message) ~= "string" then return end
     local profile = api.GetProfile()
-    local keyword = profile and profile.summonKeyword or "123"
+    local keywords = profile and profile.summonKeywords
+        or api.DefaultSummonKeywords
     local request = message:match("^%s*(.-)%s*$")
-    if not request or request:lower() ~= keyword:lower() then return end
+    if not request then return end
+    local matched = false
+    for keyword in keywords:gmatch("[A-Za-z0-9]+") do
+        if request:lower() == keyword:lower() then
+            matched = true
+            break
+        end
+    end
+    if not matched then return end
     AddRequest(sender, guid, chatSources[event])
 end)
 events:SetScript("OnUpdate", function(_, elapsed)

@@ -45,13 +45,15 @@ when grouped. Summon and trade notices can be sent to group chat or shown only
 in your own chat window.
 
 The **Summons** page configures the summon request queue. A current group member
-can type `123` (or your chosen keyword) in party, raid, instance chat, or a
+can type `123`, `sum`, or `summ` by default in party, raid, instance chat, or a
 whisper to open the separate queue window. Each row shows its wait time, a
 Summon button, and an X to remove the request. The window can be moved, resized,
 locked, or opened with `/whub summonqueue`. **Announce** invites requests in the
 current group channel. A request stays queued after clicking Summon and clears
 when the player arrives nearby. The summon and availability announcements show
-your current Soul Shard count when the client provides it.
+your current Soul Shard count when the client provides it. **Preview 15 requests**
+on the Summons page, or `/whub summonqueue demo`, opens a sample list for layout
+checks and screenshots without sending chat or casting a summon.
 
 The **General** settings page has **Demo all HUD bars**, which temporarily
 overlays every icon slot at its on-screen HUD position, including disabled or
@@ -176,8 +178,8 @@ eligible notices are sent.
 <details>
 <summary>Summons</summary>
 
-Set the request keyword and accepted chat sources, enable nearby removal, and
-open the summon queue window.
+Set a comma-separated list of request keywords and accepted chat sources,
+enable nearby removal, and open or preview the summon queue window.
 
 ![Summons settings](screenshots/whud_options_7_summons.png)
 

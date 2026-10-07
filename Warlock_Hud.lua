@@ -63,6 +63,7 @@ local function IsSoulShardBag(bag)
     return math.floor(family / 4) % 2 == 1
 end
 local MAIN_KEYS = { "corruption", "bane", "curse", "drain", "immolate", "siphonlife" }
+local DEFAULT_SUMMON_KEYWORDS = "123, sum, summ"
 local DOT_DEFAULT_SLOTS = { bane = 2, curse = 3, drain = 4 }
 local COOLDOWN_KEYS = { "healthstone", "soulstone", "fear", "racial1", "racial2" }
 local BUFF_KEYS = { "fort", "motw", "int", "spirit", "kings", "salv", "armor", "wellfed", "thorns", "breath" }
@@ -173,6 +174,25 @@ local function NormalizeOrder(order, defaults)
     return result
 end
 
+local function NormalizeSummonKeywords(value)
+    if type(value) ~= "string" or #value > 142 or value:match("^%s*,")
+        or value:match(",%s*,") or value:match(",%s*$") then return nil end
+    local words, seen = {}, {}
+    for part in value:gmatch("[^,]+") do
+        local word = part:match("^%s*(.-)%s*$")
+        if #word < 1 or #word > 16 or not word:match("^[A-Za-z0-9]+$") then
+            return nil
+        end
+        local key = word:lower()
+        if not seen[key] then
+            words[#words + 1] = word
+            seen[key] = true
+        end
+        if #words > 8 then return nil end
+    end
+    return #words > 0 and table.concat(words, ", ") or nil
+end
+
 local function NormalizeProfile(p)
     if type(p) ~= "table" then p = {} end
     p.mainSize = math.max(16, math.min(96, tonumber(p.mainSize) or 48))
@@ -226,11 +246,20 @@ local function NormalizeProfile(p)
         if not valid then p.defaultDotIcons[key] = nil end
     end
     if p.notificationChannel ~= "GROUP" then p.notificationChannel = "SELF" end
-    if type(p.summonKeyword) ~= "string"
-        or #p.summonKeyword < 1 or #p.summonKeyword > 16
-        or not p.summonKeyword:match("^[A-Za-z0-9]+$") then
-        p.summonKeyword = "123"
+    if p.summonKeywords == nil then
+        local legacy = NormalizeSummonKeywords(p.summonKeyword)
+        p.summonKeywords = legacy and legacy ~= "123"
+            and legacy or DEFAULT_SUMMON_KEYWORDS
     end
+    if not p.summonKeywordDefaultsV2 then
+        if p.summonKeywords == "123, summ, taxi, sum, sumplz" then
+            p.summonKeywords = DEFAULT_SUMMON_KEYWORDS
+        end
+        p.summonKeywordDefaultsV2 = true
+    end
+    p.summonKeywords = NormalizeSummonKeywords(p.summonKeywords)
+        or DEFAULT_SUMMON_KEYWORDS
+    p.summonKeyword = nil
     p.summonQueueEnabled = p.summonQueueEnabled ~= false
     p.summonAutoRemoveNearby = p.summonAutoRemoveNearby ~= false
     if type(p.summonSources) ~= "table" then p.summonSources = {} end
@@ -1709,6 +1738,10 @@ local function DebugState()
     end
 end
 SlashCmdList.WARLOCKHUD = function(message)
+    if message == "summonqueue demo" and WarlockHudOpenSummonQueueDemo then
+        WarlockHudOpenSummonQueueDemo()
+        return
+    end
     if message == "summonqueue" and WarlockHudOpenSummonQueue then
         WarlockHudOpenSummonQueue()
         return
@@ -1760,6 +1793,8 @@ WarlockHudAPI = {
     Spells = SPELLS,
     DotDefaultSlots = DOT_DEFAULT_SLOTS,
     GetDotDefaultSpell = GetDotDefaultSpell,
+    DefaultSummonKeywords = DEFAULT_SUMMON_KEYWORDS,
+    NormalizeSummonKeywords = NormalizeSummonKeywords,
     Racials = RACIALS,
     GetProfile = function() return profile end,
     GetDemoAnchors = function()
