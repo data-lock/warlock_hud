@@ -174,12 +174,24 @@ eligible notices are sent.
 </details>
 
 <details>
+<summary>Summons</summary>
+
+Set the request keyword and accepted chat sources, enable nearby removal, and
+open the summon queue window.
+
+![Summons settings](screenshots/whud_options_7_summons.png)
+
+![Summon request window](screenshots/whud_summon_window.png)
+
+</details>
+
+<details>
 <summary>Stones</summary>
 
 Configure the Soulstone tracker, Healthstone trade records, automatic placement
 for group members, and the supplied-player list.
 
-![Stones settings](screenshots/whud_options_7_stones.png)
+![Stones settings](screenshots/whud_options_9_stones.png)
 
 </details>
 

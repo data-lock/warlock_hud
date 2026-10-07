@@ -22,6 +22,8 @@ The movable, resizable queue window lists requests in arrival order with wait ti
 
 Use **Announce** to invite requests in your current group channel. Summon and availability announcements include your remaining Soul Shard count when the client provides it. The queue works only for current group members and does not cast automatically.
 
+![Summon request queue](https://raw.githubusercontent.com/data-lock/warlock_hud/main/screenshots/whud_summon_window.png)
+
 ## Make it yours
 
 Type **`/whub`** or **`/whud`** to open settings. Use **General → Demo all HUD bars** to preview every bar, including normally hidden icons and procs. Move the bars and Soul Shard icon with Edit Mode. Adjust icon sizes and order, choose tracked effects and notifications, and save layouts in profiles. Profiles can switch with your active talent spec.
