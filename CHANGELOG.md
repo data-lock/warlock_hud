@@ -1,5 +1,13 @@
 # Changelog
 
+## v0.31.1 (in-game review build)
+
+- Choose the idle image for the shared Bane, Curse, and Drain slots on Tracked
+  Auras. Choices are saved per profile; Automatic keeps the previous behavior.
+- Check range using the spell chosen for each shared slot. For example, a Drain
+  Life image uses Drain Life range rather than Drain Soul range.
+- Keep active aura icons and countdowns on Blizzard's native aura display.
+
 ## v0.31.0
 
 - Add a movable summon request queue for grouped players who send the configured
