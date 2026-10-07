@@ -395,7 +395,8 @@ local function MakeBorder(anchor, x, iconSize)
     local border = CreateFrame("Frame", nil, hudRoot)
     border:SetSize(iconSize + 2 * BORDER_SIZE, iconSize + 2 * BORDER_SIZE)
     border:SetPoint("CENTER", anchor, "CENTER", x, 0)
-    border:SetFrameStrata("HIGH")
+    border:SetFrameStrata(hudRoot:GetFrameStrata())
+    border:SetFrameLevel(hudRoot:GetFrameLevel() + 3)
     local edges = {
         { "TOP", iconSize + 2 * BORDER_SIZE, BORDER_SIZE },
         { "BOTTOM", iconSize + 2 * BORDER_SIZE, BORDER_SIZE },
@@ -432,7 +433,7 @@ local function MakeReminderGlow(anchor, x, border, iconSize, red)
     -- icon so the yellow pulse remains visible after row-three icons move.
     glow:SetSize(iconSize + 16, iconSize + 16)
     glow:SetPoint("CENTER", anchor, "CENTER", x, 0)
-    glow:SetFrameStrata("MEDIUM")
+    glow:SetFrameStrata(hudRoot:GetFrameStrata())
     glow:SetFrameLevel(hudRoot:GetFrameLevel() + 1)
     local texture = glow:CreateTexture(nil, "OVERLAY")
     texture:SetAllPoints(glow)
@@ -804,6 +805,8 @@ local function Build()
 
     hudRoot = CreateFrame("Frame", nil, UIParent)
     hudRoot:SetAllPoints(UIParent)
+    hudRoot:SetFrameStrata(PlayerFrame and PlayerFrame:GetFrameStrata() or "LOW")
+    hudRoot:SetFrameLevel(PlayerFrame and PlayerFrame:GetFrameLevel() or 1)
 
     local auraContainer = CreateFrame("AuraContainer", nil, hudRoot, "CustomAuraContainerTemplate")
     if not auraContainer or type(auraContainer.AddAuraSlot) ~= "function" then
@@ -815,8 +818,10 @@ local function Build()
         Report("Could not create the player buff container.")
         return
     end
-    -- Active buff buttons cover the pulsing reminder underneath them.
-    playerAuras:SetFrameStrata("HIGH")
+    -- Native aura buttons cover their reminder glow within the HUD stratum.
+    auraContainer:SetFrameLevel(hudRoot:GetFrameLevel() + 2)
+    playerAuras:SetFrameStrata(hudRoot:GetFrameStrata())
+    playerAuras:SetFrameLevel(hudRoot:GetFrameLevel() + 2)
     LearnWellFed()
     LearnBuffs()
 

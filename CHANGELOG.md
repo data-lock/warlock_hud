@@ -9,6 +9,8 @@
 - Add an Announce button and include the current Soul Shard count in summon
   announcements when the count is available.
 - Add Summons settings for the keyword, accepted channels, and nearby removal.
+- Keep HUD borders, glows, and native buff icons at the player frame's layer so
+  a map opened over the HUD covers them correctly.
 
 ## v0.30.0
 
