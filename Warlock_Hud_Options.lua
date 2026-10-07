@@ -937,6 +937,123 @@ ResetPageButton(notifications, "Notifications", function()
     MarkChanged(false)
 end)
 
+local summons = Panel("Warlock HUD - Summons", false)
+Text(summons, "Summon Request Queue", 20, -55, "GameFontNormal")
+Text(summons, "Request keyword", 20, -92, "GameFontHighlight")
+local summonKeywordInput = CreateFrame("EditBox", nil, summons, "InputBoxTemplate")
+summonKeywordInput:SetSize(120, 24)
+summonKeywordInput:SetPoint("TOPLEFT", summons, "TOPLEFT", 165, -82)
+summonKeywordInput:SetAutoFocus(false)
+summonKeywordInput:SetMaxLetters(16)
+summonKeywordInput:SetFontObject(ChatFontNormal)
+local summonKeywordDisplay = summonKeywordInput:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+summonKeywordDisplay:SetPoint("LEFT", summonKeywordInput, "LEFT", 6, 0)
+summonKeywordDisplay:SetText("123")
+Text(summons, "Default: 123", 300, -92, "GameFontHighlightSmall")
+local summonKeywordHint = Text(summons,
+    "1-16 letters or digits. The entire message must match the keyword.",
+    20, -124, "GameFontHighlightSmall")
+summonKeywordHint:SetWidth(550)
+summonKeywordHint:SetJustifyH("LEFT")
+local function SaveSummonKeyword(self)
+    local value = self:GetText():match("^%s*(.-)%s*$")
+    if value ~= "" and #value <= 16 and value:match("^[A-Za-z0-9]+$") then
+        if Profile().summonKeyword ~= value then
+            Profile().summonKeyword = value
+            MarkChanged(false)
+        end
+    else
+        print("|cffff7a7aWarlock HUD:|r Keyword must be 1-16 letters or digits.")
+    end
+end
+local function RefreshSummonKeywordInput()
+    local profile = Profile()
+    local keyword = profile and profile.summonKeyword
+    if type(keyword) ~= "string" or keyword == "" then
+        keyword = "123"
+        if profile then profile.summonKeyword = keyword end
+    end
+    if not summonKeywordInput:HasFocus() then
+        summonKeywordInput:SetText("")
+        summonKeywordDisplay:SetText(keyword)
+        summonKeywordDisplay:Show()
+    end
+end
+local editingSummonKeyword = false
+summonKeywordInput:SetScript("OnEditFocusGained", function(self)
+    editingSummonKeyword = true
+    summonKeywordDisplay:Hide()
+    self:SetText(Profile() and Profile().summonKeyword or "123")
+    self:HighlightText()
+end)
+summonKeywordInput:SetScript("OnEnterPressed", function(self)
+    SaveSummonKeyword(self)
+    editingSummonKeyword = false
+    self:ClearFocus()
+    RefreshSummonKeywordInput()
+end)
+summonKeywordInput:SetScript("OnEscapePressed", function(self)
+    editingSummonKeyword = false
+    self:ClearFocus()
+    RefreshSummonKeywordInput()
+end)
+summonKeywordInput:SetScript("OnEditFocusLost", function(self)
+    if editingSummonKeyword then SaveSummonKeyword(self) end
+    editingSummonKeyword = false
+    RefreshSummonKeywordInput()
+end)
+refreshers[#refreshers + 1] = function()
+    RefreshSummonKeywordInput()
+end
+summons:HookScript("OnShow", function()
+    RefreshSummonKeywordInput()
+end)
+Text(summons, "Open the queue with /whub summonqueue. Announce uses this keyword.",
+    20, -163, "GameFontHighlightSmall")
+Button(summons, "Open Summon Queue", 20, -199, 180, function()
+    if WarlockHudOpenSummonQueue then WarlockHudOpenSummonQueue() end
+end)
+Check(summons, 20, -250, "Enable summon request queue",
+    function() return Profile().summonQueueEnabled ~= false end,
+    function(value)
+        Profile().summonQueueEnabled = value
+        if not value and WarlockHudClearSummonQueue then
+            WarlockHudClearSummonQueue("DISABLED")
+        end
+    end,
+    "When off, new requests are ignored and pending requests are cleared.", false)
+Check(summons, 20, -285, "Automatically remove players when nearby",
+    function() return Profile().summonAutoRemoveNearby ~= false end,
+    function(value) Profile().summonAutoRemoveNearby = value end,
+    "Uses a readable group-distance check, or interaction range when permitted. Unavailable results leave requests queued.", false)
+Text(summons, "Accepted request sources", 20, -328, "GameFontNormal")
+local summonSources = {
+    { "PARTY", "Party", -355 },
+    { "RAID", "Raid", -390 },
+    { "INSTANCE_CHAT", "Instance", -425 },
+    { "WHISPER", "Whisper from group members", -460 },
+}
+for _, source in ipairs(summonSources) do
+    local key = source[1]
+    Check(summons, 20, source[3], source[2],
+        function()
+            local sources = Profile().summonSources
+            return not sources or sources[key] ~= false
+        end,
+        function(value)
+            Profile().summonSources = Profile().summonSources or {}
+            Profile().summonSources[key] = value and nil or false
+        end,
+        nil, false)
+end
+ResetPageButton(summons, "Summons", function()
+    Profile().summonKeyword = "123"
+    Profile().summonQueueEnabled = true
+    Profile().summonAutoRemoveNearby = true
+    Profile().summonSources = {}
+    MarkChanged(false)
+end)
+
 local stones = Panel("Warlock HUD - Stones", false)
 Text(stones, "Soulstone", 20, -55, "GameFontNormal")
 local soulstoneStatus = Text(stones, "", 330, -55, "GameFontHighlightSmall")
@@ -1150,6 +1267,7 @@ registration:SetScript("OnEvent", function(_, event)
     Settings.RegisterCanvasLayoutSubcategory(category, procLayout, "Procs")
     Settings.RegisterCanvasLayoutSubcategory(category, profiles, "Profiles")
     Settings.RegisterCanvasLayoutSubcategory(category, notifications, "Notifications")
+    Settings.RegisterCanvasLayoutSubcategory(category, summons, "Summons")
     Settings.RegisterCanvasLayoutSubcategory(category, stones, "Stones")
     Settings.RegisterCanvasLayoutSubcategory(category, shards, "Soul Shards")
     Settings.RegisterCanvasLayoutSubcategory(category, about, "About")

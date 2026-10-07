@@ -8,6 +8,7 @@ local tradeClosedAt
 local lastSoulstoneAt = 0
 local tradeDebug = false
 local soulstoneDebug = false
+local summonDebug = false
 local TraceSoulstone
 local lastPlayerDeathAt
 local tradeCandidate
@@ -263,17 +264,21 @@ end
 
 local tradeLines = {}
 local tradeWindow, tradeText, tradeScroll, tradeStatus
-local tradeToggle, soulstoneToggle
+local tradeToggle, soulstoneToggle, summonToggle
 
 local function RefreshTradeWindow()
     if not tradeWindow then return end
     tradeStatus:SetText("Trade " .. (tradeDebug and "on" or "off")
-        .. " / Soulstone " .. (soulstoneDebug and "on" or "off"))
+        .. " / Soulstone " .. (soulstoneDebug and "on" or "off")
+        .. " / Summon " .. (summonDebug and "on" or "off"))
     if tradeToggle then
         tradeToggle:SetText("Trade: " .. (tradeDebug and "On" or "Off"))
     end
     if soulstoneToggle then
         soulstoneToggle:SetText("Soulstone: " .. (soulstoneDebug and "On" or "Off"))
+    end
+    if summonToggle then
+        summonToggle:SetText("Summon: " .. (summonDebug and "On" or "Off"))
     end
     tradeText:SetText(table.concat(tradeLines, "\n"))
     tradeText:SetHeight(math.max(330, #tradeLines * 16 + 20))
@@ -347,6 +352,13 @@ local function OpenTradeWindow()
             soulstoneDebug = not soulstoneDebug
             RefreshTradeWindow()
         end)
+        summonToggle = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate")
+        summonToggle:SetSize(110, 24)
+        summonToggle:SetPoint("LEFT", soulstoneToggle, "RIGHT", 8, 0)
+        summonToggle:SetScript("OnClick", function()
+            summonDebug = not summonDebug
+            RefreshTradeWindow()
+        end)
         tradeWindow, tradeText, tradeScroll = frame, edit, scroll
     end
     tradeWindow:Show()
@@ -365,6 +377,18 @@ end
 function WarlockHudToggleSoulstoneDebug()
     soulstoneDebug = not soulstoneDebug
     OpenTradeWindow()
+end
+
+function WarlockHudSummonDebugEnabled()
+    return summonDebug
+end
+
+function WarlockHudTraceSummon(event, details)
+    if not summonDebug then return end
+    tradeLines[#tradeLines + 1] = date("%H:%M:%S") .. " SUMMON " .. event
+        .. (details and (" " .. details) or "")
+    if #tradeLines > 200 then table.remove(tradeLines, 1) end
+    RefreshTradeWindow()
 end
 
 local function TraceTrade(event, details)
@@ -627,7 +651,19 @@ events:SetScript("OnEvent", function(_, event, ...)
         end
         if spellID == 698 then
             local label = Public(castGUID) and pendingCasts[castGUID] or "your target"
-            Notify("notifySummon", "Summoning " .. label .. ". Please click the portal.")
+            local queueClicked = WarlockHudConsumeSummonQueueRecipient
+                and WarlockHudConsumeSummonQueueRecipient()
+            if label == "your target" then
+                label = queueClicked or label
+            end
+            WarlockHudTraceSummon("ANNOUNCEMENT", "recipient=" .. label
+                .. " source=" .. (queueClicked and "queue click"
+                    or "cast event/fallback"))
+            local count = api.GetSoulShardCount and api.GetSoulShardCount()
+            local shardText = count and (" " .. count .. " Soul Shard"
+                .. (count == 1 and "" or "s") .. " left.") or ""
+            Notify("notifySummon", "Summoning " .. label
+                .. ". Please click the portal." .. shardText)
         end
         if IsSoulstoneCast(spellID) then
             local label = Public(castGUID) and pendingCasts[castGUID] or "your target"

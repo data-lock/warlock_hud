@@ -44,6 +44,15 @@ Healthstone trade. Soulstone announcements go to party, raid, or instance chat
 when grouped. Summon and trade notices can be sent to group chat or shown only
 in your own chat window.
 
+The **Summons** page configures the summon request queue. A current group member
+can type `123` (or your chosen keyword) in party, raid, instance chat, or a
+whisper to open the separate queue window. Each row shows its wait time, a
+Summon button, and an X to remove the request. The window can be moved, resized,
+locked, or opened with `/whub summonqueue`. **Announce** invites requests in the
+current group channel. A request stays queued after clicking Summon and clears
+when the player arrives nearby. The summon and availability announcements show
+your current Soul Shard count when the client provides it.
+
 The **General** settings page has **Demo all HUD bars**, which temporarily
 overlays every icon slot at its on-screen HUD position, including disabled or
 inactive buffs and procs. Each bar is labeled. Use **End HUD demo** to close it. The demo does not
@@ -57,7 +66,7 @@ a completed trade was recorded; it does not establish current possession.
 Soulstone details appear on the Stones page only when a safe aura observation
 confirms the buff is active. Countdowns may be stale during combat.
 `/whub stones` lists supplied players. `/whub trace` opens a copyable debug
-window with Trade and Soulstone recording buttons.
+window with Trade, Soulstone, and Summon recording buttons.
 
 ## Install
 

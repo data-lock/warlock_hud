@@ -213,6 +213,14 @@ local function NormalizeProfile(p)
     p.buffOrder[#p.buffOrder + 1] = "breath"
     p.procOrder = NormalizeOrder(p.procOrder, PROC_KEYS)
     if p.notificationChannel ~= "GROUP" then p.notificationChannel = "SELF" end
+    if type(p.summonKeyword) ~= "string"
+        or #p.summonKeyword < 1 or #p.summonKeyword > 16
+        or not p.summonKeyword:match("^[A-Za-z0-9]+$") then
+        p.summonKeyword = "123"
+    end
+    p.summonQueueEnabled = p.summonQueueEnabled ~= false
+    p.summonAutoRemoveNearby = p.summonAutoRemoveNearby ~= false
+    if type(p.summonSources) ~= "table" then p.summonSources = {} end
     if type(p.enabled) ~= "table" then p.enabled = {} end
     return p
 end
@@ -499,10 +507,18 @@ local function UpdateShardWarningVisual(state, count)
     shardState.glow:Show()
 end
 
+local function GetSoulShardCount()
+    if not C_Item or not C_Item.GetItemCount then return nil end
+    local ok, count = pcall(C_Item.GetItemCount, SOUL_SHARD_ID)
+    if not ok or (issecretvalue and issecretvalue(count))
+        or type(count) ~= "number" then return nil end
+    return count
+end
+
 local function UpdateShardCount()
     if not shardState.countText then return end
-    local count = C_Item and C_Item.GetItemCount and C_Item.GetItemCount(SOUL_SHARD_ID) or 0
-    if issecretvalue and issecretvalue(count) then return end
+    local count = GetSoulShardCount()
+    if not count then return end
     shardState.countText:SetText(count)
     UpdateShardWarningVisual(GetShardWarningState(count), count)
 end
@@ -1645,6 +1661,14 @@ local function DebugState()
     end
 end
 SlashCmdList.WARLOCKHUD = function(message)
+    if message == "summonqueue" and WarlockHudOpenSummonQueue then
+        WarlockHudOpenSummonQueue()
+        return
+    end
+    if message == "summonqueue report" and WarlockHudSummonQueueReport then
+        WarlockHudSummonQueueReport()
+        return
+    end
     if message == "stones" and WarlockHudShowStones then
         WarlockHudShowStones()
         return
@@ -1701,6 +1725,7 @@ WarlockHudAPI = {
     end,
     GetDB = function() return WarlockHudDB end,
     NormalizeProfile = NormalizeProfile,
+    GetSoulShardCount = GetSoulShardCount,
     RefreshShardWarning = UpdateShardCount,
     Rebuild = Rebuild,
 }
