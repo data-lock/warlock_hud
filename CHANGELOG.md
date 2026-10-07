@@ -1,12 +1,17 @@
 # Changelog
 
-## v0.31.1 (in-game review build)
+## v0.31.1
 
 - Choose the idle image for the shared Bane, Curse, and Drain slots on Tracked
   Auras. Choices are saved per profile; Automatic keeps the previous behavior.
 - Check range using the spell chosen for each shared slot. For example, a Drain
   Life image uses Drain Life range rather than Drain Soul range.
 - Keep active aura icons and countdowns on Blizzard's native aura display.
+- Allow a comma-separated list of exact summon request words. The defaults are
+  `123`, `sum`, and `summ`; existing custom words are preserved.
+- Add a 15-request summon window preview with varied wait times and Pending
+  labels. Demo buttons do not cast or announce.
+- Keep the queue's X buttons aligned with the scrollbar when it first opens.
 
 ## v0.31.0
 
