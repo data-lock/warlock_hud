@@ -63,6 +63,7 @@ local function IsSoulShardBag(bag)
     return math.floor(family / 4) % 2 == 1
 end
 local MAIN_KEYS = { "corruption", "bane", "curse", "drain", "immolate", "siphonlife" }
+local DOT_DEFAULT_SLOTS = { bane = 2, curse = 3, drain = 4 }
 local COOLDOWN_KEYS = { "healthstone", "soulstone", "fear", "racial1", "racial2" }
 local BUFF_KEYS = { "fort", "motw", "int", "spirit", "kings", "salv", "armor", "wellfed", "thorns", "breath" }
 local PROC_KEYS = { "powerinfusion", "nightfall" }
@@ -212,6 +213,18 @@ local function NormalizeProfile(p)
     end
     p.buffOrder[#p.buffOrder + 1] = "breath"
     p.procOrder = NormalizeOrder(p.procOrder, PROC_KEYS)
+    if type(p.defaultDotIcons) ~= "table" then p.defaultDotIcons = {} end
+    for key, slot in pairs(DOT_DEFAULT_SLOTS) do
+        local selected = p.defaultDotIcons[key]
+        local valid = false
+        for _, spell in ipairs(SPELLS) do
+            if spell.slot == slot and spell.group ~= 2 and spell.name == selected then
+                valid = true
+                break
+            end
+        end
+        if not valid then p.defaultDotIcons[key] = nil end
+    end
     if p.notificationChannel ~= "GROUP" then p.notificationChannel = "SELF" end
     if type(p.summonKeyword) ~= "string"
         or #p.summonKeyword < 1 or #p.summonKeyword > 16
@@ -310,6 +323,17 @@ end
 
 local function Enabled(key)
     return profile and profile.enabled[key] ~= false
+end
+
+local function GetDotDefaultSpell(key)
+    local selected = profile and profile.defaultDotIcons
+        and profile.defaultDotIcons[key]
+    local slot = DOT_DEFAULT_SLOTS[key]
+    if not selected or not slot then return nil end
+    for _, spell in ipairs(SPELLS) do
+        if spell.slot == slot and spell.group ~= 2
+            and spell.name == selected then return spell end
+    end
 end
 
 local function KnownSpellID(spellID)
@@ -771,7 +795,7 @@ local function UpdateRange()
     end
 
     for _, entry in ipairs(icons) do
-        local inRange = C_Spell.IsSpellInRange(entry.spell.name, "target")
+        local inRange = C_Spell.IsSpellInRange(entry.rangeSpell.name, "target")
         SetRangeColor(entry.icon, inRange)
     end
 end
@@ -1190,15 +1214,34 @@ local function Build()
             local anchor = spell.group == 2 and cooldownAnchor or hudAnchor
             local iconSize = spell.group == 2 and COOLDOWN_ICON_SIZE or ICON_SIZE
             if not baseCreated[groupKey] then
+                local preview = spell
+                local selected = profile.defaultDotIcons
+                    and profile.defaultDotIcons[groupKey]
+                if selected then
+                    for _, candidate in ipairs(SPELLS) do
+                        if candidate.slot == spell.slot
+                            and candidate.name == selected then
+                            preview = candidate
+                            break
+                        end
+                    end
+                end
+                local previewID = C_Spell and C_Spell.GetSpellIDForSpellIdentifier
+                    and C_Spell.GetSpellIDForSpellIdentifier(preview.name)
+                    or preview.ids[1]
                 local icon = hudRoot:CreateTexture(nil, "ARTWORK")
                 icon:SetSize(iconSize, iconSize)
                 icon:SetPoint("CENTER", anchor, "CENTER", x, 0)
-                icon:SetTexture(C_Spell.GetSpellTexture(currentSpellID or spell.ids[1]))
+                icon:SetTexture(C_Spell.GetSpellTexture(previewID)
+                    or C_Spell.GetSpellTexture(currentSpellID or spell.ids[1]))
                 icon:SetTexCoord(ICON_CROP, 1 - ICON_CROP, ICON_CROP, 1 - ICON_CROP)
                 if spell.group ~= 2 then
                     icon:SetDesaturated(profile.colorActiveDoTs ~= false)
                 end
-                icons[#icons + 1] = { spell = spell, icon = icon, border = MakeBorder(anchor, x, iconSize) }
+                icons[#icons + 1] = {
+                    spell = spell, rangeSpell = preview,
+                    icon = icon, border = MakeBorder(anchor, x, iconSize),
+                }
                 baseCreated[groupKey] = true
             end
 
@@ -1645,7 +1688,7 @@ local function DebugState()
         elseif not attackable then
             Report("Target/range: no attackable target.")
         else
-            local spell = icons[1] and icons[1].spell
+            local spell = icons[1] and icons[1].rangeSpell
             local rangeOK, inRange
             if spell and C_Spell and C_Spell.IsSpellInRange then
                 rangeOK, inRange = pcall(C_Spell.IsSpellInRange, spell.name, "target")
@@ -1715,6 +1758,8 @@ WarlockHudAPI = {
     ProcKeys = PROC_KEYS,
     Procs = PROCS,
     Spells = SPELLS,
+    DotDefaultSlots = DOT_DEFAULT_SLOTS,
+    GetDotDefaultSpell = GetDotDefaultSpell,
     Racials = RACIALS,
     GetProfile = function() return profile end,
     GetDemoAnchors = function()

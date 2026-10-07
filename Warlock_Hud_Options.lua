@@ -24,9 +24,9 @@ local TILE_LABELS = { motw = "Wild", breath = "Breath" }
 local ICON_HELP = {
     corruption = "Target DoT. Shows its active aura countdown.",
     immolate = "Target DoT. Shows its active aura countdown.",
-    bane = "Banes share one Target DoTs icon slot. Choose eligible Banes on Tracked Auras.",
-    curse = "Curses share one Target DoTs icon slot. Preview icon: Curse of Weakness.",
-    drain = "Drains share one Target DoTs icon slot. Choose eligible Drains on Tracked Auras.",
+    bane = "Banes share one Target DoTs icon slot. Choose its idle image on Tracked Auras.",
+    curse = "Curses share one Target DoTs icon slot. Choose its idle image on Tracked Auras.",
+    drain = "Drains share one Target DoTs icon slot. Choose its idle image on Tracked Auras.",
     siphonlife = "Siphon Life appears when talented and tracks its target DoT.",
     healthstone = "Shows your Healthstone and its item cooldown.",
     soulstone = "Shows your Soulstone and its item cooldown.",
@@ -209,6 +209,13 @@ local function DisplayName(key)
 end
 
 local function IconForKey(key)
+    if api.GetDotDefaultSpell then
+        local selected = api.GetDotDefaultSpell(key)
+        if selected and C_Spell and C_Spell.GetSpellTexture then
+            local texture = C_Spell.GetSpellTexture(selected.ids[1])
+            if texture then return texture end
+        end
+    end
     local spellIDs = {
         corruption = 6222, bane = 1014, drain = 1120, immolate = 348,
         siphonlife = 18265, fear = 5782, armor = 706, wellfed = 19705,
@@ -561,16 +568,18 @@ Text(procLayout, "Power Infusion and Nightfall (Shadow Trance) pulse with a coun
 local spells = Panel("Warlock HUD - Tracked Auras")
 Text(spells, "Choose which auras can appear. Banes, Curses, and Drains each share one icon slot.",
     20, -50, "GameFontHighlightSmall")
+Text(spells, "Default image changes the idle icon only.",
+    20, -69, "GameFontHighlightSmall")
 local spellGroups = {
     { title = "Core DoTs", x = 20, y = -90,
         contains = function(spell)
             return spell.slot == 1 or spell.slot == 5 or spell.slot == 6
         end },
-    { title = "Banes", x = 20, y = -225,
+    { title = "Banes", x = 20, y = -225, defaultKey = "bane", menuX = 115,
         contains = function(spell) return spell.slot == 2 end },
-    { title = "Drains", x = 20, y = -370,
+    { title = "Drains", x = 20, y = -370, defaultKey = "drain", menuX = 115,
         contains = function(spell) return spell.slot == 4 end },
-    { title = "Curses", x = 345, y = -90,
+    { title = "Curses", x = 345, y = -90, defaultKey = "curse", menuX = 440,
         contains = function(spell) return spell.slot == 3 and spell.group ~= 2 end },
     { title = "Control", x = 345, y = -300,
         contains = function(spell) return spell.group == 2 end },
@@ -589,6 +598,40 @@ local function SpellHelp(spell)
 end
 for _, group in ipairs(spellGroups) do
     Text(spells, group.title, group.x, group.y, "GameFontNormal")
+    if group.defaultKey then
+        local key = group.defaultKey
+        local menu = CreateFrame("Frame", nil, spells, "UIDropDownMenuTemplate")
+        menu:SetPoint("TOPLEFT", spells, "TOPLEFT", group.menuX, group.y + 13)
+        UIDropDownMenu_SetWidth(menu, 165)
+        UIDropDownMenu_Initialize(menu, function(_, level)
+            if (level or 1) ~= 1 then return end
+            local profile = Profile()
+            local selected = profile and profile.defaultDotIcons
+                and profile.defaultDotIcons[key]
+            local options = { { name = "Automatic" } }
+            for _, spell in ipairs(api.Spells) do
+                if spell.slot == api.DotDefaultSlots[key] and spell.group ~= 2 then
+                    options[#options + 1] = { name = spell.name, value = spell.name }
+                end
+            end
+            for _, option in ipairs(options) do
+                local info = UIDropDownMenu_CreateInfo()
+                info.text = option.name
+                info.checked = selected == option.value
+                info.func = function()
+                    Profile().defaultDotIcons[key] = option.value
+                    MarkChanged()
+                end
+                UIDropDownMenu_AddButton(info, level)
+            end
+        end)
+        refreshers[#refreshers + 1] = function()
+            local profile = Profile()
+            UIDropDownMenu_SetText(menu,
+                profile and profile.defaultDotIcons
+                    and profile.defaultDotIcons[key] or "Automatic")
+        end
+    end
     local index = 0
     for _, spell in ipairs(api.Spells) do
         if group.contains(spell) then
@@ -617,6 +660,7 @@ Text(spells, "Saves now; visual update waits until safe.",
     373, -455, "GameFontHighlightSmall")
 ResetPageButton(spells, "Tracked Auras", function()
     for _, spell in ipairs(api.Spells) do Profile().enabled[spell.name] = nil end
+    Profile().defaultDotIcons = {}
     Profile().colorActiveDoTs = nil
     MarkChanged()
 end)
