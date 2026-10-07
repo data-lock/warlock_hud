@@ -1,5 +1,15 @@
 # Changelog
 
+## v0.31.0
+
+- Add a movable summon request queue for grouped players who send the configured
+  keyword (default `123`) in party, raid, instance chat, or whisper.
+- Add secure Summon buttons, wait timers, manual removal, nearby removal, and a
+  pending summon label when Forever reports an incoming summon.
+- Add an Announce button and include the current Soul Shard count in summon
+  announcements when the count is available.
+- Add Summons settings for the keyword, accepted channels, and nearby removal.
+
 ## v0.30.0
 
 - Add per-profile Soul Shard warnings: red at 4 or fewer shards and yellow at

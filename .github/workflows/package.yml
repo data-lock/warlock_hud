@@ -41,7 +41,8 @@ jobs:
         run: |
           mkdir -p dist/Warlock_Hud
           cp Warlock_Hud.toc Warlock_Hud.lua Warlock_Hud_Options.lua \
-            Warlock_Hud_Notifications.lua Warlock_Hud_Nameplates.lua \
+            Warlock_Hud_Notifications.lua Warlock_Hud_SummonQueue.lua \
+            Warlock_Hud_SummonQueueUI.lua Warlock_Hud_Nameplates.lua \
             README.md LICENSE dist/Warlock_Hud/
           (cd dist && zip -q -r "Warlock_Hud-${PACKAGE_TAG}.zip" Warlock_Hud)
           unzip -Z1 "dist/Warlock_Hud-${PACKAGE_TAG}.zip"
