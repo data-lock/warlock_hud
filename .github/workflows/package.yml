@@ -40,7 +40,8 @@ jobs:
         shell: bash
         run: |
           mkdir -p dist/Warlock_Hud
-          cp Warlock_Hud.toc Warlock_Hud.lua Warlock_Hud_Options.lua \
+          cp Warlock_Hud.toc Warlock_Hud.lua Warlock_Hud_AssignmentProbe.lua \
+            Warlock_Hud_Assignments.lua Warlock_Hud_Options.lua \
             Warlock_Hud_Notifications.lua Warlock_Hud_SummonQueue.lua \
             Warlock_Hud_SummonQueueUI.lua Warlock_Hud_Nameplates.lua \
             README.md LICENSE dist/Warlock_Hud/

@@ -658,6 +658,9 @@ Check(spells, 345, -415, "Color when active; grey when missing",
     "On (default): color when active, grey when missing. This affects the Target DoTs row only.")
 Text(spells, "Saves now; visual update waits until safe.",
     373, -455, "GameFontHighlightSmall")
+Button(spells, "Group Assignments", 345, -478, 165, function()
+    if WarlockHudOpenAssignments then WarlockHudOpenAssignments() end
+end)
 ResetPageButton(spells, "Tracked Auras", function()
     for _, spell in ipairs(api.Spells) do Profile().enabled[spell.name] = nil end
     Profile().defaultDotIcons = {}

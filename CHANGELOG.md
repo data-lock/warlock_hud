@@ -1,5 +1,79 @@
 # Changelog
 
+## v0.32.11
+
+- Replace the small inner glow square with purple glow strips around the Curse
+  and Bane icon borders.
+
+## v0.32.10
+
+- Make the purple wrong-assignment fill the full HUD icon again.
+- Open Assignments in compact mode when the player has an active Curse or Bane
+  assignment, including after restoring it on reload.
+
+## v0.32.9
+
+- Place the Compact button in the full window footer and give Expand its own
+  row below the compact title, clear of the title and column headers.
+
+## v0.32.8
+
+- Save Curse and Bane assignments for the current character and restore them
+  after reload. Group assignments still clear when the group disbands.
+
+## v0.32.7
+
+- Inset the persistent purple assignment highlight so its fill follows the
+  visible spell artwork more closely.
+
+## v0.32.6
+
+- Move the Compact/Expand button into the Assignments title bar so it does not
+  cover the Curse and Bane column headers.
+
+## v0.32.5
+
+- Keep separate purple highlights on wrong Curse and Bane slots until each
+  assigned spell is cast, the target changes, or assignments change.
+
+## v0.32.4
+
+- Let the full Assignments window resize by dragging its lower-right corner.
+- Add a Compact toggle with one name, Curse icon, and Bane icon per Warlock.
+  The compact window follows the roster size; expanding restores the full
+  window's saved dimensions.
+
+## v0.32.3
+
+- Label the assignment announcement button with its party, raid, or instance
+  destination and add `/whud announceassignments` for the same explicit action.
+
+## v0.32.2
+
+- Remove the Assignments scrollbar and size the window for its Warlock rows.
+- Show full assigned-by names beneath each row and use a space between player
+  and realm in display text.
+- Keep a wrong-cast slot red until a correct cast, target change, or assignment
+  change clears it.
+
+## v0.32.1
+
+- Let any group member using Warlock HUD edit Curse and Bane assignments.
+- Allow solo Warlocks to assign themselves without requiring a party or raid.
+- Clear group assignments on disband while preserving later solo choices until
+  reload.
+
+## v0.32.0
+
+- Add a movable group Curse and Bane assignment window with separate choices for
+  every Warlock, including group members without the addon.
+- Synchronize temporary assignments and editing policy through validated addon
+  messages. Request a snapshot after reload; disband clears assignments.
+- Use the local assignment for the HUD's idle icon and range spell. A different
+  successful Curse or Bane cast gives a brief local warning.
+- Add an opt-in `/whud assignprobe` command for Forever API checks. Group behavior
+  and cast events still need in-game verification.
+
 ## v0.31.1
 
 - Choose the idle image for the shared Bane, Curse, and Drain slots on Tracked
