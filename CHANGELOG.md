@@ -1,5 +1,17 @@
 # Changelog
 
+## v0.32.13
+
+- Match Forever addon-message sender names when the client uses spaces where
+  roster names contain hyphens. This fixes received assignment and snapshot
+  messages being rejected as unknown senders.
+
+## v0.32.12 (diagnostic build)
+
+- Add an Assignments recording toggle and Sync State button to the copyable
+  `/whud trace` window. They capture sends, receives, roster changes, snapshot
+  validation, and revision state to investigate intermittent synchronization.
+
 ## v0.32.11
 
 - Replace the small inner glow square with purple glow strips around the Curse

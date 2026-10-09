@@ -36,6 +36,27 @@ local rows, compactRows = {}, {}
 local FULL_WIDTH, COMPACT_WIDTH = 635, 385
 local events = CreateFrame("Frame")
 
+local function SyncTrace(message)
+    if WarlockHudTraceAssignment then
+        WarlockHudTraceAssignment("SYNC", message)
+    end
+end
+
+function WarlockHudAssignmentTraceState()
+    if not WarlockHudTraceAssignment then return end
+    WarlockHudTraceAssignment("STATE", "registered=" .. tostring(registered)
+        .. " grouped=" .. tostring(wasGrouped) .. " revision=" .. revision
+        .. " requestRevision=" .. requestRevision
+        .. " requestAt=" .. requestAt
+        .. " pending=" .. tostring(pendingSnapshot ~= nil), true)
+    for _, row in ipairs(roster) do
+        local state = assignments[row.guid] or {}
+        WarlockHudTraceAssignment("STATE", row.name .. " " .. row.guid
+            .. " curse=" .. tostring(state.curse or "NONE")
+            .. " bane=" .. tostring(state.bane or "NONE"), true)
+    end
+end
+
 local function Public(value)
     return value ~= nil and (not issecretvalue or not issecretvalue(value))
 end
@@ -55,7 +76,8 @@ local function Enabled()
 end
 
 local function NameKey(name)
-    return type(name) == "string" and name:lower():gsub("%s+", "") or nil
+    -- Forever can report the same sender with spaces where UnitName uses hyphens.
+    return type(name) == "string" and name:lower():gsub("[%s%-]+", "") or nil
 end
 
 local function FullName(unit)
@@ -116,6 +138,8 @@ local function RefreshRoster()
         if b.unit == "player" then return false end
         return a.name < b.name
     end)
+    SyncTrace("roster grouped=" .. tostring(grouped) .. " warlocks="
+        .. #roster .. " disbanded=" .. tostring(disbanded))
     return disbanded
 end
 
@@ -141,12 +165,24 @@ local function Channel()
 end
 
 local function Send(parts)
-    if not registered or not Enabled() then return false end
+    if not registered or not Enabled() then
+        SyncTrace("send " .. tostring(parts[2]) .. " blocked registered="
+            .. tostring(registered) .. " enabled=" .. tostring(Enabled()))
+        return false
+    end
     local channel = Channel()
-    if not channel then return false end
+    if not channel then
+        SyncTrace("send " .. tostring(parts[2]) .. " blocked no channel")
+        return false
+    end
     local payload = table.concat(parts, "|")
-    if #payload > 240 then return false end
+    if #payload > 240 then
+        SyncTrace("send " .. tostring(parts[2]) .. " blocked length=" .. #payload)
+        return false
+    end
     local ok, result = pcall(C_ChatInfo.SendAddonMessage, PREFIX, payload, channel)
+    SyncTrace("send " .. tostring(parts[2]) .. " " .. channel
+        .. " bytes=" .. #payload .. " ok=" .. tostring(ok and result ~= false))
     return ok and result ~= false
 end
 
@@ -242,6 +278,7 @@ end
 
 local function Changed(clearWarning)
     revision = revision + 1
+    SyncTrace("state revision=" .. revision)
     SaveAssignmentCache()
     if clearWarning ~= false then ClearWarning() end
     if WarlockHudRefreshAssignmentIcons then WarlockHudRefreshAssignmentIcons() end
@@ -250,37 +287,57 @@ end
 
 local function SetAssignment(guid, category, key, by)
     if not byGUID[guid] or byGUID[guid].class ~= "WARLOCK"
-        or not ValidKey(category, key) then return false end
+        or not ValidKey(category, key) then
+        SyncTrace("SET rejected unknown member or key " .. tostring(category)
+            .. "=" .. tostring(key))
+        return false
+    end
     local state = assignments[guid] or {}
     state[category] = key
     state[category .. "By"] = key ~= "NONE" and by or nil
     assignments[guid] = state
+    SyncTrace("SET accepted " .. tostring(guid) .. " " .. category .. "=" .. key)
     Changed()
     return true
 end
 
 local function RequestSnapshot()
-    if not Enabled() or not Channel() or not OwnRow() then return end
+    if not Enabled() or not Channel() or not OwnRow() then
+        SyncTrace("REQ skipped enabled=" .. tostring(Enabled())
+            .. " channel=" .. tostring(Channel())
+            .. " ownRow=" .. tostring(OwnRow() ~= nil))
+        return
+    end
     local now = GetTime()
-    if now - lastRequestAt < 2 then return end
+    if now - lastRequestAt < 2 then
+        SyncTrace("REQ throttled age=" .. tostring(now - lastRequestAt))
+        return
+    end
     lastRequestAt, requestAt, requestRevision = now, now, revision
+    SyncTrace("REQ start revision=" .. revision)
     Send({ "V1", "REQ", OwnRow().guid })
 end
 
 local function Snapshot()
     local own = OwnRow()
-    if not own or not Channel() then return end
+    if not own or not Channel() then
+        SyncTrace("snapshot skipped no player or channel")
+        return
+    end
     local nonce = tostring(math.floor(GetTime() * 1000))
     if not Send({ "V1", "BEGIN", nonce, own.guid }) then return end
+    local rows = 0
     for _, row in ipairs(roster) do
         local state = assignments[row.guid]
         if state and (state.curse or state.bane) then
+            rows = rows + 1
             Send({ "V1", "ROW", nonce, row.guid,
                 state.curse or "NONE", state.bane or "NONE",
                 state.curseBy or "0", state.baneBy or "0" })
         end
     end
     Send({ "V1", "END", nonce, own.guid })
+    SyncTrace("snapshot sent nonce=" .. nonce .. " rows=" .. rows)
 end
 
 local function Fields(payload)
@@ -297,27 +354,56 @@ end
 local function Receive(payload, sender)
     local fields = Fields(payload)
     local from = SenderRow(sender)
-    if not fields or not from or not Enabled() then return end
+    if not fields or not from or not Enabled() then
+        SyncTrace("receive rejected sender=" .. tostring(sender)
+            .. " fields=" .. tostring(fields ~= nil)
+            .. " rosterMatch=" .. tostring(from ~= nil)
+            .. " enabled=" .. tostring(Enabled()))
+        return
+    end
     local action = fields[2]
+    SyncTrace("receive " .. tostring(action) .. " from=" .. tostring(sender)
+        .. " fields=" .. #fields)
     if action == "REQ" then
-        if #fields ~= 3 or fields[3] ~= from.guid then return end
-        if not OwnRow() or not next(assignments) then return end
+        if #fields ~= 3 or fields[3] ~= from.guid then
+            SyncTrace("REQ rejected sender GUID mismatch")
+            return
+        end
+        if not OwnRow() or not next(assignments) then
+            SyncTrace("REQ ignored: no local assignments")
+            return
+        end
         local seen = lastSnapshotAt
         if C_Timer and C_Timer.After then
             C_Timer.After(0.4, function()
-                if lastSnapshotAt == seen and byGUID[from.guid] then Snapshot() end
+                if lastSnapshotAt == seen and byGUID[from.guid] then
+                    Snapshot()
+                else
+                    SyncTrace("REQ response suppressed by newer snapshot or roster")
+                end
             end)
+        else
+            SyncTrace("REQ cannot respond: timer unavailable")
         end
     elseif action == "SET" then
-        if #fields ~= 6 or fields[6] ~= from.guid then return end
+        if #fields ~= 6 or fields[6] ~= from.guid then
+            SyncTrace("SET rejected sender GUID mismatch")
+            return
+        end
         SetAssignment(fields[3], fields[4], fields[5], from.guid)
     elseif action == "BEGIN" then
         if #fields ~= 4 or fields[4] ~= from.guid
             or #fields[3] > 20 or not fields[3]:match("^%d+$")
             or requestAt == 0 or GetTime() - requestAt > 8
-            or revision ~= requestRevision then return end
+            or revision ~= requestRevision then
+            SyncTrace("BEGIN rejected requestAge="
+                .. tostring(requestAt > 0 and GetTime() - requestAt or "none")
+                .. " revision=" .. revision .. "/" .. requestRevision)
+            return
+        end
         pendingSnapshot = { nonce = fields[3], sender = from.guid,
             rows = {}, revision = revision }
+        SyncTrace("BEGIN accepted nonce=" .. fields[3])
     elseif action == "ROW" then
         local pending = pendingSnapshot
         if #fields ~= 8 or not pending or pending.sender ~= from.guid
@@ -325,22 +411,38 @@ local function Receive(payload, sender)
             or byGUID[fields[4]].class ~= "WARLOCK"
             or not ValidKey("curse", fields[5]) or not ValidKey("bane", fields[6])
             or (fields[7] ~= "0" and not byGUID[fields[7]])
-            or (fields[8] ~= "0" and not byGUID[fields[8]]) then return end
+            or (fields[8] ~= "0" and not byGUID[fields[8]]) then
+            SyncTrace("ROW rejected pending=" .. tostring(pending ~= nil))
+            return
+        end
         pending.rows[fields[4]] = {
             curse = fields[5], bane = fields[6],
             curseBy = fields[7] ~= "0" and fields[7] or nil,
             baneBy = fields[8] ~= "0" and fields[8] or nil,
         }
+        SyncTrace("ROW accepted member=" .. fields[4])
     elseif action == "END" then
         local pending = pendingSnapshot
         if #fields ~= 4 or not pending or pending.sender ~= from.guid
-            or pending.nonce ~= fields[3] or fields[4] ~= from.guid then return end
+            or pending.nonce ~= fields[3] or fields[4] ~= from.guid then
+            SyncTrace("END rejected pending=" .. tostring(pending ~= nil))
+            return
+        end
         pendingSnapshot = nil
-        if pending.revision ~= revision or revision ~= requestRevision then return end
+        if pending.revision ~= revision or revision ~= requestRevision then
+            SyncTrace("END rejected revision=" .. revision .. "/"
+                .. pending.revision .. "/" .. requestRevision)
+            return
+        end
         assignments = pending.rows
         lastSnapshotAt = GetTime()
         requestAt = 0
+        local rows = 0
+        for _ in pairs(assignments) do rows = rows + 1 end
+        SyncTrace("END applied rows=" .. rows .. " from=" .. tostring(sender))
         Changed()
+    else
+        SyncTrace("unknown action=" .. tostring(action))
     end
 end
 
@@ -812,11 +914,13 @@ events:SetScript("OnEvent", function(_, event, ...)
         local ok, value
         if register then ok, value = pcall(register, PREFIX) end
         registered = ok and value ~= false and true or false
+        SyncTrace("login prefix registered=" .. tostring(registered))
         RefreshRoster()
         RestoreAssignmentCache()
         Changed()
         RequestSnapshot()
     elseif event == "GROUP_ROSTER_UPDATE" or event == "PLAYER_ENTERING_WORLD" then
+        SyncTrace("event " .. event)
         local disbanded = RefreshRoster()
         Changed(disbanded)
         if C_Timer and C_Timer.After then
@@ -828,8 +932,11 @@ events:SetScript("OnEvent", function(_, event, ...)
         local unit, castGUID, spellID = ...
         if unit == "player" then WarningForCast(spellID, castGUID) end
     elseif event == "CHAT_MSG_ADDON" then
-        local prefix, payload, _, sender = ...
+        local prefix, payload, channel, sender = ...
         if prefix == PREFIX and Public(payload) and Public(sender) then
+            SyncTrace("CHAT_MSG_ADDON channel=" .. tostring(channel)
+                .. " sender=" .. tostring(sender) .. " bytes="
+                .. tostring(type(payload) == "string" and #payload or "non-string"))
             Receive(payload, sender)
         end
     end

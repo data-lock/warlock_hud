@@ -9,6 +9,7 @@ local lastSoulstoneAt = 0
 local tradeDebug = false
 local soulstoneDebug = false
 local summonDebug = false
+local assignmentDebug = false
 local TraceSoulstone
 local lastPlayerDeathAt
 local tradeCandidate
@@ -264,13 +265,14 @@ end
 
 local tradeLines = {}
 local tradeWindow, tradeText, tradeScroll, tradeStatus
-local tradeToggle, soulstoneToggle, summonToggle
+local tradeToggle, soulstoneToggle, summonToggle, assignmentToggle
 
 local function RefreshTradeWindow()
     if not tradeWindow then return end
     tradeStatus:SetText("Trade " .. (tradeDebug and "on" or "off")
         .. " / Soulstone " .. (soulstoneDebug and "on" or "off")
-        .. " / Summon " .. (summonDebug and "on" or "off"))
+        .. " / Summon " .. (summonDebug and "on" or "off")
+        .. " / Assignments " .. (assignmentDebug and "on" or "off"))
     if tradeToggle then
         tradeToggle:SetText("Trade: " .. (tradeDebug and "On" or "Off"))
     end
@@ -279,6 +281,9 @@ local function RefreshTradeWindow()
     end
     if summonToggle then
         summonToggle:SetText("Summon: " .. (summonDebug and "On" or "Off"))
+    end
+    if assignmentToggle then
+        assignmentToggle:SetText("Assignments: " .. (assignmentDebug and "On" or "Off"))
     end
     tradeText:SetText(table.concat(tradeLines, "\n"))
     tradeText:SetHeight(math.max(330, #tradeLines * 16 + 20))
@@ -289,7 +294,7 @@ end
 local function OpenTradeWindow()
     if not tradeWindow then
         local frame = CreateFrame("Frame", "WarlockHudTradeDebugWindow", UIParent)
-        frame:SetSize(680, 440)
+        frame:SetSize(680, 470)
         frame:SetPoint("CENTER")
         frame:SetFrameStrata("DIALOG")
         frame:SetMovable(true)
@@ -312,7 +317,7 @@ local function OpenTradeWindow()
         hint:SetText("Choose what to record below. Select All, then press Ctrl+C to copy.")
         local scroll = CreateFrame("ScrollFrame", nil, frame, "UIPanelScrollFrameTemplate")
         scroll:SetPoint("TOPLEFT", 16, -68)
-        scroll:SetPoint("BOTTOMRIGHT", -34, 48)
+        scroll:SetPoint("BOTTOMRIGHT", -34, 78)
         local edit = CreateFrame("EditBox", nil, scroll)
         edit:SetMultiLine(true)
         edit:SetAutoFocus(false)
@@ -359,6 +364,23 @@ local function OpenTradeWindow()
             summonDebug = not summonDebug
             RefreshTradeWindow()
         end)
+        assignmentToggle = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate")
+        assignmentToggle:SetSize(145, 24)
+        assignmentToggle:SetPoint("BOTTOMLEFT", 16, 42)
+        assignmentToggle:SetScript("OnClick", function()
+            assignmentDebug = not assignmentDebug
+            RefreshTradeWindow()
+            if assignmentDebug and WarlockHudAssignmentTraceState then
+                WarlockHudAssignmentTraceState()
+            end
+        end)
+        local syncState = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate")
+        syncState:SetSize(110, 24)
+        syncState:SetPoint("LEFT", assignmentToggle, "RIGHT", 8, 0)
+        syncState:SetText("Sync State")
+        syncState:SetScript("OnClick", function()
+            if WarlockHudAssignmentTraceState then WarlockHudAssignmentTraceState() end
+        end)
         tradeWindow, tradeText, tradeScroll = frame, edit, scroll
     end
     tradeWindow:Show()
@@ -386,6 +408,14 @@ end
 function WarlockHudTraceSummon(event, details)
     if not summonDebug then return end
     tradeLines[#tradeLines + 1] = date("%H:%M:%S") .. " SUMMON " .. event
+        .. (details and (" " .. details) or "")
+    if #tradeLines > 200 then table.remove(tradeLines, 1) end
+    RefreshTradeWindow()
+end
+
+function WarlockHudTraceAssignment(event, details, force)
+    if not assignmentDebug and not force then return end
+    tradeLines[#tradeLines + 1] = date("%H:%M:%S") .. " ASSIGN " .. event
         .. (details and (" " .. details) or "")
     if #tradeLines > 200 then table.remove(tradeLines, 1) end
     RefreshTradeWindow()
