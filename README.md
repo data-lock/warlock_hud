@@ -132,7 +132,32 @@ nameplate 20% marker.
 Choose eligible Corruption, Immolate, Siphon Life, Bane, Curse, Drain, and Fear
 auras. Set whether active Target DoTs appear in color or grey.
 
+Use **Group Assignments** to open a movable, resizable window with a Curse and Bane choice
+for each Warlock in your group, or yourself while solo. `/whud assignments` opens
+the same window. Drag the lower-right corner to resize it, or press **Compact**
+for a roster-sized list of names and Curse/Bane icons. Press **Expand** to edit
+the choices again. Assignments survive `/reload` for this character, and group
+assignments clear when the group disbands. Anyone using the addon can assign spells. The chosen
+spell appears as your idle HUD image and sets its range check. A different
+successful Curse or Bane cast gives a short local warning. The window never
+casts spells. The Announce button shows its party, raid, or instance destination
+and sends the current assignments there only when clicked. You can also use
+`/whud announceassignments`.
+
 ![Tracked Auras settings](screenshots/whud_options_2_tracked_auras.png)
+
+### Group Assignments
+
+![Curse and Bane assignments](screenshots/assigned_main_screen.png)
+
+The compact view keeps the roster and assigned spell icons visible during play.
+
+![Compact assignments](screenshots/assigned_mini_screen.png)
+
+A wrong cast highlights its HUD slot until the assigned spell is cast, the
+target changes, or the assignment changes.
+
+![Wrong Curse and Bane highlights on the HUD](screenshots/assigned_hud_wrong_curse_cast.png)
 
 </details>
 

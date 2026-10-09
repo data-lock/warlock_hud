@@ -829,6 +829,54 @@ local function UpdateRange()
     end
 end
 
+local assignmentFlashes = {}
+local activeAssignmentWarnings = {}
+function WarlockHudPositionAssignmentHighlights()
+    for key, frame in pairs(assignmentFlashes) do
+        frame:Hide()
+        if activeAssignmentWarnings[key] then
+            for _, entry in ipairs(icons) do
+                if entry.key == key then
+                    frame:ClearAllPoints()
+                    frame:SetPoint("CENTER", entry.icon, "CENTER")
+                    frame:Show()
+                    break
+                end
+            end
+        end
+    end
+end
+
+function WarlockHudPrepareAssignmentFlash(root, size)
+    assignmentFlashes = {}
+    for _, key in ipairs({ "curse", "bane" }) do
+        local frame = CreateFrame("Frame", nil, root)
+        frame:SetFrameLevel(root:GetFrameLevel() + 6)
+        frame:SetSize(size, size)
+        local tint = frame:CreateTexture(nil, "OVERLAY")
+        tint:SetAllPoints(frame)
+        tint:SetColorTexture(0.48, 0.12, 0.82, 0.5)
+        local edges = {
+            { "BOTTOM", "TOP", 0, 0, size + 8, 3, 0.85 },
+            { "TOP", "BOTTOM", 0, 0, size + 8, 3, 0.85 },
+            { "RIGHT", "LEFT", 0, 0, 3, size + 8, 0.85 },
+            { "LEFT", "RIGHT", 0, 0, 3, size + 8, 0.85 },
+            { "BOTTOM", "TOP", 0, 3, size + 14, 3, 0.3 },
+            { "TOP", "BOTTOM", 0, -3, size + 14, 3, 0.3 },
+            { "RIGHT", "LEFT", -3, 0, 3, size + 14, 0.3 },
+            { "LEFT", "RIGHT", 3, 0, 3, size + 14, 0.3 },
+        }
+        for _, edge in ipairs(edges) do
+            local glow = frame:CreateTexture(nil, "OVERLAY")
+            glow:SetSize(edge[5], edge[6])
+            glow:SetPoint(edge[1], frame, edge[2], edge[3], edge[4])
+            glow:SetColorTexture(0.68, 0.28, 1, edge[7])
+            glow:SetBlendMode("ADD")
+        end
+        frame:Hide()
+        assignmentFlashes[key] = frame
+    end
+end
 local function Build()
     if container then
         return
@@ -860,6 +908,7 @@ local function Build()
     hudRoot:SetAllPoints(UIParent)
     hudRoot:SetFrameStrata(PlayerFrame and PlayerFrame:GetFrameStrata() or "LOW")
     hudRoot:SetFrameLevel(PlayerFrame and PlayerFrame:GetFrameLevel() or 1)
+    WarlockHudPrepareAssignmentFlash(hudRoot, ICON_SIZE)
 
     local auraContainer = CreateFrame("AuraContainer", nil, hudRoot, "CustomAuraContainerTemplate")
     if not auraContainer or type(auraContainer.AddAuraSlot) ~= "function" then
@@ -1243,10 +1292,12 @@ local function Build()
             local anchor = spell.group == 2 and cooldownAnchor or hudAnchor
             local iconSize = spell.group == 2 and COOLDOWN_ICON_SIZE or ICON_SIZE
             if not baseCreated[groupKey] then
-                local preview = spell
+                local assigned = WarlockHudAssignmentSpell
+                    and WarlockHudAssignmentSpell(groupKey)
+                local preview = assigned or spell
                 local selected = profile.defaultDotIcons
                     and profile.defaultDotIcons[groupKey]
-                if selected then
+                if selected and not assigned then
                     for _, candidate in ipairs(SPELLS) do
                         if candidate.slot == spell.slot
                             and candidate.name == selected then
@@ -1268,7 +1319,7 @@ local function Build()
                     icon:SetDesaturated(profile.colorActiveDoTs ~= false)
                 end
                 icons[#icons + 1] = {
-                    spell = spell, rangeSpell = preview,
+                    spell = spell, key = groupKey, rangeSpell = preview,
                     icon = icon, border = MakeBorder(anchor, x, iconSize),
                 }
                 baseCreated[groupKey] = true
@@ -1517,6 +1568,7 @@ local function Build()
     UpdateArmorGlow()
     UpdateWellFedGlow()
     UpdateGroupBuffs()
+    WarlockHudPositionAssignmentHighlights()
 end
 
 local function Rebuild()
@@ -1540,6 +1592,7 @@ local function Rebuild()
     buffAnchor, buffMover = nil, nil
     procAnchor, procMover = nil, nil
     icons, itemIcons, racialIcons, groupBuffIcons = {}, {}, {}, {}
+    assignmentFlashes = {}
     if not IsAddonEnabled() then
         pendingKnownRebuild = false
         pendingSpecRebuild = false
@@ -1554,6 +1607,37 @@ local function Rebuild()
         return true
     end
     return false
+end
+
+function WarlockHudRefreshAssignmentIcons()
+    if not profile then return end
+    for _, entry in ipairs(icons) do
+        if entry.key == "bane" or entry.key == "curse" then
+            local preview = WarlockHudAssignmentSpell
+                and WarlockHudAssignmentSpell(entry.key)
+                or GetDotDefaultSpell(entry.key) or entry.spell
+            entry.rangeSpell = preview
+            local id = C_Spell and C_Spell.GetSpellIDForSpellIdentifier
+                and C_Spell.GetSpellIDForSpellIdentifier(preview.name)
+                or preview.ids[1]
+            if C_Spell and C_Spell.GetSpellTexture then
+                entry.icon:SetTexture(C_Spell.GetSpellTexture(id)
+                    or C_Spell.GetSpellTexture(preview.ids[1]))
+            end
+        end
+    end
+    UpdateRange()
+    WarlockHudPositionAssignmentHighlights()
+end
+
+function WarlockHudFlashAssignmentSlot(key, show)
+    if key == "curse" or key == "bane" then
+        activeAssignmentWarnings[key] = show and true or nil
+    elseif not show then
+        activeAssignmentWarnings.curse = nil
+        activeAssignmentWarnings.bane = nil
+    end
+    WarlockHudPositionAssignmentHighlights()
 end
 
 local function UpdateSpecProfile()
@@ -1738,6 +1822,26 @@ local function DebugState()
     end
 end
 SlashCmdList.WARLOCKHUD = function(message)
+    if message == "announceassignments" and WarlockHudAnnounceAssignments then
+        WarlockHudAnnounceAssignments()
+        return
+    end
+    if message == "assignments" and WarlockHudOpenAssignments then
+        WarlockHudOpenAssignments()
+        return
+    end
+    if message == "assignprobe" and WarlockHudAssignmentProbe then
+        WarlockHudAssignmentProbe("show")
+        return
+    end
+    if message == "assignprobe send" and WarlockHudAssignmentProbe then
+        WarlockHudAssignmentProbe("send")
+        return
+    end
+    if message == "assignprobe off" and WarlockHudAssignmentProbe then
+        WarlockHudAssignmentProbe("off")
+        return
+    end
     if message == "summonqueue demo" and WarlockHudOpenSummonQueueDemo then
         WarlockHudOpenSummonQueueDemo()
         return
