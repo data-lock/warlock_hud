@@ -113,6 +113,14 @@ assert(WarlockHudAssignmentSpell("curse") == nil, "invalid type is rejected")
 receive("V1|SET|Player-1|curse|ELEMENTS|Player-3", "ClassLead")
 assert(WarlockHudAssignmentSpell("curse").name == "Curse of the Elements",
     "the class leader can assign without raid authority")
+receive("V1|SET|Player-1|curse|RECKLESSNESS|Player-3", "ClassLead TestRealm")
+assert(WarlockHudAssignmentSpell("curse").name == "Curse of Recklessness",
+    "a spaced sender name should match a hyphenated realm name")
+units.party1.name = "Rigged-Elections"
+event("GROUP_ROSTER_UPDATE")
+receive("V1|SET|Player-1|curse|ELEMENTS|Player-2", "Rigged Elections")
+assert(WarlockHudAssignmentSpell("curse").name == "Curse of the Elements",
+    "a spaced sender name should match a hyphenated character name")
 assert(WarlockHudAssignmentSpell("bane") == nil, "categories are independent")
 
 local timersBeforeWarning = #timers

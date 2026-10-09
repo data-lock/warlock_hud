@@ -69,6 +69,8 @@ Soulstone details appear on the Stones page only when a safe aura observation
 confirms the buff is active. Countdowns may be stale during combat.
 `/whub stones` lists supplied players. `/whub trace` opens a copyable debug
 window with Trade, Soulstone, and Summon recording buttons.
+The trace window also has an Assignments recording button and a Sync State
+button for investigating group assignment messages on each client.
 
 ## Install
 
