@@ -843,8 +843,14 @@ local function UpdateGroupBuffs()
             if hasBuff ~= nil then entry.hasBuff = hasBuff end
             local hasCaster = classes[entry.buff.casterClass] and true or false
             entry.hasCaster = hasCaster
-            entry.icon:SetShown(hasCaster and entry.hasBuff ~= true)
-            entry.border:SetShown(entry.hasBuff == true or hasCaster)
+            -- During restricted aura states, the last readable value may say
+            -- "active" after the native aura button has already disappeared.
+            -- Show the reminder icon for a present caster so its border never
+            -- becomes an empty square; leave native aura rendering alone.
+            entry.icon:SetShown(hasCaster
+                and (hasBuff == nil or entry.hasBuff ~= true))
+            entry.border:SetShown(hasCaster
+                or (hasBuff ~= nil and entry.hasBuff == true))
             entry.glow:SetShown(hasCaster)
         end
     end

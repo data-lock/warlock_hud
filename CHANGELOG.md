@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.35.1
+
+- Keep a group-buff reminder icon visible when combat hides aura status, so a
+  dropped buff such as Mark of the Wild cannot leave an empty bordered square.
+
 ## v0.35.0
 
 - Add a Control assignment before Soulstone for each Warlock. Choose one raid
