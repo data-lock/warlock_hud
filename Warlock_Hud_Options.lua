@@ -505,6 +505,25 @@ refreshers[#refreshers + 1] = function()
 end
 Text(general, "Shows every icon slot on screen, including inactive buffs and procs.",
     20, -210, "GameFontHighlightSmall")
+Text(general, "Show out of combat", 20, -250, "GameFontNormal")
+Text(general, "Hidden rows appear in combat and Edit Mode.",
+    20, -274, "GameFontHighlightSmall")
+for index, option in ipairs({
+    { "main", "Target DoTs" }, { "utility", "Utility" },
+    { "buffs", "Buffs" }, { "procs", "Procs" },
+    { "shards", "Soul Shards" },
+}) do
+    local key, label = option[1], option[2]
+    Check(general, 20, -290 - (index - 1) * 36, label,
+        function() return Profile().showOutOfCombat[key] ~= false end,
+        function(value)
+            if value then Profile().showOutOfCombat[key] = nil
+            else Profile().showOutOfCombat[key] = false end
+            if api.RefreshRowVisibility then api.RefreshRowVisibility() end
+        end,
+        "Show this HUD row outside combat. The row is always visible in combat and Edit Mode.",
+        false)
+end
 Text(layout, "Move rows in Edit Mode. Drag icons to reorder them; use the checks to show or hide them.",
     20, -50, "GameFontHighlightSmall")
 Text(layout, "Icon sizes", 20, -82, "GameFontNormal")
@@ -543,6 +562,7 @@ Text(buffLayout, "Icon size", 20, -85, "GameFontNormal")
 SizeSlider(buffLayout, "Buff icon size", "buffSize", 16, 64, 20, -110)
 OrderSection(buffLayout, "Player buffs", "buffOrder", api.BuffKeys, -165, 5, function()
     ResetRowValues("buffSize", "buffOrder", api.BuffKeys, DefaultProfile())
+    Profile().colorActiveBuffs = nil
     MarkChanged()
 end)
 Text(buffLayout, "Buff reminders", 20, -400, "GameFontNormal")
@@ -552,6 +572,13 @@ Text(buffLayout, "Demon Armor / Skin and Well Fed glow when missing.",
     20, -449, "GameFontHighlightSmall")
 Text(buffLayout, "Missing group buffs pulse red when your group has the matching class.",
     20, -471, "GameFontHighlightSmall")
+Check(buffLayout, 20, -490, "Color when active; grey when missing",
+    function() return Profile().colorActiveBuffs ~= false end,
+    function(value)
+        if value then Profile().colorActiveBuffs = nil
+        else Profile().colorActiveBuffs = false end
+    end,
+    "On (default): color when active, grey when missing. Off reverses the colors. Missing-buff pulses stay red.")
 
 local procLayout = Panel("Warlock HUD - Procs")
 Text(procLayout, "Move this row in Edit Mode. Its icons appear only while a proc is active.",

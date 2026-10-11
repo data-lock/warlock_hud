@@ -47,6 +47,10 @@ local icons = {}
 local itemIcons = {}
 local racialIcons = {}
 local groupBuffIcons = {}
+WarlockHudRowVisibility = {
+    masks = {},
+    containers = {},
+}
 local lastGroupCasterClasses = {}
 local pendingSpecRebuild = false
 local pendingKnownRebuild = false
@@ -223,6 +227,7 @@ local function NormalizeProfile(p)
     p.mainOrder = NormalizeOrder(p.mainOrder, MAIN_KEYS)
     p.cooldownOrder = NormalizeOrder(p.cooldownOrder, COOLDOWN_KEYS)
     p.buffOrder = NormalizeOrder(p.buffOrder, BUFF_KEYS)
+    if type(p.showOutOfCombat) ~= "table" then p.showOutOfCombat = {} end
     -- Unending Breath is optional and its native button is anchored after
     -- the packed buffs, so keep its settings tile at that same right edge.
     for index, key in ipairs(p.buffOrder) do
@@ -348,6 +353,7 @@ local function SetAddonEnabled(value)
     if not character then return end
     WarlockHudDB.characterEnabled = WarlockHudDB.characterEnabled or {}
     WarlockHudDB.characterEnabled[character] = value and true or false
+    if WarlockHudRefreshWandBinding then WarlockHudRefreshWandBinding() end
 end
 
 local function Enabled(key)
@@ -445,7 +451,7 @@ end
 
 local function MakeBorder(anchor, x, iconSize)
     iconSize = iconSize or ICON_SIZE
-    local border = CreateFrame("Frame", nil, hudRoot)
+    local border = CreateFrame("Frame", nil, anchor)
     border:SetSize(iconSize + 2 * BORDER_SIZE, iconSize + 2 * BORDER_SIZE)
     border:SetPoint("CENTER", anchor, "CENTER", x, 0)
     border:SetFrameStrata(hudRoot:GetFrameStrata())
@@ -481,7 +487,7 @@ local function MakeNativeButtonBorder(button, iconSize)
 end
 
 local function MakeReminderGlow(anchor, x, border, iconSize, red)
-    local glow = CreateFrame("Frame", nil, hudRoot)
+    local glow = CreateFrame("Frame", nil, anchor)
     -- The border texture has transparent padding. Give it room outside the
     -- icon so the yellow pulse remains visible after row-three icons move.
     glow:SetSize(iconSize + 16, iconSize + 16)
@@ -653,6 +659,10 @@ local function UpdateVisualState()
     if container then
         container:SetAlpha(hasAttackableTarget and 1 or 0.5)
     end
+    if WarlockHudRowVisibility.containers.utility then
+        WarlockHudRowVisibility.containers.utility:SetAlpha(
+            hasAttackableTarget and 1 or 0.5)
+    end
     for _, entry in ipairs(icons) do
         entry.icon:SetAlpha(hasAttackableTarget and 1 or 0.5)
         entry.border:SetAlpha(hasAttackableTarget and 1 or 0.5)
@@ -662,6 +672,24 @@ local function UpdateVisualState()
         entry.border:SetAlpha(1)
     end
 end
+
+local function RowAlpha(key)
+    if not profile then return end
+    local editMode = EditModeManagerFrame and EditModeManagerFrame:IsShown()
+    local settings = profile.showOutOfCombat or {}
+    return (InCombatLockdown() or editMode or settings[key] ~= false) and 1 or 0
+end
+
+local function UpdateRowVisibility()
+    for key, mask in pairs(WarlockHudRowVisibility.masks) do
+        local alpha = RowAlpha(key)
+        mask:SetAlpha(alpha)
+        if key == "shards" and shardState.button then
+            shardState.button:EnableMouse(alpha == 1)
+        end
+    end
+end
+WarlockHudRowVisibility.Update = UpdateRowVisibility
 
 local function UpdateStones()
     if not C_Item or not C_Item.GetItemCooldown then
@@ -684,13 +712,61 @@ local function UpdateStones()
                 entry.icon:SetTexture(texture)
             end
         end
-        entry.icon:SetDesaturated(not owned)
         local start, duration = C_Item.GetItemCooldown(chosen)
         if start and duration then
             -- The widget accepts cooldown values without inspecting them in Lua.
             pcall(entry.cooldown.SetCooldown, entry.cooldown, start, duration)
         end
+        if entry.stone.name == "Soulstone" then
+            local ready
+            if (not issecretvalue
+                or (not issecretvalue(start) and not issecretvalue(duration)))
+                and type(start) == "number" and type(duration) == "number" then
+                ready = duration <= 0 or start + duration <= GetTime()
+            elseif not owned then
+                -- An uncreated stone has no usable item cooldown to wait for.
+                ready = true
+            end
+            local target = WarlockHudSoulstoneAssignmentTarget
+                and WarlockHudSoulstoneAssignmentTarget()
+            local status = target and WarlockHudSoulstoneAuraStatus
+                and WarlockHudSoulstoneAuraStatus(target)
+            local flash = target and status == false and ready == true
+            if WarlockHudSoulstoneWarningState then
+                WarlockHudSoulstoneWarningState.owned = owned
+                WarlockHudSoulstoneWarningState.ready = ready
+                WarlockHudSoulstoneWarningState.status = status
+                WarlockHudSoulstoneWarningState.target = target
+                WarlockHudSoulstoneWarningState.flash = flash and true or false
+                WarlockHudSoulstoneWarningState.cooldown =
+                    (not issecretvalue or (not issecretvalue(start)
+                        and not issecretvalue(duration)))
+                    and (tostring(start) .. "/" .. tostring(duration)) or "secret"
+            end
+            entry.glow:SetShown(flash and true or false)
+            entry.icon:SetDesaturated(not owned and not flash)
+            if not flash then entry.icon:SetAlpha(1) end
+        else
+            entry.icon:SetDesaturated(not owned)
+        end
     end
+end
+
+WarlockHudSoulstoneWarningState = {}
+
+function WarlockHudSoulstoneWarningTraceState()
+    if not WarlockHudTraceAssignment then return end
+    local state = WarlockHudSoulstoneWarningState
+    WarlockHudTraceAssignment("STATE", "soulstoneHUD target="
+        .. tostring(state.target or "NONE") .. " aura="
+        .. tostring(state.status) .. " owned=" .. tostring(state.owned)
+        .. " ready=" .. tostring(state.ready)
+        .. " cooldown=" .. tostring(state.cooldown)
+        .. " flash=" .. tostring(state.flash), true)
+end
+
+function WarlockHudRefreshSoulstoneWarning()
+    UpdateStones()
 end
 
 local function UpdateRacials()
@@ -908,22 +984,42 @@ local function Build()
     hudRoot:SetAllPoints(UIParent)
     hudRoot:SetFrameStrata(PlayerFrame and PlayerFrame:GetFrameStrata() or "LOW")
     hudRoot:SetFrameLevel(PlayerFrame and PlayerFrame:GetFrameLevel() or 1)
-    WarlockHudPrepareAssignmentFlash(hudRoot, ICON_SIZE)
+    for _, key in ipairs({ "main", "utility", "buffs", "procs", "shards" }) do
+        local mask = CreateFrame("Frame", nil, hudRoot)
+        mask:SetAllPoints(UIParent)
+        WarlockHudRowVisibility.masks[key] = mask
+    end
+    WarlockHudPrepareAssignmentFlash(WarlockHudRowVisibility.masks.main, ICON_SIZE)
 
-    local auraContainer = CreateFrame("AuraContainer", nil, hudRoot, "CustomAuraContainerTemplate")
+    local auraContainer = CreateFrame("AuraContainer", nil,
+        WarlockHudRowVisibility.masks.main, "CustomAuraContainerTemplate")
     if not auraContainer or type(auraContainer.AddAuraSlot) ~= "function" then
         Report("CustomAuraContainerTemplate is unavailable on this client.")
         return
     end
-    local playerAuras = CreateFrame("AuraContainer", nil, hudRoot, "CustomAuraContainerTemplate")
+    local playerAuras = CreateFrame("AuraContainer", nil,
+        WarlockHudRowVisibility.masks.buffs, "CustomAuraContainerTemplate")
     if not playerAuras or type(playerAuras.AddAuraSlot) ~= "function" then
         Report("Could not create the player buff container.")
         return
     end
+    local utilityAuras = CreateFrame("AuraContainer", nil,
+        WarlockHudRowVisibility.masks.utility, "CustomAuraContainerTemplate")
+    local procAuras = CreateFrame("AuraContainer", nil,
+        WarlockHudRowVisibility.masks.procs, "CustomAuraContainerTemplate")
+    if not utilityAuras or not procAuras then
+        Report("Could not create the utility or proc aura container.")
+        return
+    end
     -- Native aura buttons cover their reminder glow within the HUD stratum.
     auraContainer:SetFrameLevel(hudRoot:GetFrameLevel() + 2)
+    utilityAuras:SetFrameLevel(hudRoot:GetFrameLevel() + 2)
     playerAuras:SetFrameStrata(hudRoot:GetFrameStrata())
     playerAuras:SetFrameLevel(hudRoot:GetFrameLevel() + 2)
+    procAuras:SetFrameStrata(hudRoot:GetFrameStrata())
+    procAuras:SetFrameLevel(hudRoot:GetFrameLevel() + 2)
+    WarlockHudRowVisibility.containers.utility = utilityAuras
+    WarlockHudRowVisibility.containers.procs = procAuras
     LearnWellFed()
     LearnBuffs()
 
@@ -932,7 +1028,7 @@ local function Build()
     local buffOrder = VisibleOrder(profile.buffOrder)
     local procOrder = VisibleOrder(profile.procOrder)
     local rowWidth = math.max(1, #mainOrder * ICON_SIZE + math.max(0, #mainOrder - 1) * ICON_SPACING)
-    hudAnchor = CreateFrame("Frame", nil, hudRoot)
+    hudAnchor = CreateFrame("Frame", nil, WarlockHudRowVisibility.masks.main)
     hudAnchor:SetSize(rowWidth, ICON_SIZE)
     hudAnchor:SetMovable(true)
     hudAnchor:SetClampedToScreen(true)
@@ -984,7 +1080,7 @@ local function Build()
 
     local cooldownWidth = math.max(1, #cooldownOrder * COOLDOWN_ICON_SIZE
         + math.max(0, #cooldownOrder - 1) * ICON_SPACING)
-    cooldownAnchor = CreateFrame("Frame", nil, hudRoot)
+    cooldownAnchor = CreateFrame("Frame", nil, WarlockHudRowVisibility.masks.utility)
     cooldownAnchor:SetSize(cooldownWidth, COOLDOWN_ICON_SIZE)
     cooldownAnchor:SetMovable(true)
     cooldownAnchor:SetClampedToScreen(true)
@@ -1035,7 +1131,7 @@ local function Build()
 
     local buffWidth = math.max(1, #buffOrder * BUFF_ICON_SIZE
         + math.max(0, #buffOrder - 1) * ICON_SPACING)
-    buffAnchor = CreateFrame("Frame", nil, hudRoot)
+    buffAnchor = CreateFrame("Frame", nil, WarlockHudRowVisibility.masks.buffs)
     buffAnchor:SetSize(buffWidth, BUFF_ICON_SIZE)
     buffAnchor:SetMovable(true)
     buffAnchor:SetClampedToScreen(true)
@@ -1095,7 +1191,7 @@ local function Build()
 
     local procWidth = math.max(1, #procOrder * PROC_ICON_SIZE
         + math.max(0, #procOrder - 1) * ICON_SPACING)
-    procAnchor = CreateFrame("Frame", nil, hudRoot)
+    procAnchor = CreateFrame("Frame", nil, WarlockHudRowVisibility.masks.procs)
     procAnchor:SetSize(procWidth, PROC_ICON_SIZE)
     procAnchor:SetMovable(true)
     procAnchor:SetClampedToScreen(true)
@@ -1144,7 +1240,7 @@ local function Build()
     for _, stone in ipairs(STONES) do
         local x = CooldownX(stone.name == "Healthstone" and "healthstone" or "soulstone")
         if x then
-        local icon = hudRoot:CreateTexture(nil, "ARTWORK")
+        local icon = cooldownAnchor:CreateTexture(nil, "ARTWORK")
         icon:SetSize(COOLDOWN_ICON_SIZE, COOLDOWN_ICON_SIZE)
         icon:SetPoint("CENTER", cooldownAnchor, "CENTER", x, 0)
         icon:SetTexture(C_Item and C_Item.GetItemIconByID and C_Item.GetItemIconByID(stone.defaultID))
@@ -1155,13 +1251,20 @@ local function Build()
             soulstoneLabel:SetWidth(220)
             soulstoneLabel:SetJustifyH("CENTER")
         end
-        local cooldown = CreateFrame("Cooldown", nil, hudRoot, "CooldownFrameTemplate")
+        local cooldown = CreateFrame("Cooldown", nil, cooldownAnchor, "CooldownFrameTemplate")
         cooldown:SetAllPoints(icon)
         cooldown:SetDrawBling(false)
         cooldown:SetDrawEdge(false)
         cooldown:SetHideCountdownNumbers(true)
+        local border = MakeBorder(cooldownAnchor, x, COOLDOWN_ICON_SIZE)
+        local glow
+        if stone.name == "Soulstone" then
+            glow = MakeReminderGlow(cooldownAnchor, x, border, COOLDOWN_ICON_SIZE, true)
+            glow.pulseIcon = icon
+        end
         itemIcons[#itemIcons + 1] = {
-            stone = stone, icon = icon, border = MakeBorder(cooldownAnchor, x, COOLDOWN_ICON_SIZE), cooldown = cooldown,
+            stone = stone, icon = icon, border = border, cooldown = cooldown,
+            glow = glow,
         }
         end
     end
@@ -1170,12 +1273,12 @@ local function Build()
     for index, racial in ipairs(RACIALS[raceID] or {}) do
         local x = CooldownX("racial" .. index)
         if x then
-        local icon = hudRoot:CreateTexture(nil, "ARTWORK")
+        local icon = cooldownAnchor:CreateTexture(nil, "ARTWORK")
         icon:SetSize(COOLDOWN_ICON_SIZE, COOLDOWN_ICON_SIZE)
         icon:SetPoint("CENTER", cooldownAnchor, "CENTER", x, 0)
         icon:SetTexture(C_Spell.GetSpellTexture(racial[2]))
         icon:SetTexCoord(ICON_CROP, 1 - ICON_CROP, ICON_CROP, 1 - ICON_CROP)
-        local cooldown = CreateFrame("Cooldown", nil, hudRoot, "CooldownFrameTemplate")
+        local cooldown = CreateFrame("Cooldown", nil, cooldownAnchor, "CooldownFrameTemplate")
         cooldown:SetAllPoints(icon)
         cooldown:SetDrawBling(false)
         cooldown:SetDrawEdge(false)
@@ -1189,7 +1292,7 @@ local function Build()
 
     if profile.enabled.soulshards ~= false then
         local shardSize = profile.shardSize
-        local shardAnchor = CreateFrame("Frame", nil, hudRoot)
+        local shardAnchor = CreateFrame("Frame", nil, WarlockHudRowVisibility.masks.shards)
         shardState.anchor = shardAnchor
         shardAnchor:SetSize(shardSize, shardSize)
         shardAnchor:SetMovable(true)
@@ -1238,7 +1341,7 @@ local function Build()
             end
         end)
         shardMover:Hide()
-        local shardButton = CreateFrame("Button", nil, hudRoot)
+        local shardButton = CreateFrame("Button", nil, shardAnchor)
         shardState.button = shardButton
         shardButton:SetSize(shardSize, shardSize)
         shardButton:SetPoint("CENTER", shardAnchor, "CENTER")
@@ -1309,7 +1412,7 @@ local function Build()
                 local previewID = C_Spell and C_Spell.GetSpellIDForSpellIdentifier
                     and C_Spell.GetSpellIDForSpellIdentifier(preview.name)
                     or preview.ids[1]
-                local icon = hudRoot:CreateTexture(nil, "ARTWORK")
+                local icon = anchor:CreateTexture(nil, "ARTWORK")
                 icon:SetSize(iconSize, iconSize)
                 icon:SetPoint("CENTER", anchor, "CENTER", x, 0)
                 icon:SetTexture(C_Spell.GetSpellTexture(previewID)
@@ -1325,7 +1428,8 @@ local function Build()
                 baseCreated[groupKey] = true
             end
 
-            auraContainer:AddAuraSlot(spell.name, "HARMFUL|PLAYER", {
+            (spell.group == 2 and utilityAuras or auraContainer):AddAuraSlot(
+                spell.name, "HARMFUL|PLAYER", {
                 candidateFilters = {
                     includeSpellIDs = includeSpellIDs,
                 },
@@ -1369,13 +1473,14 @@ local function Build()
     local armorX = Position(buffOrder, "armor", BUFF_ICON_SIZE)
     if armorX then
     local armorHolder = groupBuffIcons.holders.armor
-    local armorIcon = hudRoot:CreateTexture(nil, "ARTWORK")
+    local armorIcon = armorHolder:CreateTexture(nil, "ARTWORK")
     armorIcon:SetSize(BUFF_ICON_SIZE, BUFF_ICON_SIZE)
     armorIcon:SetPoint("CENTER", armorHolder, "CENTER")
     armorIcon:SetTexture(C_Spell.GetSpellTexture(
         C_Spell.GetSpellIDForSpellIdentifier("Demon Armor")
         or C_Spell.GetSpellIDForSpellIdentifier("Demon Skin") or 706))
     armorIcon:SetTexCoord(ICON_CROP, 1 - ICON_CROP, ICON_CROP, 1 - ICON_CROP)
+    armorIcon:SetDesaturated(profile.colorActiveBuffs ~= false)
     local armorBorder = MakeBorder(armorHolder, 0, BUFF_ICON_SIZE)
     armorGlow = MakeReminderGlow(armorHolder, 0, armorBorder, BUFF_ICON_SIZE)
     armorGlow.pulseIcon = armorIcon
@@ -1403,7 +1508,7 @@ local function Build()
             button:SetPoint("CENTER", armorHolder, "CENTER")
             local auraIcon = button:CreateTexture(nil, "ARTWORK")
             auraIcon:SetAllPoints(button)
-            auraIcon:SetDesaturated(true)
+            auraIcon:SetDesaturated(profile.colorActiveBuffs == false)
             auraIcon:SetTexCoord(ICON_CROP, 1 - ICON_CROP, ICON_CROP, 1 - ICON_CROP)
             button:SetIcon(auraIcon)
             local cooldown = CreateFrame("Cooldown", nil, button, "CooldownFrameTemplate")
@@ -1421,12 +1526,12 @@ local function Build()
     if foodX then
         local foodHolder = groupBuffIcons.holders.wellfed
         wellFedSlotCreated = true
-        local foodIcon = hudRoot:CreateTexture(nil, "ARTWORK")
+        local foodIcon = foodHolder:CreateTexture(nil, "ARTWORK")
         foodIcon:SetSize(BUFF_ICON_SIZE, BUFF_ICON_SIZE)
         foodIcon:SetPoint("CENTER", foodHolder, "CENTER")
         foodIcon:SetTexture(C_Spell.GetSpellTexture(19705) or "Interface\\Icons\\INV_Misc_Food_15")
         foodIcon:SetTexCoord(ICON_CROP, 1 - ICON_CROP, ICON_CROP, 1 - ICON_CROP)
-        foodIcon:SetDesaturated(false)
+        foodIcon:SetDesaturated(profile.colorActiveBuffs ~= false)
         local foodBorder = MakeBorder(foodHolder, 0, BUFF_ICON_SIZE)
         wellFedGlow = MakeReminderGlow(foodHolder, 0, foodBorder, BUFF_ICON_SIZE)
         wellFedGlow.pulseIcon = foodIcon
@@ -1438,7 +1543,7 @@ local function Build()
                 button:SetPoint("CENTER", foodHolder, "CENTER")
                 local auraIcon = button:CreateTexture(nil, "ARTWORK")
                 auraIcon:SetAllPoints(button)
-                auraIcon:SetDesaturated(true)
+                auraIcon:SetDesaturated(profile.colorActiveBuffs == false)
                 auraIcon:SetTexCoord(ICON_CROP, 1 - ICON_CROP, ICON_CROP, 1 - ICON_CROP)
                 button:SetIcon(auraIcon)
                 local cooldown = CreateFrame("Cooldown", nil, button, "CooldownFrameTemplate")
@@ -1462,14 +1567,13 @@ local function Build()
             end
             local icon, border, glow
             if not buff.activeOnly then
-                icon = hudRoot:CreateTexture(nil, "ARTWORK")
+                icon = holder:CreateTexture(nil, "ARTWORK")
                 icon:SetSize(BUFF_ICON_SIZE, BUFF_ICON_SIZE)
                 icon:SetPoint("CENTER", holder, "CENTER")
                 icon:SetTexture(C_Spell.GetSpellTexture(buff.ids[1])
                     or "Interface\\Icons\\INV_Misc_QuestionMark")
                 icon:SetTexCoord(ICON_CROP, 1 - ICON_CROP, ICON_CROP, 1 - ICON_CROP)
-                icon:SetDesaturated(false)
-                icon:SetVertexColor(1, 0.3, 0.3)
+                icon:SetDesaturated(profile.colorActiveBuffs ~= false)
                 border = MakeBorder(holder, 0, BUFF_ICON_SIZE)
                 glow = MakeReminderGlow(holder, 0, border, BUFF_ICON_SIZE, true)
                 glow.pulseIcon = icon
@@ -1486,7 +1590,7 @@ local function Build()
                     button:SetPoint("CENTER", holder, "CENTER")
                     local auraIcon = button:CreateTexture(nil, "ARTWORK")
                     auraIcon:SetAllPoints(button)
-                    auraIcon:SetDesaturated(true)
+                    auraIcon:SetDesaturated(profile.colorActiveBuffs == false)
                     auraIcon:SetTexCoord(ICON_CROP, 1 - ICON_CROP, ICON_CROP, 1 - ICON_CROP)
                     button:SetIcon(auraIcon)
                     if buff.activeOnly then
@@ -1511,7 +1615,7 @@ local function Build()
             for _, spellID in ipairs(proc.ids) do includeSpellIDs[spellID] = true end
             local currentID = C_Spell.GetSpellIDForSpellIdentifier(proc.name)
             if currentID then includeSpellIDs[currentID] = true end
-            playerAuras:AddAuraSlot(proc.key, "HELPFUL", {
+            procAuras:AddAuraSlot(proc.key, "HELPFUL", {
                 candidateFilters = { includeSpellIDs = includeSpellIDs },
                 initializeFrame = function(button)
                     button:SetSize(PROC_ICON_SIZE, PROC_ICON_SIZE)
@@ -1550,15 +1654,25 @@ local function Build()
         end
     end
 
-    playerAuras:SetSize(cooldownWidth, COOLDOWN_ICON_SIZE)
-    playerAuras:SetPoint("CENTER", cooldownAnchor, "CENTER")
+    playerAuras:SetSize(math.max(1, #buffOrder * BUFF_ICON_SIZE), BUFF_ICON_SIZE)
+    playerAuras:SetPoint("CENTER", buffAnchor, "CENTER")
+    utilityAuras:SetSize(cooldownWidth, COOLDOWN_ICON_SIZE)
+    utilityAuras:SetPoint("CENTER", cooldownAnchor, "CENTER")
+    procAuras:SetSize(math.max(1, #procOrder * PROC_ICON_SIZE), PROC_ICON_SIZE)
+    procAuras:SetPoint("CENTER", procAnchor, "CENTER")
 
     auraContainer:SetUnit("target")
     auraContainer:Show()
     auraContainer:UpdateAllAuras()
+    utilityAuras:SetUnit("target")
+    utilityAuras:Show()
+    utilityAuras:UpdateAllAuras()
     playerAuras:SetUnit("player")
     playerAuras:Show()
     playerAuras:UpdateAllAuras()
+    procAuras:SetUnit("player")
+    procAuras:Show()
+    procAuras:UpdateAllAuras()
     playerAuraContainer = playerAuras
     container = auraContainer
     UpdateVisualState()
@@ -1568,6 +1682,7 @@ local function Build()
     UpdateArmorGlow()
     UpdateWellFedGlow()
     UpdateGroupBuffs()
+    WarlockHudRowVisibility.Update()
     WarlockHudPositionAssignmentHighlights()
 end
 
@@ -1592,6 +1707,8 @@ local function Rebuild()
     buffAnchor, buffMover = nil, nil
     procAnchor, procMover = nil, nil
     icons, itemIcons, racialIcons, groupBuffIcons = {}, {}, {}, {}
+    WarlockHudRowVisibility.masks = {}
+    WarlockHudRowVisibility.containers = {}
     assignmentFlashes = {}
     if not IsAddonEnabled() then
         pendingKnownRebuild = false
@@ -1692,6 +1809,7 @@ events:SetScript("OnEvent", function(_, event)
         UpdateArmorGlow()
         UpdateWellFedGlow()
         UpdateGroupBuffs()
+        UpdateRowVisibility()
         if event == "PLAYER_LOGIN" then
             local version = C_AddOns and C_AddOns.GetAddOnMetadata
                 and C_AddOns.GetAddOnMetadata("Warlock_Hud", "Version") or "unknown"
@@ -1702,6 +1820,7 @@ events:SetScript("OnEvent", function(_, event)
         UpdateArmorGlow()
         UpdateWellFedGlow()
         UpdateGroupBuffs()
+        UpdateRowVisibility()
     elseif event == "BAG_UPDATE_DELAYED" or event == "BAG_UPDATE_COOLDOWN" then
         UpdateStones()
         UpdateShardCount()
@@ -1714,8 +1833,12 @@ events:SetScript("OnEvent", function(_, event)
         LearnWellFed()
         LearnBuffs()
         if playerAuraContainer then playerAuraContainer:UpdateAllAuras() end
+        if WarlockHudRowVisibility.containers.procs then
+            WarlockHudRowVisibility.containers.procs:UpdateAllAuras()
+        end
         UpdateWellFedGlow()
         UpdateGroupBuffs()
+        UpdateRowVisibility()
     elseif event == "GROUP_ROSTER_UPDATE" or event == "PLAYER_ENTERING_WORLD"
         or event == "ZONE_CHANGED_NEW_AREA" then
         if event == "PLAYER_ENTERING_WORLD" then UpdateSpecProfile() end
@@ -1723,6 +1846,9 @@ events:SetScript("OnEvent", function(_, event)
     elseif event == "PLAYER_TARGET_CHANGED" and container then
         -- Target swaps are not aura changes on the previous target.
         container:UpdateAllAuras()
+        if WarlockHudRowVisibility.containers.utility then
+            WarlockHudRowVisibility.containers.utility:UpdateAllAuras()
+        end
         UpdateVisualState()
         UpdateRange()
     end
@@ -1762,6 +1888,7 @@ events:SetScript("OnUpdate", function(_, elapsed)
                     if shardState.mover then shardState.mover:Hide() end
                 end
             end
+            UpdateRowVisibility()
         end
     end
 end)
@@ -1916,5 +2043,6 @@ WarlockHudAPI = {
     NormalizeProfile = NormalizeProfile,
     GetSoulShardCount = GetSoulShardCount,
     RefreshShardWarning = UpdateShardCount,
+    RefreshRowVisibility = UpdateRowVisibility,
     Rebuild = Rebuild,
 }

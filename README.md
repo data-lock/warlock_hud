@@ -26,7 +26,7 @@ so you can see the full layout before choosing what to track. Open it from
 | --- | --- |
 | Main row | Corruption, Immolate, Siphon Life, Banes, Curses, and Drain spells. Banes, Curses, and Drains each share an icon slot. Active target effects show a countdown, including milliseconds. |
 | Cooldown row | Healthstone, Soulstone, Fear, and available racial abilities. |
-| Buff row | Demon Armor / Demon Skin, Well Fed, Fortitude, Mark or Gift of the Wild, Intellect, Spirit, Kings, Salvation, Thorns, and Unending Breath. Active buffs show grey icons with countdowns. Thorns follows the same Druid-aware missing-buff reminder and active-buff formatting as Mark of the Wild. Unending Breath appears at the right end only while active. Visible buffs pack left to right. |
+| Buff row | Demon Armor / Demon Skin, Well Fed, Fortitude, Mark or Gift of the Wild, Intellect, Spirit, Kings, Salvation, Thorns, and Unending Breath. Active buffs show colored icons with countdowns by default; a setting reverses active and missing colors. Thorns follows the same Druid-aware missing-buff reminder and active-buff formatting as Mark of the Wild. Unending Breath appears at the right end only while active. Visible buffs pack left to right. |
 | Proc row | Power Infusion and Nightfall appear only while active, with a pulsing glow and countdown. |
 | Soul Shards | A separate icon near the Player Frame shows your shard count. It flashes red at or below the low warning threshold (default 4), or yellow at or above the high threshold (default 18) or when shards occupy regular bags alongside an equipped Soul Bag. Each click destroys one shard from a regular bag, stopping when those bags are clear or your configured minimum remains. The default minimum is 8. Shards cannot be destroyed in combat. |
 | Nameplates | A copper tick marks 20% health on attackable enemies' health bars. |
@@ -38,6 +38,14 @@ The Buffs row keeps its left edge where you placed it as icons appear or disappe
 The HUD checks known spells and talents when deciding which icons to show.
 On Tracked Auras, the Target DoT color toggle reverses the main row's active
 and missing colors. The default is colored when active and grey when missing.
+The Buffs page has its own color toggle. Missing-buff reminders still pulse red.
+General has separate out-of-combat visibility switches for Target DoTs, Utility,
+Buffs, Procs, and Soul Shards. Hidden rows appear in combat and Edit Mode.
+
+Drain Life, Drain Mana, and Drain Soul show four interior tick markers on the
+native player castbar while channeling. With a wand equipped, Shift+Right-click
+a living enemy in the game world to target it and start Shoot. Ordinary
+right-click keeps its usual behavior. `/whwand` reports the wand binding state.
 
 The addon can announce Ritual of Summoning, a Soulstone cast, and a completed
 Healthstone trade. Soulstone announcements go to party, raid, or instance chat
@@ -112,7 +120,7 @@ addon and interface versions.
 <summary>General</summary>
 
 Enable Warlock HUD for this character and start the temporary on-screen demo
-of every HUD bar.
+of every HUD bar. Choose whether each HUD row shows out of combat.
 
 ![General settings](screenshots/whud_options_1_general.png)
 
@@ -134,17 +142,25 @@ nameplate 20% marker.
 Choose eligible Corruption, Immolate, Siphon Life, Bane, Curse, Drain, and Fear
 auras. Set whether active Target DoTs appear in color or grey.
 
-Use **Group Assignments** to open a movable, resizable window with a Curse and Bane choice
-for each Warlock in your group, or yourself while solo. `/whud assignments` opens
+Use **Group Assignments** to open a movable, resizable window with a Curse, Bane,
+and Soulstone target choice for each Warlock in your group, or yourself while
+solo. `/whud assignments` opens
 the same window. Drag the lower-right corner to resize it, or press **Compact**
-for a roster-sized list of names and Curse/Bane icons. Press **Expand** to edit
-the choices again. Assignments survive `/reload` for this character, and group
-assignments clear when the group disbands. Anyone using the addon can assign spells. The chosen
-spell appears as your idle HUD image and sets its range check. A different
+for a roster-sized list of names and assignment icons. Press **Expand** to edit
+the choices again. Group assignments survive `/reload` for the current roster;
+solo login starts with assignments unset. Group assignments clear when the
+group disbands. **Clear Assignments** resets Curse, Bane, and Soulstone choices
+for every Warlock shown. Multiple Warlocks may choose the same Soulstone target.
+Anyone using the addon can assign spells. The chosen Curse or Bane appears as
+your idle HUD image and sets its range check. A different
 successful Curse or Bane cast gives a short local warning. The window never
 casts spells. The Announce button shows its party, raid, or instance destination
 and sends the current assignments there only when clicked. You can also use
 `/whud announceassignments`.
+
+When your assigned Soulstone target is confirmed missing the buff and your
+Soulstone is ready, its Utility icon pulses red. An unknown aura state does not
+trigger the reminder.
 
 ![Tracked Auras settings](screenshots/whud_options_2_tracked_auras.png)
 
@@ -166,7 +182,8 @@ target changes, or the assignment changes.
 <details>
 <summary>Buffs</summary>
 
-Size, reorder, or hide buff slots. The page also explains group buff reminders.
+Size, reorder, or hide buff slots. Choose active versus missing icon colors.
+The page also explains group buff reminders.
 
 ![Buff settings](screenshots/whud_options_3_buffs.png)
 

@@ -22,7 +22,7 @@ local SPELL_NAMES = {
         DOOM = "Bane of Doom", AGONY = "Bane of Agony", HAVOC = "Bane of Havoc",
     },
 }
-local byGUID, roster, rosterByName = {}, {}, {}
+local byGUID, roster, rosterByName, members = {}, {}, {}, {}
 local assignments = {}
 local wasGrouped = false
 local pendingSnapshot
@@ -33,7 +33,7 @@ local registered = false
 local lastCastGUID, lastCastID
 local window, rowsFrame, compactRowsFrame, statusText, enableCheck, warningCheck
 local rows, compactRows = {}, {}
-local FULL_WIDTH, COMPACT_WIDTH = 635, 385
+local FULL_WIDTH, COMPACT_WIDTH = 815, 465
 local events = CreateFrame("Frame")
 
 local function SyncTrace(message)
@@ -53,7 +53,15 @@ function WarlockHudAssignmentTraceState()
         local state = assignments[row.guid] or {}
         WarlockHudTraceAssignment("STATE", row.name .. " " .. row.guid
             .. " curse=" .. tostring(state.curse or "NONE")
-            .. " bane=" .. tostring(state.bane or "NONE"), true)
+            .. " bane=" .. tostring(state.bane or "NONE")
+            .. " soulstone=" .. tostring(state.soulstone or "NONE"), true)
+    end
+    local target = WarlockHudSoulstoneAssignmentTarget()
+    if WarlockHudSoulstoneAuraTraceState then
+        WarlockHudSoulstoneAuraTraceState(target)
+    end
+    if WarlockHudSoulstoneWarningTraceState then
+        WarlockHudSoulstoneWarningTraceState()
     end
 end
 
@@ -101,6 +109,7 @@ local function AddRosterUnit(unit)
         or not name or byGUID[guid] then return end
     local row = { guid = guid, name = name, unit = unit, class = class }
     byGUID[guid] = row
+    members[#members + 1] = row
     if class == "WARLOCK" then roster[#roster + 1] = row end
     local full = NameKey(name)
     rosterByName[full] = row
@@ -115,7 +124,7 @@ end
 local function RefreshRoster()
     local grouped = IsInGroup()
     local disbanded = wasGrouped and not grouped
-    byGUID, roster, rosterByName = {}, {}, {}
+    byGUID, roster, rosterByName, members = {}, {}, {}, {}
     AddRosterUnit("player")
     local raid = IsInRaid()
     local count = raid and GetNumGroupMembers()
@@ -129,11 +138,21 @@ local function RefreshRoster()
         for guid in pairs(assignments) do
             if not byGUID[guid] or byGUID[guid].class ~= "WARLOCK" then
                 assignments[guid] = nil
+            elseif assignments[guid].soulstone
+                and assignments[guid].soulstone ~= "NONE"
+                and not byGUID[assignments[guid].soulstone] then
+                assignments[guid].soulstone = "NONE"
+                assignments[guid].soulstoneBy = nil
             end
         end
     end
     wasGrouped = grouped
     table.sort(roster, function(a, b)
+        if a.unit == "player" then return true end
+        if b.unit == "player" then return false end
+        return a.name < b.name
+    end)
+    table.sort(members, function(a, b)
         if a.unit == "player" then return true end
         if b.unit == "player" then return false end
         return a.name < b.name
@@ -188,6 +207,9 @@ local function Send(parts)
 end
 
 local function ValidKey(category, key)
+    if category == "soulstone" then
+        return key == "NONE" or (type(key) == "string" and byGUID[key] ~= nil)
+    end
     if not TYPES[category] then return false end
     for _, choice in ipairs(TYPES[category]) do
         if choice[1] == key then return true end
@@ -204,7 +226,9 @@ local function SaveAssignmentCache()
         if byGUID[guid] and byGUID[guid].class == "WARLOCK" then
             entries[guid] = {
                 curse = state.curse, bane = state.bane,
+                soulstone = ValidKey("soulstone", state.soulstone) and state.soulstone or nil,
                 curseBy = state.curseBy, baneBy = state.baneBy,
+                soulstoneBy = state.soulstoneBy,
             }
         end
     end
@@ -221,7 +245,7 @@ local function RestoreAssignmentCache()
         if byGUID[guid] and byGUID[guid].class == "WARLOCK"
             and type(state) == "table" then
             local restored = {}
-            for _, category in ipairs({ "curse", "bane" }) do
+            for _, category in ipairs({ "curse", "bane", "soulstone" }) do
                 local key = state[category]
                 if ValidKey(category, key) then
                     restored[category] = key
@@ -271,6 +295,14 @@ function WarlockHudAssignmentSpell(category)
     return AssignedSpell(category, key)
 end
 
+function WarlockHudSoulstoneAssignmentTarget()
+    if not Enabled() then return nil end
+    local own = OwnRow()
+    local state = own and assignments[own.guid]
+    local target = state and state.soulstone
+    return target ~= "NONE" and target or nil
+end
+
 local function ClearWarning(category)
     if WarlockHudFlashAssignmentSlot then
         WarlockHudFlashAssignmentSlot(category, false)
@@ -283,6 +315,7 @@ local function Changed(clearWarning)
     SaveAssignmentCache()
     if clearWarning ~= false then ClearWarning() end
     if WarlockHudRefreshAssignmentIcons then WarlockHudRefreshAssignmentIcons() end
+    if WarlockHudRefreshAssignedSoulstones then WarlockHudRefreshAssignedSoulstones() end
     if window and window:IsShown() and window.Refresh then window:Refresh() end
 end
 
@@ -300,6 +333,20 @@ local function SetAssignment(guid, category, key, by)
     SyncTrace("SET accepted " .. tostring(guid) .. " " .. category .. "=" .. key)
     Changed()
     return true
+end
+
+local function ClearAllAssignments()
+    if not Enabled() or not OwnRow() then return end
+    assignments, pendingSnapshot = {}, nil
+    SyncTrace("CLEAR all assignments for " .. #roster .. " Warlocks")
+    Changed()
+    -- SET NONE keeps clients on the existing V1 protocol in sync.
+    local own = OwnRow()
+    for _, row in ipairs(roster) do
+        Send({ "V1", "SET", row.guid, "curse", "NONE", own.guid })
+        Send({ "V1", "SET", row.guid, "bane", "NONE", own.guid })
+        Send({ "V1", "SET", row.guid, "soulstone", "NONE", own.guid })
+    end
 end
 
 local function RequestSnapshot()
@@ -331,11 +378,15 @@ local function Snapshot()
     local rows = 0
     for _, row in ipairs(roster) do
         local state = assignments[row.guid]
-        if state and (state.curse or state.bane) then
+        if state and (state.curse or state.bane or state.soulstone) then
             rows = rows + 1
             Send({ "V1", "ROW", nonce, row.guid,
                 state.curse or "NONE", state.bane or "NONE",
                 state.curseBy or "0", state.baneBy or "0" })
+            if state.soulstone and state.soulstone ~= "NONE" then
+                Send({ "V1", "STONE", nonce, row.guid,
+                    state.soulstone, state.soulstoneBy or "0" })
+            end
         end
     end
     Send({ "V1", "END", nonce, own.guid })
@@ -417,12 +468,28 @@ local function Receive(payload, sender)
             SyncTrace("ROW rejected pending=" .. tostring(pending ~= nil))
             return
         end
+        local stone = pending.rows[fields[4]] or {}
         pending.rows[fields[4]] = {
             curse = fields[5], bane = fields[6],
             curseBy = fields[7] ~= "0" and fields[7] or nil,
             baneBy = fields[8] ~= "0" and fields[8] or nil,
+            soulstone = stone.soulstone, soulstoneBy = stone.soulstoneBy,
         }
         SyncTrace("ROW accepted member=" .. fields[4])
+    elseif action == "STONE" then
+        local pending = pendingSnapshot
+        if #fields ~= 6 or not pending or pending.sender ~= from.guid
+            or pending.nonce ~= fields[3] or not byGUID[fields[4]]
+            or byGUID[fields[4]].class ~= "WARLOCK"
+            or not ValidKey("soulstone", fields[5])
+            or (fields[6] ~= "0" and not byGUID[fields[6]]) then
+            SyncTrace("STONE rejected pending=" .. tostring(pending ~= nil))
+            return
+        end
+        local state = pending.rows[fields[4]] or {}
+        state.soulstone = fields[5]
+        state.soulstoneBy = fields[6] ~= "0" and fields[6] or nil
+        pending.rows[fields[4]] = state
     elseif action == "END" then
         local pending = pendingSnapshot
         if #fields ~= 4 or not pending or pending.sender ~= from.guid
@@ -457,6 +524,9 @@ function WarlockHudSetAssignment(guid, category, key)
 end
 
 local function Label(category, key)
+    if category == "soulstone" then
+        return byGUID[key] and DisplayName(byGUID[key].name) or "None"
+    end
     for _, choice in ipairs(TYPES[category]) do
         if choice[1] == key then return choice[2] end
     end
@@ -542,7 +612,14 @@ local function NewDrop(parent, category, x)
     UIDropDownMenu_SetWidth(drop, 145)
     UIDropDownMenu_Initialize(drop, function(_, level)
         if (level or 1) ~= 1 then return end
-        for _, choice in ipairs(TYPES[category]) do
+        local choices = TYPES[category]
+        if category == "soulstone" then
+            choices = { { "NONE", "None" } }
+            for _, member in ipairs(members) do
+                choices[#choices + 1] = { member.guid, DisplayName(member.name) }
+            end
+        end
+        for _, choice in ipairs(choices) do
             local info = UIDropDownMenu_CreateInfo()
             info.text = choice[2]
             info.checked = drop.key == choice[1]
@@ -555,7 +632,7 @@ end
 
 local function NewRow(index)
     local row = CreateFrame("Frame", nil, rowsFrame)
-    row:SetSize(590, 58)
+    row:SetSize(FULL_WIDTH - 45, 58)
     row:SetPoint("TOPLEFT", 0, -(index - 1) * 59)
     row.name = row:CreateFontString(nil, "ARTWORK", "GameFontHighlight")
     row.name:SetPoint("TOPLEFT", 4, -4)
@@ -566,11 +643,12 @@ local function NewRow(index)
     row.highlight:SetColorTexture(0.35, 0.3, 0.55, 0.25)
     row.by = row:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
     row.by:SetPoint("TOPLEFT", 4, -31)
-    row.by:SetWidth(575)
+    row.by:SetWidth(FULL_WIDTH - 60)
     row.by:SetHeight(24)
     row.by:SetJustifyH("LEFT")
     row.curse = NewDrop(row, "curse", 205)
     row.bane = NewDrop(row, "bane", 385)
+    row.soulstone = NewDrop(row, "soulstone", 565)
     rows[index] = row
     return row
 end
@@ -594,7 +672,7 @@ local function NewCompactRow(index)
     row.name:SetWidth(238)
     row.name:SetJustifyH("LEFT")
     row.icons = {}
-    for category, x in pairs({ curse = 257, bane = 309 }) do
+    for category, x in pairs({ curse = 257, bane = 309, soulstone = 361 }) do
         local iconCategory = category
         local icon = CreateFrame("Frame", nil, row)
         icon:SetSize(30, 30)
@@ -608,8 +686,15 @@ local function NewCompactRow(index)
         icon:EnableMouse(true)
         icon:SetScript("OnEnter", function(self)
             GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-            GameTooltip:SetText((iconCategory == "curse" and "Curse: " or "Bane: ")
-                .. Label(iconCategory, self.key or "NONE"))
+            local title = iconCategory == "curse" and "Curse: "
+                or iconCategory == "bane" and "Bane: " or "Soulstone: "
+            GameTooltip:SetText(title .. Label(iconCategory, self.key or "NONE"))
+            if iconCategory == "soulstone" and self.key ~= "NONE" then
+                local status = WarlockHudSoulstoneAuraStatus
+                    and WarlockHudSoulstoneAuraStatus(self.key)
+                GameTooltip:AddLine(status == true and "Soulstone active"
+                    or status == false and "Soulstone missing" or "Soulstone status unknown")
+            end
             GameTooltip:Show()
         end)
         icon:SetScript("OnLeave", function() GameTooltip:Hide() end)
@@ -632,11 +717,14 @@ local function ApplyWindowMode()
     window.fullControls:SetShown(not compact)
     window.toggle:SetText(compact and "Expand" or "Compact")
     window.toggle:ClearAllPoints()
+    window.clearAssignments:ClearAllPoints()
     if compact then
         window.toggle:SetPoint("TOPRIGHT", -20, -35)
+        window.clearAssignments:SetPoint("BOTTOMLEFT", 20, 10)
         window:SetSize(COMPACT_WIDTH, 135 + #roster * 38)
     else
         window.toggle:SetPoint("BOTTOMRIGHT", -30, 10)
+        window.clearAssignments:SetPoint("BOTTOMLEFT", 335, 10)
         local width = math.max(FULL_WIDTH, profile.assignmentWindowWidth or FULL_WIDTH)
         local height = math.max(MinimumFullHeight(),
             profile.assignmentWindowHeight or MinimumFullHeight())
@@ -658,6 +746,7 @@ local function RefreshWindow()
     statusText:SetText(PlayerStatus())
     enableCheck:SetChecked(Enabled())
     warningCheck:SetChecked(Profile().assignmentWarnings ~= false)
+    window.clearAssignments:SetEnabled(canEdit and true or false)
     for index, member in ipairs(roster) do
         local row = rows[index] or NewRow(index)
         row.guid = member.guid
@@ -670,9 +759,19 @@ local function RefreshWindow()
             color and color.g or 0.51, color and color.b or 0.79)
         local curseBy = state.curseBy and byGUID[state.curseBy]
         local baneBy = state.baneBy and byGUID[state.baneBy]
+        local stoneBy = state.soulstoneBy and byGUID[state.soulstoneBy]
+        local stoneStatus = state.soulstone and state.soulstone ~= "NONE"
+            and WarlockHudSoulstoneAuraStatus
+            and WarlockHudSoulstoneAuraStatus(state.soulstone)
+        local stoneText = stoneStatus == true and "Active"
+            or stoneStatus == false and "Missing" or "Unknown"
+        local stoneDetails = state.soulstone and state.soulstone ~= "NONE"
+            and (stoneText .. " (by " .. DisplayName(stoneBy and stoneBy.name) .. ")")
+            or "Unassigned"
         row.by:SetText("Curse by: " .. DisplayName(curseBy and curseBy.name)
-            .. "     Bane by: " .. DisplayName(baneBy and baneBy.name))
-        for _, category in ipairs({ "curse", "bane" }) do
+            .. "     Bane by: " .. DisplayName(baneBy and baneBy.name)
+            .. "     Soulstone: " .. stoneDetails)
+        for _, category in ipairs({ "curse", "bane", "soulstone" }) do
             local drop = row[category]
             drop.key = state[category] or "NONE"
             UIDropDownMenu_SetText(drop, Label(category, drop.key))
@@ -690,10 +789,13 @@ local function RefreshWindow()
         local color = RAID_CLASS_COLORS and RAID_CLASS_COLORS.WARLOCK
         row.name:SetTextColor(color and color.r or 0.58,
             color and color.g or 0.51, color and color.b or 0.79)
-        for _, category in ipairs({ "curse", "bane" }) do
+        for _, category in ipairs({ "curse", "bane", "soulstone" }) do
             local icon = row.icons[category]
             icon.key = state[category] or "NONE"
-            local texture = SpellTexture(category, icon.key)
+            local texture = category == "soulstone" and icon.key ~= "NONE"
+                and C_Item and C_Item.GetItemIconByID
+                and C_Item.GetItemIconByID(5232)
+                or (category ~= "soulstone" and SpellTexture(category, icon.key))
             icon.texture:SetTexture(texture)
             icon.texture:SetShown(texture and true or false)
             icon.text:SetShown(not texture)
@@ -725,7 +827,8 @@ function WarlockHudAnnounceAssignments()
         local state = assignments[row.guid] or {}
         lines[#lines + 1] = "Warlock assignments - " .. DisplayName(row.name) .. ": Curse "
             .. Label("curse", state.curse or "NONE") .. ", Bane "
-            .. Label("bane", state.bane or "NONE")
+            .. Label("bane", state.bane or "NONE") .. ", Soulstone "
+            .. Label("soulstone", state.soulstone or "NONE")
     end
     if #lines == 0 then
         Say("No Warlocks are available to announce.")
@@ -745,7 +848,7 @@ end
 local function CreateWindow()
     window = CreateFrame("Frame", "WarlockHudAssignmentsWindow", UIParent,
         "BasicFrameTemplateWithInset")
-    window:SetSize(635, 420)
+    window:SetSize(FULL_WIDTH, 420)
     window:SetFrameStrata("DIALOG")
     window:SetMovable(true)
     window:SetResizable(true)
@@ -818,9 +921,13 @@ local function CreateWindow()
     baneHeader:SetPoint("TOPLEFT", 423, -100)
     baneHeader:SetText("Bane")
     window.fullControls[#window.fullControls + 1] = baneHeader
+    local stoneHeader = window:CreateFontString(nil, "ARTWORK", "GameFontNormal")
+    stoneHeader:SetPoint("TOPLEFT", 603, -100)
+    stoneHeader:SetText("Soulstone target")
+    window.fullControls[#window.fullControls + 1] = stoneHeader
     rowsFrame = CreateFrame("Frame", nil, window)
     rowsFrame:SetPoint("TOPLEFT", 20, -120)
-    rowsFrame:SetSize(590, 58)
+    rowsFrame:SetSize(FULL_WIDTH - 45, 58)
     compactRowsFrame = CreateFrame("Frame", nil, window)
     compactRowsFrame:SetPoint("TOPLEFT", 20, -93)
     compactRowsFrame:SetSize(COMPACT_WIDTH - 40, 36)
@@ -833,10 +940,13 @@ local function CreateWindow()
     local compactBane = window:CreateFontString(nil, "ARTWORK", "GameFontNormal")
     compactBane:SetPoint("TOPLEFT", 330, -74)
     compactBane:SetText("Bane")
-    window.compactHeaders = { compactName, compactCurse, compactBane }
+    local compactStone = window:CreateFontString(nil, "ARTWORK", "GameFontNormal")
+    compactStone:SetPoint("TOPLEFT", 382, -74)
+    compactStone:SetText("Soulstone")
+    window.compactHeaders = { compactName, compactCurse, compactBane, compactStone }
     statusText = window:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
     statusText:SetPoint("BOTTOMLEFT", 22, 48)
-    statusText:SetWidth(590)
+    statusText:SetWidth(FULL_WIDTH - 45)
     statusText:SetHeight(24)
     statusText:SetJustifyH("LEFT")
     window.fullControls[#window.fullControls + 1] = statusText
@@ -849,6 +959,16 @@ local function CreateWindow()
     sync:ClearAllPoints()
     sync:SetPoint("BOTTOMLEFT", 210, 10)
     window.fullControls[#window.fullControls + 1] = sync
+    window.clearAssignments = NewButton(window, "Clear Assignments", 150, 335,
+        -390, ClearAllAssignments)
+    window.clearAssignments:ClearAllPoints()
+    window.clearAssignments:SetPoint("BOTTOMLEFT", 335, 10)
+    window.clearAssignments:SetScript("OnEnter", function(self)
+        GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+        GameTooltip:SetText("Clear Curse, Bane, and Soulstone assignments for every Warlock shown.")
+        GameTooltip:Show()
+    end)
+    window.clearAssignments:SetScript("OnLeave", function() GameTooltip:Hide() end)
     window.toggle = NewButton(window, "Compact", 85, 0, 0, function()
         Profile().assignmentWindowCompact = not (Profile().assignmentWindowCompact == true)
         window:Refresh()
@@ -870,22 +990,26 @@ local function CreateWindow()
         Profile().assignmentWindowHeight = window:GetHeight()
     end)
     function window:Layout(width)
-        local contentWidth = math.max(590, width - 45)
+        local contentWidth = math.max(FULL_WIDTH - 45, width - 45)
         rowsFrame:SetWidth(contentWidth)
         statusText:SetWidth(contentWidth)
         for _, row in ipairs(rows) do
             row:SetWidth(contentWidth)
-            row.name:SetWidth(contentWidth - 405)
+            row.name:SetWidth(contentWidth - 585)
             row.by:SetWidth(contentWidth - 15)
             row.curse:ClearAllPoints()
-            row.curse:SetPoint("TOPRIGHT", row, "TOPRIGHT", -205, 3)
+            row.curse:SetPoint("TOPRIGHT", row, "TOPRIGHT", -385, 3)
             row.bane:ClearAllPoints()
-            row.bane:SetPoint("TOPRIGHT", row, "TOPRIGHT", -25, 3)
+            row.bane:SetPoint("TOPRIGHT", row, "TOPRIGHT", -205, 3)
+            row.soulstone:ClearAllPoints()
+            row.soulstone:SetPoint("TOPRIGHT", row, "TOPRIGHT", -25, 3)
         end
         curseHeader:ClearAllPoints()
-        curseHeader:SetPoint("TOPRIGHT", self, "TOPRIGHT", -344, -100)
+        curseHeader:SetPoint("TOPRIGHT", self, "TOPRIGHT", -524, -100)
         baneHeader:ClearAllPoints()
-        baneHeader:SetPoint("TOPRIGHT", self, "TOPRIGHT", -164, -100)
+        baneHeader:SetPoint("TOPRIGHT", self, "TOPRIGHT", -344, -100)
+        stoneHeader:ClearAllPoints()
+        stoneHeader:SetPoint("TOPRIGHT", self, "TOPRIGHT", -135, -100)
     end
     window:SetScript("OnSizeChanged", function(self, width) self:Layout(width) end)
     window.Refresh = RefreshWindow
@@ -898,7 +1022,8 @@ function WarlockHudOpenAssignments()
     local own = OwnRow()
     local state = own and assignments[own.guid]
     if state and ((state.curse and state.curse ~= "NONE")
-        or (state.bane and state.bane ~= "NONE")) then
+        or (state.bane and state.bane ~= "NONE")
+        or (state.soulstone and state.soulstone ~= "NONE")) then
         Profile().assignmentWindowCompact = true
     end
     if not window then CreateWindow() end
@@ -921,7 +1046,13 @@ events:SetScript("OnEvent", function(_, event, ...)
         registered = ok and value ~= false and true or false
         SyncTrace("login prefix registered=" .. tostring(registered))
         RefreshRoster()
-        RestoreAssignmentCache()
+        if IsInGroup() then
+            RestoreAssignmentCache()
+        else
+            -- A fresh solo login starts without assignments, even if the
+            -- previous session saved a personal choice.
+            assignments, pendingSnapshot = {}, nil
+        end
         Changed()
         RequestSnapshot()
     elseif event == "GROUP_ROSTER_UPDATE" or event == "PLAYER_ENTERING_WORLD" then

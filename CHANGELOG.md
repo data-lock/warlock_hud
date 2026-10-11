@@ -1,5 +1,114 @@
 # Changelog
 
+## v0.33.0
+
+- Add Soulstone targets to group assignments and a Clear Assignments button.
+  Solo login starts with assignments unset. Your Soulstone icon pulses red when
+  your assigned target is confirmed missing the buff and your stone is ready.
+- Add four interior tick markers to the native player castbar for Drain Life,
+  Drain Mana, and Drain Soul channels.
+- Add a Buffs color option and separate out-of-combat visibility switches for
+  Target DoTs, Utility, Buffs, Procs, and Soul Shards.
+- Add Shift+Right-click wand attack for a living enemy under the cursor while
+  a wand is equipped. Use `/whwand` for binding diagnostics.
+
+## v0.32.32 (review build)
+
+- Activate the wand click binding through a secure state driver only while
+  Shift is held over a living enemy. Detect the equipped wand in the ranged
+  slot and add `/whwand` binding diagnostics.
+
+## v0.32.31 (review build)
+
+- Bind Shift+Right-click to target the enemy under the cursor and start wand
+  Shoot while a wand is equipped. Remove the temporary binding when the wand
+  is unequipped or the HUD is disabled.
+
+## v0.32.30 (review build)
+
+- Put native aura buttons in row-specific containers so out-of-combat
+  visibility no longer calls SetAlpha on protected Blizzard buttons.
+
+## v0.32.29 (review build)
+
+- Fix the Lua upvalue limit error that prevented the HUD from loading in the
+  out-of-combat visibility review build.
+
+## v0.32.28 (review build)
+
+- Add separate out-of-combat visibility switches for Target DoTs, Utility,
+  Buffs, Procs, and Soul Shards. Hidden rows remain visible in combat and
+  Edit Mode.
+
+## v0.32.27 (review build)
+
+- Remove the right-edge marker from drain channels; keep four interior tick
+  markers.
+
+## v0.32.26 (review build)
+
+- Draw channel tick markers above Blizzard castbar effects, and include marker
+  position and opacity in channel trace output.
+
+## v0.32.25 (review build)
+
+- Keep drain tick markers above Blizzard's castbar when its drawing level
+  changes between casts.
+
+## v0.32.24 (review build)
+
+- Give channel ticks their own trace category and toggle. Record channel start
+  and castbar visibility automatically for diagnosis after a cast.
+
+## v0.32.23 (review build)
+
+- Attach channel tick markers to whichever Blizzard player castbar frame is
+  present. Use the player channel event when timing data is unavailable.
+- Add castbar and channel details to the trace window's Sync State output.
+
+## v0.32.22 (review build)
+
+- Add five tick markers to the native player castbar while channeling Drain
+  Life, Drain Mana, or Drain Soul. Markers follow the live channel length and
+  clear when the channel stops.
+
+## v0.32.21 (review build)
+
+- Add an independent Buffs color option. By default, active buffs are colored
+  and missing buffs are grey; unchecking it reverses those colors.
+- Keep missing-buff reminder pulses red in either color mode.
+
+## v0.32.20 (review build)
+
+- Start a solo login with Curse, Bane, and Soulstone assignments unset. Group
+  logins still restore the current roster's saved assignments.
+
+## v0.32.19 (review build)
+
+- Treat an uncreated Soulstone as ready when its item cooldown cannot be
+  reported. Accept either available aura lookup API for assignment status.
+- Include Soulstone aura and cooldown inputs in the trace window's Sync State
+  output to diagnose a warning that still does not pulse.
+
+## v0.32.18 (review build)
+
+- Show the missing Soulstone assignment pulse when no Soulstone item has been
+  created and its item cooldown is ready. Keep the icon colored while pulsing.
+
+## v0.32.17 (review build)
+
+- Add Soulstone targets to group assignments, including solo self assignment,
+  group sync, and a status check for any caster's Soulstone on the recipient.
+- Pulse the Soulstone cooldown icon red when your assigned recipient was
+  observed without Soulstone and your own Soulstone is ready. Aura checks wait
+  until the client permits them; an unknown status does not trigger the pulse.
+- Clear Soulstone targets with Clear Assignments.
+
+## v0.32.16 (review build)
+
+- Add Clear Assignments to the full and compact assignment windows. It clears
+  current Curse and Bane choices and sends None for each Warlock to the group.
+
 ## v0.32.15
 
 - Give the nonsecure Assignments and debug trace windows direct X handlers so

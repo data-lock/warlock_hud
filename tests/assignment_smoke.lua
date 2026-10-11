@@ -202,9 +202,11 @@ event("GROUP_ROSTER_UPDATE")
 timers[#timers][2]()
 receive("V1|BEGIN|103000|Player-3", "ClassLead")
 receive("V1|ROW|103000|Player-1|ELEMENTS|DOOM|Player-3|Player-3", "ClassLead")
+receive("V1|STONE|103000|Player-1|Player-2|Player-3", "ClassLead")
 receive("V1|END|103000|Player-3", "ClassLead")
 assert(WarlockHudAssignmentSpell("curse").name == "Curse of the Elements"
-    and WarlockHudAssignmentSpell("bane").name == "Bane of Doom",
+    and WarlockHudAssignmentSpell("bane").name == "Bane of Doom"
+    and WarlockHudSoulstoneAssignmentTarget() == "Player-2",
     "snapshot restores assignments after a reload")
 
 now = 106
@@ -218,13 +220,15 @@ assert(WarlockHudAssignmentSpell("curse") == nil,
     "a stale snapshot must not overwrite a newer assignment")
 WarlockHudSetAssignment("Player-1", "curse", "ELEMENTS")
 assert(WarlockHudDB.assignmentCache.entries["Player-1"].curse == "ELEMENTS"
-    and WarlockHudDB.assignmentCache.entries["Player-1"].bane == "DOOM",
-    "both assignment categories should be saved")
+    and WarlockHudDB.assignmentCache.entries["Player-1"].bane == "DOOM"
+    and WarlockHudDB.assignmentCache.entries["Player-1"].soulstone == "Player-2",
+    "all assignment categories should be saved")
 assert(loadfile("Warlock_Hud_Assignments.lua"))()
 event("PLAYER_LOGIN")
 assert(WarlockHudAssignmentSpell("curse").name == "Curse of the Elements"
-    and WarlockHudAssignmentSpell("bane").name == "Bane of Doom",
-    "a reload should restore saved Curse and Bane choices")
+    and WarlockHudAssignmentSpell("bane").name == "Bane of Doom"
+    and WarlockHudSoulstoneAssignmentTarget() == "Player-2",
+    "a reload should restore saved assignment choices")
 
 -- Exercise the ordinary assignment window with a minimal frame mock.
 local ui = {}
@@ -269,29 +273,29 @@ C_Spell.GetSpellTexture = function(id) return id and "icon:" .. id end
 
 WarlockHudOpenAssignments()
 local window = ui.WarlockHudAssignmentsWindow
-assert(window and profile.assignmentWindowCompact and window.width == 385
+assert(window and profile.assignmentWindowCompact and window.width == 465
     and window.height == 135 + 3 * 38,
     "a saved personal assignment should open in compact mode")
 window.toggle:OnClick()
-assert(window.width == 635 and window.height == 420,
+assert(window.width == 815 and window.height == 420,
     "expanding should open the full window at its minimum size")
-window:SetSize(760, 500)
+window:SetSize(860, 500)
 window.resizeGrip:OnMouseUp()
-assert(profile.assignmentWindowWidth == 760 and profile.assignmentWindowHeight == 500,
+assert(profile.assignmentWindowWidth == 860 and profile.assignmentWindowHeight == 500,
     "resized full dimensions should save")
 window:Hide()
 WarlockHudOpenAssignments()
-assert(profile.assignmentWindowCompact and window.width == 385,
+assert(profile.assignmentWindowCompact and window.width == 465,
     "reopening with a personal assignment should return to compact mode")
 window.toggle:OnClick()
 window.toggle:OnClick()
-assert(profile.assignmentWindowCompact and window.width == 385
+assert(profile.assignmentWindowCompact and window.width == 465
     and window.height == 135 + 3 * 38,
     "compact window should fit three Warlocks")
 assert(window.resizeGrip.shown == false and window.compactHeaders[1].shown,
     "compact view should show headers and hide the resize grip")
 window.toggle:OnClick()
-assert(not profile.assignmentWindowCompact and window.width == 760
+assert(not profile.assignmentWindowCompact and window.width == 860
     and window.height == 500,
     "expanding should restore full dimensions")
 window.toggle:OnClick()
@@ -299,5 +303,41 @@ units.party2 = nil
 event("GROUP_ROSTER_UPDATE")
 assert(window.height == 135 + 2 * 38,
     "compact height should follow the current Warlock roster")
+
+WarlockHudSetAssignment("Player-1", "curse", "ELEMENTS")
+WarlockHudSetAssignment("Player-2", "bane", "DOOM")
+WarlockHudSetAssignment("Player-1", "soulstone", "Player-2")
+WarlockHudSetAssignment("Player-2", "soulstone", "Player-2")
+assert(WarlockHudSoulstoneAssignmentTarget() == "Player-2",
+    "Soulstone can target another group member")
+assert(WarlockHudDB.assignmentCache.entries["Player-2"].soulstone == "Player-2",
+    "multiple Warlocks may share a Soulstone target")
+receive("V1|SET|Player-1|soulstone|Player-9|Player-2", "Rigged Elections")
+assert(WarlockHudSoulstoneAssignmentTarget() == "Player-2",
+    "Soulstone target outside the roster is rejected")
+local beforeClear = #sent
+assert(window.clearAssignments.shown,
+    "Clear Assignments should remain available in compact mode")
+window.clearAssignments:OnClick()
+assert(WarlockHudAssignmentSpell("curse") == nil
+    and WarlockHudAssignmentSpell("bane") == nil
+    and not next(WarlockHudDB.assignmentCache.entries),
+    "Clear Assignments should remove local choices and their cache")
+assert(#sent == beforeClear + 6
+    and sent[#sent][2] == "V1|SET|Player-2|soulstone|NONE|Player-1",
+    "Clear Assignments should sync None for all categories of each Warlock")
+
+grouped = false
+event("GROUP_ROSTER_UPDATE")
+WarlockHudSetAssignment("Player-1", "curse", "ELEMENTS")
+WarlockHudSetAssignment("Player-1", "soulstone", "Player-1")
+assert(WarlockHudSoulstoneAssignmentTarget() == "Player-1",
+    "solo self-assignment should be available during the session")
+assert(loadfile("Warlock_Hud_Assignments.lua"))()
+event("PLAYER_LOGIN")
+assert(WarlockHudAssignmentSpell("curse") == nil
+    and WarlockHudSoulstoneAssignmentTarget() == nil
+    and not next(WarlockHudDB.assignmentCache.entries),
+    "a fresh solo login should start with assignments unset")
 
 io.write("assignment smoke checks passed\n")

@@ -2,6 +2,15 @@
 
 A lightweight, configurable HUD for Warlocks in **World of Warcraft: Forever beta**. Keep your target effects, buffs, procs, cooldowns, and Soul Shards in view while you play.
 
+**Found a bug? Want a feature? Have feedback? Leave a comment! I want this to help as many people as possible.**
+
+**Future features:**
+
+*   Raid consumables tracking
+*   Gear and trinket CDs/Procs
+*   Demonology support
+
+
 ![Warlock HUD in play](https://raw.githubusercontent.com/data-lock/warlock_hud/main/screenshots/warlock_hud_overview.png)
 
 ## What it shows
@@ -9,6 +18,9 @@ A lightweight, configurable HUD for Warlocks in **World of Warcraft: Forever bet
 - **Target effects:** Corruption, Immolate, Siphon Life, Banes, Curses, and Drains. Active effects use the game's native aura countdowns. Choose whether active icons appear colored or grey.
 - **Utility:** Healthstone, Soulstone, Fear, and available racial abilities.
 - **Buffs and procs:** Armor and group buff reminders, plus Power Infusion and Nightfall while active. Arrange the bars and choose which slots to show.
+- **Assignments:** Assign a Curse, Bane, and Soulstone target to each Warlock in your group. Multiple Warlocks can choose the same Soulstone target. The window can sync choices with group members using the addon, announce them to group chat, and clear them all at once. Solo assignments start unset on login.
+- **Soulstone reminder:** Your Soulstone icon flashes red when your assigned target is confirmed missing the buff and your Soulstone is ready. An unknown aura state does not trigger the reminder.
+- **Drain channel ticks:** Four interior tick markers appear on the player castbar for Drain Life, Drain Mana, and Drain Soul.
 - **Soul Shards:** A separate count icon with configurable red low-shard and yellow high-shard warnings. The default warnings are 4 or fewer and 18 or more. An optional warning detects shards in regular bags when you have an equipped Soul Bag. Click the icon to destroy one shard from a regular bag, subject to your configured reserve; destruction is unavailable in combat.
 - **Nameplates:** An optional 20% health marker on attackable enemies.
 - **Stones:** Track a confirmed active Soulstone recipient and record group members who completed a Healthstone trade with you. Optionally place one Healthstone into an empty trade with a current group member. **You must press Accept yourself.** A completed-trade record does not prove that the recipient still carries the stone.
@@ -30,6 +42,17 @@ Use **Preview 15 requests** on the Summons page to see a sample queue with runni
 
 Type **`/whub`** or **`/whud`** to open settings. Use **General → Demo all HUD bars** to preview every bar, including normally hidden icons and procs. Move the bars and Soul Shard icon with Edit Mode. Adjust icon sizes and order, choose tracked effects and notifications, and save layouts in profiles. Profiles can switch with your active talent spec.
 
+Set each HUD row to show or hide out of combat; hidden rows appear in combat and Edit Mode. Buff icons are colored when active and grey when missing by default, with an option to reverse those colors. Missing-buff reminders still flash red.
+
+With a wand equipped, **Shift+Right-click** a living enemy in the game world to target it and start shooting. Ordinary right-click keeps its usual behavior. Type `/whwand` to inspect the binding if needed.
+
 Warlock HUD is enabled by default for Warlocks. Other classes can enable it manually from General. Settings save immediately; visual changes that require a protected rebuild take effect when the game allows it, such as after combat.
 
 See the [README and settings screenshots](https://github.com/data-lock/warlock_hud#readme) for a full tour. Source code and releases are on [GitHub](https://github.com/data-lock/warlock_hud).
+
+## Thank Yous
+
+This couldn't have been made without the support of guildies of Tabula Rasa \[EU\].
+
+*   **Tiny** for being the tester of almost everything built.
+*   **Wheat** for feedback on summon window and pending.

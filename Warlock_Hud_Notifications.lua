@@ -10,6 +10,7 @@ local tradeDebug = false
 local soulstoneDebug = false
 local summonDebug = false
 local assignmentDebug = false
+local channelDebug = false
 local TraceSoulstone
 local lastPlayerDeathAt
 local tradeCandidate
@@ -18,6 +19,7 @@ local SOULSTONE_AURAS = {
     [20707] = true, [20762] = true, [20763] = true,
     [20764] = true, [20765] = true,
 }
+local assignedSoulstoneAuras = {}
 
 local function Public(value)
     return value ~= nil and (not issecretvalue or not issecretvalue(value))
@@ -94,6 +96,77 @@ local function FindSoulstoneAura(unit)
     if TraceSoulstone then TraceSoulstone("AURA", unit .. " found; source="
         .. (Public(source) and tostring(source) or "unknown")) end
     return aura, read and Public(source) and source or nil
+end
+
+local function AssignedAuraSafe()
+    if InCombatLockdown() or not C_UnitAuras
+        or (not C_UnitAuras.GetAuraDataBySpellID
+            and not C_UnitAuras.GetAuraDataBySpellName)
+        or (C_Secrets and C_Secrets.ShouldAurasBeSecret
+            and C_Secrets.ShouldAurasBeSecret()) then return false end
+    return true
+end
+
+local function CheckAssignedSoulstone(unit)
+    if not AssignedAuraSafe() then return end
+    local guid = UnitGUID(unit)
+    if not Public(guid) then return end
+    local found = false
+    if C_UnitAuras.GetAuraDataBySpellID then
+        for spellID in pairs(SOULSTONE_AURAS) do
+            local ok, aura = pcall(C_UnitAuras.GetAuraDataBySpellID,
+                unit, spellID, "HELPFUL")
+            if not ok or (aura ~= nil and not Public(aura)) then return end
+            if aura then found = true; break end
+        end
+    else
+        local names = { "Soulstone Resurrection", "Soulstone" }
+        for _, name in ipairs(names) do
+            local ok, aura = pcall(C_UnitAuras.GetAuraDataBySpellName,
+                unit, name, "HELPFUL")
+            if not ok or (aura ~= nil and not Public(aura)) then return end
+            if aura then found = true; break end
+        end
+    end
+    if assignedSoulstoneAuras[guid] ~= found then
+        assignedSoulstoneAuras[guid] = found
+        if WarlockHudRefreshSoulstoneWarning then
+            WarlockHudRefreshSoulstoneWarning()
+        end
+        local window = _G.WarlockHudAssignmentsWindow
+        if window and window:IsShown() and window.Refresh then window:Refresh() end
+    end
+end
+
+function WarlockHudSoulstoneAuraStatus(guid)
+    return assignedSoulstoneAuras[guid]
+end
+
+function WarlockHudSoulstoneAuraTraceState(guid)
+    if not WarlockHudTraceAssignment then return end
+    WarlockHudTraceAssignment("STATE", "soulstoneAura target="
+        .. tostring(guid or "NONE") .. " status="
+        .. tostring(guid and assignedSoulstoneAuras[guid])
+        .. " safe=" .. tostring(AssignedAuraSafe())
+        .. " byID=" .. tostring(C_UnitAuras and C_UnitAuras.GetAuraDataBySpellID ~= nil)
+        .. " byName=" .. tostring(C_UnitAuras and C_UnitAuras.GetAuraDataBySpellName ~= nil)
+        .. " combat=" .. tostring(InCombatLockdown()), true)
+end
+
+function WarlockHudRefreshAssignedSoulstones()
+    if not AssignedAuraSafe() then return end
+    local seen = {}
+    local function scan(unit)
+        local guid = UnitGUID(unit)
+        if Public(guid) then seen[guid] = true; CheckAssignedSoulstone(unit) end
+    end
+    scan("player")
+    local raid = IsInRaid()
+    local count = raid and GetNumGroupMembers() or GetNumSubgroupMembers()
+    for index = 1, count do scan((raid and "raid" or "party") .. index) end
+    for guid in pairs(assignedSoulstoneAuras) do
+        if not seen[guid] then assignedSoulstoneAuras[guid] = nil end
+    end
 end
 
 local function ObserveSoulstone(unit)
@@ -265,14 +338,15 @@ end
 
 local tradeLines = {}
 local tradeWindow, tradeText, tradeScroll, tradeStatus
-local tradeToggle, soulstoneToggle, summonToggle, assignmentToggle
+local tradeToggle, soulstoneToggle, summonToggle, assignmentToggle, channelToggle
 
 local function RefreshTradeWindow()
     if not tradeWindow then return end
     tradeStatus:SetText("Trade " .. (tradeDebug and "on" or "off")
         .. " / Soulstone " .. (soulstoneDebug and "on" or "off")
         .. " / Summon " .. (summonDebug and "on" or "off")
-        .. " / Assignments " .. (assignmentDebug and "on" or "off"))
+        .. " / Assignments " .. (assignmentDebug and "on" or "off")
+        .. " / Channel " .. (channelDebug and "on" or "off"))
     if tradeToggle then
         tradeToggle:SetText("Trade: " .. (tradeDebug and "On" or "Off"))
     end
@@ -284,6 +358,9 @@ local function RefreshTradeWindow()
     end
     if assignmentToggle then
         assignmentToggle:SetText("Assignments: " .. (assignmentDebug and "On" or "Off"))
+    end
+    if channelToggle then
+        channelToggle:SetText("Channel: " .. (channelDebug and "On" or "Off"))
     end
     tradeText:SetText(table.concat(tradeLines, "\n"))
     tradeText:SetHeight(math.max(330, #tradeLines * 16 + 20))
@@ -382,6 +459,16 @@ local function OpenTradeWindow()
         syncState:SetScript("OnClick", function()
             if WarlockHudAssignmentTraceState then WarlockHudAssignmentTraceState() end
         end)
+        channelToggle = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate")
+        channelToggle:SetSize(125, 24)
+        channelToggle:SetPoint("LEFT", syncState, "RIGHT", 8, 0)
+        channelToggle:SetScript("OnClick", function()
+            channelDebug = not channelDebug
+            RefreshTradeWindow()
+            if channelDebug and WarlockHudChannelTickTraceState then
+                WarlockHudChannelTickTraceState()
+            end
+        end)
         tradeWindow, tradeText, tradeScroll = frame, edit, scroll
     end
     tradeWindow:Show()
@@ -417,6 +504,14 @@ end
 function WarlockHudTraceAssignment(event, details, force)
     if not assignmentDebug and not force then return end
     tradeLines[#tradeLines + 1] = date("%H:%M:%S") .. " ASSIGN " .. event
+        .. (details and (" " .. details) or "")
+    if #tradeLines > 200 then table.remove(tradeLines, 1) end
+    RefreshTradeWindow()
+end
+
+function WarlockHudTraceChannel(event, details, force)
+    if not channelDebug and not force then return end
+    tradeLines[#tradeLines + 1] = date("%H:%M:%S") .. " CHANNEL " .. event
         .. (details and (" " .. details) or "")
     if #tradeLines > 200 then table.remove(tradeLines, 1) end
     RefreshTradeWindow()
@@ -653,7 +748,14 @@ events:SetScript("OnEvent", function(_, event, ...)
             state.statusAt = time()
             state.observed = false
         end
-        if C_Timer and C_Timer.After then C_Timer.After(1, RecheckSoulstone) end
+        if C_Timer and C_Timer.After then
+            C_Timer.After(1, function()
+                RecheckSoulstone()
+                WarlockHudRefreshAssignedSoulstones()
+            end)
+        else
+            WarlockHudRefreshAssignedSoulstones()
+        end
     elseif event == "PLAYER_DEAD" then
         if not lastPlayerDeathAt or GetTime() - lastPlayerDeathAt > 1 then
             lastPlayerDeathAt = GetTime()
@@ -858,6 +960,15 @@ events:SetScript("OnEvent", function(_, event, ...)
     elseif event == "UNIT_AURA" then
         local unit = ...
         if type(unit) == "string" then
+            if InCombatLockdown() then
+                local guid = UnitGUID(unit)
+                if Public(guid) and assignedSoulstoneAuras[guid] ~= nil then
+                    assignedSoulstoneAuras[guid] = nil
+                    if WarlockHudRefreshSoulstoneWarning then
+                        WarlockHudRefreshSoulstoneWarning()
+                    end
+                end
+            end
             local state = SoulstoneState()
             if soulstoneDebug and state and state.recipientGUID then
                 local guid = UnitGUID(unit)
@@ -867,8 +978,10 @@ events:SetScript("OnEvent", function(_, event, ...)
                 end
             end
             ObserveSoulstone(unit)
+            CheckAssignedSoulstone(unit)
         end
     elseif event == "PLAYER_REGEN_ENABLED" or event == "GROUP_ROSTER_UPDATE" then
         RecheckSoulstone()
+        WarlockHudRefreshAssignedSoulstones()
     end
 end)
