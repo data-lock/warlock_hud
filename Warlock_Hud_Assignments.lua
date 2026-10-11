@@ -162,6 +162,7 @@ local function Channel()
     end
     if IsInRaid() then return "RAID" end
     if IsInGroup() then return "PARTY" end
+    return nil
 end
 
 local function Send(parts)
@@ -302,10 +303,11 @@ local function SetAssignment(guid, category, key, by)
 end
 
 local function RequestSnapshot()
-    if not Enabled() or not Channel() or not OwnRow() then
-        SyncTrace("REQ skipped enabled=" .. tostring(Enabled())
-            .. " channel=" .. tostring(Channel())
-            .. " ownRow=" .. tostring(OwnRow() ~= nil))
+    local enabled, channel, own = Enabled(), Channel(), OwnRow()
+    if not enabled or not channel or not own then
+        SyncTrace("REQ skipped enabled=" .. tostring(enabled)
+            .. " channel=" .. tostring(channel)
+            .. " ownRow=" .. tostring(own ~= nil))
         return
     end
     local now = GetTime()
@@ -315,7 +317,7 @@ local function RequestSnapshot()
     end
     lastRequestAt, requestAt, requestRevision = now, now, revision
     SyncTrace("REQ start revision=" .. revision)
-    Send({ "V1", "REQ", OwnRow().guid })
+    Send({ "V1", "REQ", own.guid })
 end
 
 local function Snapshot()
