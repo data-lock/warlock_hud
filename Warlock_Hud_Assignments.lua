@@ -753,6 +753,9 @@ local function CreateWindow()
     window:EnableMouse(true)
     window:RegisterForDrag("LeftButton")
     window.TitleText:SetText("Warlock HUD - Assignments")
+    if window.CloseButton then
+        window.CloseButton:SetScript("OnClick", function() window:Hide() end)
+    end
     window.fullControls = {}
     function window.fullControls:SetShown(shown)
         for _, control in ipairs(self) do control:SetShown(shown) end
