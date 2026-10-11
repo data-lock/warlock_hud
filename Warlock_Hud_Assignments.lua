@@ -11,7 +11,13 @@ local TYPES = {
         { "NONE", "None" }, { "DOOM", "Doom" },
         { "AGONY", "Agony" }, { "HAVOC", "Havoc" },
     },
+    control = { { "NONE", "None" } },
 }
+local RAID_ICONS = { "Star", "Circle", "Diamond", "Triangle",
+    "Moon", "Square", "Cross", "Skull" }
+for index, icon in ipairs(RAID_ICONS) do
+    TYPES.control[#TYPES.control + 1] = { "ICON_" .. index, icon }
+end
 local SPELL_NAMES = {
     curse = {
         ELEMENTS = "Curse of the Elements", RECKLESSNESS = "Curse of Recklessness",
@@ -33,7 +39,7 @@ local registered = false
 local lastCastGUID, lastCastID
 local window, rowsFrame, compactRowsFrame, statusText, enableCheck, warningCheck
 local rows, compactRows = {}, {}
-local FULL_WIDTH, COMPACT_WIDTH = 815, 465
+local FULL_WIDTH, COMPACT_WIDTH = 995, 517
 local events = CreateFrame("Frame")
 
 local function SyncTrace(message)
@@ -54,6 +60,7 @@ function WarlockHudAssignmentTraceState()
         WarlockHudTraceAssignment("STATE", row.name .. " " .. row.guid
             .. " curse=" .. tostring(state.curse or "NONE")
             .. " bane=" .. tostring(state.bane or "NONE")
+            .. " control=" .. tostring(state.control or "NONE")
             .. " soulstone=" .. tostring(state.soulstone or "NONE"), true)
     end
     local target = WarlockHudSoulstoneAssignmentTarget()
@@ -217,6 +224,14 @@ local function ValidKey(category, key)
     return false
 end
 
+local function ControlKey(key)
+    local index = type(key) == "string"
+        and (key:match("^FEAR_(%d+)$")
+            or key:match("^BANISH_(%d+)$"))
+    if index then return "ICON_" .. index end
+    return key
+end
+
 local function SaveAssignmentCache()
     local own = OwnRow()
     local db = api.GetDB and api.GetDB() or WarlockHudDB
@@ -226,8 +241,10 @@ local function SaveAssignmentCache()
         if byGUID[guid] and byGUID[guid].class == "WARLOCK" then
             entries[guid] = {
                 curse = state.curse, bane = state.bane,
+                control = state.control,
                 soulstone = ValidKey("soulstone", state.soulstone) and state.soulstone or nil,
                 curseBy = state.curseBy, baneBy = state.baneBy,
+                controlBy = state.controlBy,
                 soulstoneBy = state.soulstoneBy,
             }
         end
@@ -245,8 +262,9 @@ local function RestoreAssignmentCache()
         if byGUID[guid] and byGUID[guid].class == "WARLOCK"
             and type(state) == "table" then
             local restored = {}
-            for _, category in ipairs({ "curse", "bane", "soulstone" }) do
-                local key = state[category]
+            for _, category in ipairs({ "curse", "bane", "control", "soulstone" }) do
+                local key = category == "control"
+                    and ControlKey(state[category]) or state[category]
                 if ValidKey(category, key) then
                     restored[category] = key
                     local author = state[category .. "By"]
@@ -320,6 +338,7 @@ local function Changed(clearWarning)
 end
 
 local function SetAssignment(guid, category, key, by)
+    if category == "control" then key = ControlKey(key) end
     if not byGUID[guid] or byGUID[guid].class ~= "WARLOCK"
         or not ValidKey(category, key) then
         SyncTrace("SET rejected unknown member or key " .. tostring(category)
@@ -345,6 +364,7 @@ local function ClearAllAssignments()
     for _, row in ipairs(roster) do
         Send({ "V1", "SET", row.guid, "curse", "NONE", own.guid })
         Send({ "V1", "SET", row.guid, "bane", "NONE", own.guid })
+        Send({ "V1", "SET", row.guid, "control", "NONE", own.guid })
         Send({ "V1", "SET", row.guid, "soulstone", "NONE", own.guid })
     end
 end
@@ -378,7 +398,8 @@ local function Snapshot()
     local rows = 0
     for _, row in ipairs(roster) do
         local state = assignments[row.guid]
-        if state and (state.curse or state.bane or state.soulstone) then
+        if state and (state.curse or state.bane or state.control
+            or state.soulstone) then
             rows = rows + 1
             Send({ "V1", "ROW", nonce, row.guid,
                 state.curse or "NONE", state.bane or "NONE",
@@ -386,6 +407,10 @@ local function Snapshot()
             if state.soulstone and state.soulstone ~= "NONE" then
                 Send({ "V1", "STONE", nonce, row.guid,
                     state.soulstone, state.soulstoneBy or "0" })
+            end
+            if state.control and state.control ~= "NONE" then
+                Send({ "V1", "CONTROL", nonce, row.guid,
+                    state.control, state.controlBy or "0" })
             end
         end
     end
@@ -468,12 +493,13 @@ local function Receive(payload, sender)
             SyncTrace("ROW rejected pending=" .. tostring(pending ~= nil))
             return
         end
-        local stone = pending.rows[fields[4]] or {}
+        local extra = pending.rows[fields[4]] or {}
         pending.rows[fields[4]] = {
             curse = fields[5], bane = fields[6],
             curseBy = fields[7] ~= "0" and fields[7] or nil,
             baneBy = fields[8] ~= "0" and fields[8] or nil,
-            soulstone = stone.soulstone, soulstoneBy = stone.soulstoneBy,
+            soulstone = extra.soulstone, soulstoneBy = extra.soulstoneBy,
+            control = extra.control, controlBy = extra.controlBy,
         }
         SyncTrace("ROW accepted member=" .. fields[4])
     elseif action == "STONE" then
@@ -489,6 +515,20 @@ local function Receive(payload, sender)
         local state = pending.rows[fields[4]] or {}
         state.soulstone = fields[5]
         state.soulstoneBy = fields[6] ~= "0" and fields[6] or nil
+        pending.rows[fields[4]] = state
+    elseif action == "CONTROL" then
+        local pending = pendingSnapshot
+        if #fields ~= 6 or not pending or pending.sender ~= from.guid
+            or pending.nonce ~= fields[3] or not byGUID[fields[4]]
+            or byGUID[fields[4]].class ~= "WARLOCK"
+            or not ValidKey("control", ControlKey(fields[5]))
+            or (fields[6] ~= "0" and not byGUID[fields[6]]) then
+            SyncTrace("CONTROL rejected pending=" .. tostring(pending ~= nil))
+            return
+        end
+        local state = pending.rows[fields[4]] or {}
+        state.control = ControlKey(fields[5])
+        state.controlBy = fields[6] ~= "0" and fields[6] or nil
         pending.rows[fields[4]] = state
     elseif action == "END" then
         local pending = pendingSnapshot
@@ -648,7 +688,8 @@ local function NewRow(index)
     row.by:SetJustifyH("LEFT")
     row.curse = NewDrop(row, "curse", 205)
     row.bane = NewDrop(row, "bane", 385)
-    row.soulstone = NewDrop(row, "soulstone", 565)
+    row.control = NewDrop(row, "control", 565)
+    row.soulstone = NewDrop(row, "soulstone", 745)
     rows[index] = row
     return row
 end
@@ -657,7 +698,7 @@ local function SpellTexture(category, key)
     if not key or key == "NONE" then return nil end
     local spell = AssignedSpell(category, key)
     local identifier = spell and spell.ids and spell.ids[1]
-        or SPELL_NAMES[category][key]
+        or (SPELL_NAMES[category] and SPELL_NAMES[category][key])
     if not identifier or not C_Spell or not C_Spell.GetSpellTexture then return nil end
     local ok, texture = pcall(C_Spell.GetSpellTexture, identifier)
     return ok and Public(texture) and texture or nil
@@ -672,11 +713,12 @@ local function NewCompactRow(index)
     row.name:SetWidth(238)
     row.name:SetJustifyH("LEFT")
     row.icons = {}
-    for category, x in pairs({ curse = 257, bane = 309, soulstone = 361 }) do
+    for category, x in pairs({ curse = 257, bane = 309,
+        control = 361, soulstone = 413 }) do
         local iconCategory = category
         local icon = CreateFrame("Frame", nil, row)
         icon:SetSize(30, 30)
-        icon:SetPoint("LEFT", x, 0)
+        icon:SetPoint("CENTER", row, "LEFT", x + 15, 0)
         icon.texture = icon:CreateTexture(nil, "ARTWORK")
         icon.texture:SetAllPoints(icon)
         icon.texture:SetTexCoord(0.08, 0.92, 0.08, 0.92)
@@ -687,7 +729,9 @@ local function NewCompactRow(index)
         icon:SetScript("OnEnter", function(self)
             GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
             local title = iconCategory == "curse" and "Curse: "
-                or iconCategory == "bane" and "Bane: " or "Soulstone: "
+                or iconCategory == "bane" and "Bane: "
+                or iconCategory == "control" and "Control: "
+                or "Soulstone: "
             GameTooltip:SetText(title .. Label(iconCategory, self.key or "NONE"))
             if iconCategory == "soulstone" and self.key ~= "NONE" then
                 local status = WarlockHudSoulstoneAuraStatus
@@ -759,6 +803,7 @@ local function RefreshWindow()
             color and color.g or 0.51, color and color.b or 0.79)
         local curseBy = state.curseBy and byGUID[state.curseBy]
         local baneBy = state.baneBy and byGUID[state.baneBy]
+        local controlBy = state.controlBy and byGUID[state.controlBy]
         local stoneBy = state.soulstoneBy and byGUID[state.soulstoneBy]
         local stoneStatus = state.soulstone and state.soulstone ~= "NONE"
             and WarlockHudSoulstoneAuraStatus
@@ -770,8 +815,9 @@ local function RefreshWindow()
             or "Unassigned"
         row.by:SetText("Curse by: " .. DisplayName(curseBy and curseBy.name)
             .. "     Bane by: " .. DisplayName(baneBy and baneBy.name)
+            .. "     Fear/Banish by: " .. DisplayName(controlBy and controlBy.name)
             .. "     Soulstone: " .. stoneDetails)
-        for _, category in ipairs({ "curse", "bane", "soulstone" }) do
+        for _, category in ipairs({ "curse", "bane", "control", "soulstone" }) do
             local drop = row[category]
             drop.key = state[category] or "NONE"
             UIDropDownMenu_SetText(drop, Label(category, drop.key))
@@ -789,14 +835,28 @@ local function RefreshWindow()
         local color = RAID_CLASS_COLORS and RAID_CLASS_COLORS.WARLOCK
         row.name:SetTextColor(color and color.r or 0.58,
             color and color.g or 0.51, color and color.b or 0.79)
-        for _, category in ipairs({ "curse", "bane", "soulstone" }) do
+        for _, category in ipairs({ "curse", "bane", "control", "soulstone" }) do
             local icon = row.icons[category]
             icon.key = state[category] or "NONE"
-            local texture = category == "soulstone" and icon.key ~= "NONE"
+            local raidIndex = category == "control"
+                and tonumber(icon.key:match("_(%d+)$"))
+            local texture = category == "control" and raidIndex
+                and "Interface\\TargetingFrame\\UI-RaidTargetingIcons"
+                or category == "soulstone" and icon.key ~= "NONE"
                 and C_Item and C_Item.GetItemIconByID
                 and C_Item.GetItemIconByID(5232)
-                or (category ~= "soulstone" and SpellTexture(category, icon.key))
+                or (category ~= "soulstone" and category ~= "control"
+                    and SpellTexture(category, icon.key))
             icon.texture:SetTexture(texture)
+            if raidIndex and SetRaidTargetIconTexture then
+                SetRaidTargetIconTexture(icon.texture, raidIndex)
+            elseif raidIndex then
+                local left = ((raidIndex - 1) % 4) / 4
+                local top = math.floor((raidIndex - 1) / 4) / 4
+                icon.texture:SetTexCoord(left, left + 0.25, top, top + 0.25)
+            else
+                icon.texture:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+            end
             icon.texture:SetShown(texture and true or false)
             icon.text:SetShown(not texture)
         end
@@ -827,7 +887,8 @@ function WarlockHudAnnounceAssignments()
         local state = assignments[row.guid] or {}
         lines[#lines + 1] = "Warlock assignments - " .. DisplayName(row.name) .. ": Curse "
             .. Label("curse", state.curse or "NONE") .. ", Bane "
-            .. Label("bane", state.bane or "NONE") .. ", Soulstone "
+            .. Label("bane", state.bane or "NONE") .. ", Fear/Banish "
+            .. Label("control", state.control or "NONE") .. ", Soulstone "
             .. Label("soulstone", state.soulstone or "NONE")
     end
     if #lines == 0 then
@@ -921,8 +982,12 @@ local function CreateWindow()
     baneHeader:SetPoint("TOPLEFT", 423, -100)
     baneHeader:SetText("Bane")
     window.fullControls[#window.fullControls + 1] = baneHeader
+    local controlHeader = window:CreateFontString(nil, "ARTWORK", "GameFontNormal")
+    controlHeader:SetPoint("TOPLEFT", 603, -100)
+    controlHeader:SetText("Fear / Banish")
+    window.fullControls[#window.fullControls + 1] = controlHeader
     local stoneHeader = window:CreateFontString(nil, "ARTWORK", "GameFontNormal")
-    stoneHeader:SetPoint("TOPLEFT", 603, -100)
+    stoneHeader:SetPoint("TOPLEFT", 783, -100)
     stoneHeader:SetText("Soulstone target")
     window.fullControls[#window.fullControls + 1] = stoneHeader
     rowsFrame = CreateFrame("Frame", nil, window)
@@ -940,10 +1005,16 @@ local function CreateWindow()
     local compactBane = window:CreateFontString(nil, "ARTWORK", "GameFontNormal")
     compactBane:SetPoint("TOPLEFT", 330, -74)
     compactBane:SetText("Bane")
+    local compactControl = window:CreateFontString(nil, "ARTWORK", "GameFontNormal")
+    compactControl:SetPoint("TOPLEFT", 370, -74)
+    compactControl:SetWidth(52)
+    compactControl:SetJustifyH("CENTER")
+    compactControl:SetText("Control")
     local compactStone = window:CreateFontString(nil, "ARTWORK", "GameFontNormal")
-    compactStone:SetPoint("TOPLEFT", 382, -74)
+    compactStone:SetPoint("TOPLEFT", 434, -74)
     compactStone:SetText("Soulstone")
-    window.compactHeaders = { compactName, compactCurse, compactBane, compactStone }
+    window.compactHeaders = { compactName, compactCurse, compactBane,
+        compactControl, compactStone }
     statusText = window:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
     statusText:SetPoint("BOTTOMLEFT", 22, 48)
     statusText:SetWidth(FULL_WIDTH - 45)
@@ -965,7 +1036,7 @@ local function CreateWindow()
     window.clearAssignments:SetPoint("BOTTOMLEFT", 335, 10)
     window.clearAssignments:SetScript("OnEnter", function(self)
         GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-        GameTooltip:SetText("Clear Curse, Bane, and Soulstone assignments for every Warlock shown.")
+        GameTooltip:SetText("Clear Curse, Bane, Fear/Banish, and Soulstone assignments for every Warlock shown.")
         GameTooltip:Show()
     end)
     window.clearAssignments:SetScript("OnLeave", function() GameTooltip:Hide() end)
@@ -995,19 +1066,23 @@ local function CreateWindow()
         statusText:SetWidth(contentWidth)
         for _, row in ipairs(rows) do
             row:SetWidth(contentWidth)
-            row.name:SetWidth(contentWidth - 585)
+            row.name:SetWidth(contentWidth - 765)
             row.by:SetWidth(contentWidth - 15)
             row.curse:ClearAllPoints()
-            row.curse:SetPoint("TOPRIGHT", row, "TOPRIGHT", -385, 3)
+            row.curse:SetPoint("TOPRIGHT", row, "TOPRIGHT", -565, 3)
             row.bane:ClearAllPoints()
-            row.bane:SetPoint("TOPRIGHT", row, "TOPRIGHT", -205, 3)
+            row.bane:SetPoint("TOPRIGHT", row, "TOPRIGHT", -385, 3)
+            row.control:ClearAllPoints()
+            row.control:SetPoint("TOPRIGHT", row, "TOPRIGHT", -205, 3)
             row.soulstone:ClearAllPoints()
             row.soulstone:SetPoint("TOPRIGHT", row, "TOPRIGHT", -25, 3)
         end
         curseHeader:ClearAllPoints()
-        curseHeader:SetPoint("TOPRIGHT", self, "TOPRIGHT", -524, -100)
+        curseHeader:SetPoint("TOPRIGHT", self, "TOPRIGHT", -704, -100)
         baneHeader:ClearAllPoints()
-        baneHeader:SetPoint("TOPRIGHT", self, "TOPRIGHT", -344, -100)
+        baneHeader:SetPoint("TOPRIGHT", self, "TOPRIGHT", -524, -100)
+        controlHeader:ClearAllPoints()
+        controlHeader:SetPoint("TOPRIGHT", self, "TOPRIGHT", -314, -100)
         stoneHeader:ClearAllPoints()
         stoneHeader:SetPoint("TOPRIGHT", self, "TOPRIGHT", -135, -100)
     end
@@ -1023,6 +1098,7 @@ function WarlockHudOpenAssignments()
     local state = own and assignments[own.guid]
     if state and ((state.curse and state.curse ~= "NONE")
         or (state.bane and state.bane ~= "NONE")
+        or (state.control and state.control ~= "NONE")
         or (state.soulstone and state.soulstone ~= "NONE")) then
         Profile().assignmentWindowCompact = true
     end

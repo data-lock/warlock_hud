@@ -156,13 +156,13 @@ Choose eligible Corruption, Immolate, Siphon Life, Bane, Curse, Drain, and Fear
 auras. Set whether active Target DoTs appear in color or grey.
 
 Use **Group Assignments** to open a movable, resizable window with a Curse, Bane,
-and Soulstone target choice for each Warlock in your group, or yourself while
+Fear/Banish raid marker, and Soulstone target choice for each Warlock in your group, or yourself while
 solo. `/whud assignments` opens
 the same window. Drag the lower-right corner to resize it, or press **Compact**
 for a roster-sized list of names and assignment icons. Press **Expand** to edit
 the choices again. Group assignments survive `/reload` for the current roster;
 solo login starts with assignments unset. Group assignments clear when the
-group disbands. **Clear Assignments** resets Curse, Bane, and Soulstone choices
+group disbands. **Clear Assignments** resets Curse, Bane, Fear/Banish, and Soulstone choices
 for every Warlock shown. Multiple Warlocks may choose the same Soulstone target.
 Anyone using the addon can assign spells. The chosen Curse or Bane appears as
 your idle HUD image and sets its range check. A different
@@ -170,6 +170,10 @@ successful Curse or Bane cast gives a short local warning. The window never
 casts spells. The Announce button shows its party, raid, or instance destination
 and sends the current assignments there only when clicked. You can also use
 `/whud announceassignments`.
+
+Choose one raid marker, such as **Star**, for a Warlock's Fear/Banish target.
+Compact view shows the marker. This records who handles a marked target; it
+does not place the raid marker for you.
 
 When your assigned Soulstone target is confirmed missing the buff and your
 Soulstone is ready, its Utility icon pulses red. An unknown aura state does not

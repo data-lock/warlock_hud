@@ -1,5 +1,28 @@
 # Changelog
 
+## v0.35.0
+
+- Add a Control assignment before Soulstone for each Warlock. Choose one raid
+  icon for that Warlock's Fear or Banish target, and see it in compact view.
+- Include Control in group sync, announcements, and Clear Assignments. The
+  assignment does not place a raid marker on an enemy.
+
+
+## v0.34.3 (review build)
+
+- Center the compact Control heading over its raid marker icon and spell out
+  the heading instead of using CC.
+
+## v0.34.2 (review build)
+
+- Simplify Fear/Banish assignments to one shared raid icon choice per Warlock.
+  Convert choices from the previous review build to the same icon.
+
+## v0.34.1 (review build)
+
+- Assign each Warlock a Fear or Banish raid icon before the Soulstone target.
+  Show the marker in compact view and sync the assignment with the group.
+
 ## v0.34.0
 
 - Warn when a direct action-bar spell is lower rank than the highest rank you
