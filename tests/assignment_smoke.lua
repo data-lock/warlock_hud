@@ -6,6 +6,7 @@ local grouped = true
 local raid, instance = false, false
 local now = 100
 local sent, printed, flashes, chat = {}, {}, {}, {}
+local syncTraces = {}
 local activeWarnings = {}
 local timers = {}
 local frame
@@ -44,6 +45,9 @@ function UnitIsGroupLeader(unit) return unit == "party1" end
 function UnitIsGroupAssistant() return false end
 function GetTime() return now end
 function print(message) printed[#printed + 1] = message end
+function WarlockHudTraceAssignment(event, details)
+    syncTraces[#syncTraces + 1] = event .. " " .. details
+end
 function SendChatMessage(message, channel)
     chat[#chat + 1] = { message = message, channel = channel }
 end
@@ -174,6 +178,9 @@ raid, instance = false, false
 
 grouped = false
 event("GROUP_ROSTER_UPDATE")
+timers[#timers][2]()
+assert(syncTraces[#syncTraces]:find("REQ skipped enabled=true channel=nil", 1, true),
+    "a solo sync request should log its missing channel without an error")
 assert(WarlockHudAssignmentSpell("curse") == nil
     and WarlockHudAssignmentSpell("bane") == nil,
     "disband clears temporary assignments")

@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.32.14
+
+- Fix an assignment trace error when a sync request runs without a group
+  channel, such as just after leaving a group.
+
 ## v0.32.13
 
 - Match Forever addon-message sender names when the client uses spaces where
