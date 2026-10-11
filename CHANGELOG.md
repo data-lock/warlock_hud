@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.32.15
+
+- Give the nonsecure Assignments and debug trace windows direct X handlers so
+  they can be dismissed during combat without relying on panel close behavior.
+
 ## v0.32.14
 
 - Fix an assignment trace error when a sync request runs without a group
