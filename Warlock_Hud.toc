@@ -1,13 +1,15 @@
 ## Interface: 16001
 ## Title: Warlock HUD
 ## Notes: Configurable Warlock aura and cooldown HUD with profiles
-## Version: 0.33.0
+## Version: 0.34.0
 ## SavedVariables: WarlockHudDB
 ## IconTexture: 626007
 
 Warlock_Hud.lua
 Warlock_Hud_WandClick.lua
 Warlock_Hud_ChannelTicks.lua
+Warlock_Hud_Downranks.lua
+Warlock_Hud_Grimoires.lua
 Warlock_Hud_AssignmentProbe.lua
 Warlock_Hud_Assignments.lua
 Warlock_Hud_Options.lua

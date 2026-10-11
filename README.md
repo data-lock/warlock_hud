@@ -47,6 +47,19 @@ native player castbar while channeling. With a wand equipped, Shift+Right-click
 a living enemy in the game world to target it and start Shoot. Ordinary
 right-click keeps its usual behavior. `/whwand` reports the wand binding state.
 
+After training, the addon warns in your chat window when a direct spell button
+on an action bar uses a lower rank than the highest rank you know. It checks
+again when your spells or action buttons change, and warns after every
+successful lower-rank cast from a macro or the spellbook too.
+The addon also remembers the spells and ranks of each demon you summon. At a
+demon trainer's merchant window, grimoires already known by the relevant demon
+show a red outline around their icons. Missing grimoires that are available
+show green. A lower unlearned rank shows yellow when a higher usable rank is
+also for sale. Grimoires for a pet that has not been scanned show grey when you
+meet their level requirement. The tooltip
+also explains known or unscanned status. Summon each demon once to build its
+record. Records are saved per character.
+
 The addon can announce Ritual of Summoning, a Soulstone cast, and a completed
 Healthstone trade. Soulstone announcements go to party, raid, or instance chat
 when grouped. Summon and trade notices can be sent to group chat or shown only

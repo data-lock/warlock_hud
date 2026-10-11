@@ -1,6 +1,10 @@
 # Warlock HUD
 
-A lightweight, configurable HUD for Warlocks in **World of Warcraft: Forever beta**. Keep your target effects, buffs, procs, cooldowns, and Soul Shards in view while you play.
+A configurable combat HUD for Warlocks in **World of Warcraft: Forever beta**. Track target DoTs, buffs, procs, cooldowns, and Soul Shards in movable rows with native aura countdowns, color and visibility controls, and reminders for missing buffs.
+
+Coordinate Curse, Bane, and Soulstone assignments with your group, including a flashing Soulstone reminder when your assigned target needs one. See drain ticks on the player castbar, manage summon requests and Healthstone trades, and Shift+Right-click an enemy in the game world to start shooting when you have a wand equipped.
+
+Get chat reminders when you cast an outdated spell rank. At demon trainers, colored grimoire icons show what each summoned pet knows and whether a better rank is available for sale.
 
 **Found a bug? Want a feature? Have feedback? Leave a comment! I want this to help as many people as possible.**
 

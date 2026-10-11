@@ -1,5 +1,61 @@
 # Changelog
 
+## v0.34.0
+
+- Warn when a direct action-bar spell is lower rank than the highest rank you
+  know, and warn after every successful lower-rank cast, including macros and
+  spellbook casts.
+- Remember each summoned demon's spell ranks per character. At demon trainers,
+  grimoire icons are red when known, green when unlearned and available, yellow
+  when a higher usable rank is for sale, and grey for an unscanned pet when
+  your character meets the item's level requirement. Tooltips explain status.
+
+
+## v0.33.8 (review build)
+
+- Repeat the lower-rank warning after every successful cast instead of only
+  the first cast of each mismatch.
+
+## v0.33.7 (review build)
+
+- Warn after a successful lower-rank cast, including casts from macros or the
+  spellbook, once per rank mismatch per session.
+
+## v0.33.6 (review build)
+
+- Mark an unlearned grimoire yellow when the merchant also sells a higher
+  usable rank of the same pet spell, and name that rank in its tooltip.
+
+## v0.33.5 (review build)
+
+- Show the grey unscanned grimoire outline only when the character meets the
+  item's required level.
+
+## v0.33.4 (review build)
+
+- Replace grimoire merchant row text with colored icon outlines: red for known,
+  green for missing and available, grey when the pet has not been scanned.
+- Normalize pet spell names that include rank text before comparing grimoires.
+
+## v0.33.3 (review build)
+
+- Raise grimoire status labels to clear the merchant cost text.
+
+## v0.33.2 (review build)
+
+- Move grimoire status labels down and right within merchant rows.
+- Refresh labels from each visible merchant item's actual index after changing
+  pages, and hide them on the buyback tab.
+
+## v0.33.1 (review build)
+
+- Warn in chat when a direct spell action-bar button uses a lower rank than
+  the highest rank in your spellbook. Recheck after spell training and button
+  changes; repeat only when the mismatch changes.
+- Remember each summoned demon's spell ranks per character and mark grimoires
+  already known by that demon in the merchant window and tooltip. Summon each
+  demon once to build its initial record.
+
 ## v0.33.0
 
 - Add Soulstone targets to group assignments and a Clear Assignments button.
