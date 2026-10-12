@@ -11,6 +11,8 @@ local LABELS = {
     corruption = "Corruption", bane = "Banes", curse = "Curses", drain = "Drains",
     immolate = "Immolate", siphonlife = "Siphon Life",
     healthstone = "Healthstone", soulstone = "Soulstone", fear = "Fear",
+    demon = "Missing Demon Reminder", sacrifice = "Demonic Sacrifice",
+    soullink = "Soul Link",
     soulshards = "Soul Shards",
     armor = "Armor / Skin", wellfed = "Well Fed",
     racial1 = "Racial ability 1", racial2 = "Racial ability 2",
@@ -31,6 +33,9 @@ local ICON_HELP = {
     healthstone = "Shows your Healthstone and its item cooldown.",
     soulstone = "Shows your Soulstone and its item cooldown.",
     fear = "Shows Fear in the Utility row when available.",
+    demon = "Flash a warning when no demon is summoned and no active Demonic Sacrifice is detected.",
+    sacrifice = "Shows an active Demonic Sacrifice effect with its native duration.",
+    soullink = "Remind you when Soul Link is known, a demon is summoned, and the buff is confirmed missing.",
     racial1 = "Shows an available racial ability and its cooldown.",
     racial2 = "Shows a second racial ability when available.",
     armor = "Demon Armor or Demon Skin. Glows when missing.",
@@ -219,6 +224,7 @@ local function IconForKey(key)
     local spellIDs = {
         corruption = 6222, bane = 1014, drain = 1120, immolate = 348,
         siphonlife = 18265, fear = 5782, armor = 706, wellfed = 19705,
+        demon = 5500, sacrifice = 18788, soullink = 19028,
         fort = 1243, motw = 1126, int = 1459,
         spirit = 14752, kings = 20217, salv = 1038,
         thorns = 467, breath = 5697,
@@ -560,7 +566,7 @@ Text(buffLayout, "Move this row in Edit Mode. Drag icons to reorder them; use th
     20, -50, "GameFontHighlightSmall")
 Text(buffLayout, "Icon size", 20, -85, "GameFontNormal")
 SizeSlider(buffLayout, "Buff icon size", "buffSize", 16, 64, 20, -110)
-OrderSection(buffLayout, "Player buffs", "buffOrder", api.BuffKeys, -165, 5, function()
+OrderSection(buffLayout, "Player buffs", "buffOrder", api.BuffKeys, -165, 7, function()
     ResetRowValues("buffSize", "buffOrder", api.BuffKeys, DefaultProfile())
     Profile().colorActiveBuffs = nil
     MarkChanged()

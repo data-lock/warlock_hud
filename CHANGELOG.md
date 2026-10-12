@@ -1,5 +1,20 @@
 # Changelog
 
+## v0.36.0
+
+- Add a red flashing Sense Demons reminder to the Utility row when no living
+  demon and no active Demonic Sacrifice are confirmed. The row repacks when the
+  reminder appears or clears.
+- Track active Demonic Sacrifice effects in the Buff row with native aura
+  rendering and countdowns, including when a demon is also present.
+- Add a Soul Link reminder for Warlocks who know the spell and have a demon.
+  It flashes only when the buff is confirmed missing and uses a native pet aura
+  display when active.
+- Fix Armor and Well Fed reminder glows so they pulse only when the buffs are
+  confirmed missing. Their idle icon colors now follow the active-buff color
+  setting.
+- Add `/whud petbuffs` for a one-time, out-of-combat pet buff diagnostic.
+
 ## v0.35.1
 
 - Keep a group-buff reminder icon visible when combat hides aura status, so a

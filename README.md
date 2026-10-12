@@ -25,8 +25,8 @@ so you can see the full layout before choosing what to track. Open it from
 | Display | What it tracks |
 | --- | --- |
 | Main row | Corruption, Immolate, Siphon Life, Banes, Curses, and Drain spells. Banes, Curses, and Drains each share an icon slot. Active target effects show a countdown, including milliseconds. |
-| Cooldown row | Healthstone, Soulstone, Fear, and available racial abilities. |
-| Buff row | Demon Armor / Demon Skin, Well Fed, Fortitude, Mark or Gift of the Wild, Intellect, Spirit, Kings, Salvation, Thorns, and Unending Breath. Active buffs show colored icons with countdowns by default; a setting reverses active and missing colors. Thorns follows the same Druid-aware missing-buff reminder and active-buff formatting as Mark of the Wild. Unending Breath appears at the right end only while active. Visible buffs pack left to right. |
+| Cooldown row | Healthstone, Soulstone, Fear, available racial abilities, and an optional flashing Sense Demons reminder when no demon or active Demonic Sacrifice is confirmed. |
+| Buff row | Demon Armor / Demon Skin, Well Fed, Fortitude, Mark or Gift of the Wild, Intellect, Spirit, Kings, Salvation, Thorns, Demonic Sacrifice, Soul Link, and Unending Breath. Active buffs show colored icons with native countdowns when available; a setting reverses active and missing colors. Soul Link reminds when known, a demon is present, and its buff is confirmed missing. Thorns follows the same Druid-aware missing-buff reminder and active-buff formatting as Mark of the Wild. Unending Breath appears at the right end only while active. Visible buffs pack left to right. |
 | Proc row | Power Infusion and Nightfall appear only while active, with a pulsing glow and countdown. |
 | Soul Shards | A separate icon near the Player Frame shows your shard count. It flashes red at or below the low warning threshold (default 4), or yellow at or above the high threshold (default 18) or when shards occupy regular bags alongside an equipped Soul Bag. Each click destroys one shard from a regular bag, stopping when those bags are clear or your configured minimum remains. The default minimum is 8. Shards cannot be destroyed in combat. |
 | Nameplates | A copper tick marks 20% health on attackable enemies' health bars. |
@@ -41,6 +41,15 @@ and missing colors. The default is colored when active and grey when missing.
 The Buffs page has its own color toggle. Missing-buff reminders still pulse red.
 General has separate out-of-combat visibility switches for Target DoTs, Utility,
 Buffs, Procs, and Soul Shards. Hidden rows appear in combat and Edit Mode.
+
+### Known Forever beta issue: Soul Link below level 30
+
+Extra talent points can make Soul Link castable before level 30. At level 25,
+casting it consumed mana but applied no detectable buff to the player or pet,
+with both a Voidwalker and a Succubus tested. The HUD therefore continues to
+flash the missing Soul Link reminder. Active Soul Link behavior still needs an
+in-game check at level 30; the addon should clear the reminder when the aura
+actually appears.
 
 Drain Life, Drain Mana, and Drain Soul show four interior tick markers on the
 native player castbar while channeling. With a wand equipped, Shift+Right-click

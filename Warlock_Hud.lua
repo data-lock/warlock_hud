@@ -47,6 +47,7 @@ local icons = {}
 local itemIcons = {}
 local racialIcons = {}
 local groupBuffIcons = {}
+local sacrificeState
 WarlockHudRowVisibility = {
     masks = {},
     containers = {},
@@ -54,6 +55,7 @@ WarlockHudRowVisibility = {
 local lastGroupCasterClasses = {}
 local pendingSpecRebuild = false
 local pendingKnownRebuild = false
+local pendingDemonRebuild = false
 local events = CreateFrame("Frame")
 local ARMOR_IDS = { 687, 696, 706, 1086, 11733, 11734, 11735 }
 local ARMOR_SPELL = { name = "Demon Armor", ids = ARMOR_IDS }
@@ -69,8 +71,8 @@ end
 local MAIN_KEYS = { "corruption", "bane", "curse", "drain", "immolate", "siphonlife" }
 local DEFAULT_SUMMON_KEYWORDS = "123, sum, summ"
 local DOT_DEFAULT_SLOTS = { bane = 2, curse = 3, drain = 4 }
-local COOLDOWN_KEYS = { "healthstone", "soulstone", "fear", "racial1", "racial2" }
-local BUFF_KEYS = { "fort", "motw", "int", "spirit", "kings", "salv", "armor", "wellfed", "thorns", "breath" }
+local COOLDOWN_KEYS = { "healthstone", "soulstone", "fear", "racial1", "racial2", "demon" }
+local BUFF_KEYS = { "fort", "motw", "int", "spirit", "kings", "salv", "armor", "wellfed", "thorns", "sacrifice", "soullink", "breath" }
 local PROC_KEYS = { "powerinfusion", "nightfall" }
 local PROCS = {
     { key = "powerinfusion", name = "Power Infusion", ids = { 10060 } },
@@ -101,7 +103,13 @@ local BUFFS = {
         ids = { 467, 782, 1075, 8914, 9756, 9910, 26992, 53307 } },
     { key = "breath", name = "Unending Breath", activeOnly = true,
         names = { "Unending Breath" }, ids = { 5697 } },
+    { key = "sacrifice", name = "Demonic Sacrifice", activeOnly = true,
+        names = { "Burning Shadow", "Fel Stamina", "Touch of Fire", "Fel Energy" },
+        ids = { 18789, 18790, 18791, 18792 } },
+    { key = "soullink", name = "Soul Link", activeOnly = true,
+        names = { "Soul Link" }, ids = { 25228, 19028 } },
 }
+local SACRIFICE_BUFF = BUFFS[#BUFFS - 1]
 local profile
 local wellFedIDs = { [19705] = true }
 local buffIDs = {}
@@ -130,10 +138,12 @@ local function LearnBuffs()
                 WarlockHudDB.buffIDs = WarlockHudDB.buffIDs or {}
                 WarlockHudDB.buffIDs[buff.key] = WarlockHudDB.buffIDs[buff.key] or {}
                 WarlockHudDB.buffIDs[buff.key][spellID] = true
-                if playerAuraContainer and buffSlotCreated[buff.key] then
-                    playerAuraContainer:SetAuraSlotCandidateFilters(buff.key,
+                local targetContainer = buff.key == "soullink"
+                    and WarlockHudRowVisibility.containers.pet or playerAuraContainer
+                if targetContainer and buffSlotCreated[buff.key] then
+                    targetContainer:SetAuraSlotCandidateFilters(buff.key,
                         { includeSpellIDs = buffIDs[buff.key] })
-                    playerAuraContainer:UpdateAllAuras()
+                    targetContainer:UpdateAllAuras()
                 end
             end
         end
@@ -413,6 +423,11 @@ local function VisibleOrder(order)
             end
         elseif key == "armor" then
             hasSpell = KnownSpell(ARMOR_SPELL)
+        elseif key == "soullink" then
+            hasSpell = KnownSpellID(19028) == true
+        elseif key == "demon" then
+            hasSpell = KnownSpellID(688) == true
+                and groupBuffIcons.demonLayoutVisible == true
         end
         if Enabled(key) and hasSpell then visible[#visible + 1] = key end
     end
@@ -781,12 +796,36 @@ local function UpdateRacials()
     end
 end
 
+local function ReadPlayerBuffNames(names)
+    if not C_UnitAuras or not C_UnitAuras.GetAuraDataBySpellName
+        or (C_Secrets and C_Secrets.ShouldAurasBeSecret
+            and C_Secrets.ShouldAurasBeSecret()) then return nil end
+    for _, name in ipairs(names) do
+        local ok, aura = pcall(C_UnitAuras.GetAuraDataBySpellName,
+            "player", name, "HELPFUL")
+        if not ok or (issecretvalue and issecretvalue(aura)) then return nil end
+        if aura then return true end
+    end
+    return false
+end
+
+local function SetMissingGlow(glow, status)
+    if not glow then return end
+    if status ~= nil and glow.pulseIcon and profile then
+        glow.pulseIcon:SetDesaturated((status == true)
+            ~= (profile.colorActiveBuffs ~= false))
+    end
+    local missing = status == false
+    glow:SetShown(missing)
+    if not missing and glow.pulseIcon then glow.pulseIcon:SetAlpha(1) end
+end
+
 local function UpdateArmorGlow()
-    if armorGlow then armorGlow:Show() end
+    SetMissingGlow(armorGlow, ReadPlayerBuffNames({ "Demon Armor", "Demon Skin" }))
 end
 
 local function UpdateWellFedGlow()
-    if wellFedGlow then wellFedGlow:Show() end
+    SetMissingGlow(wellFedGlow, ReadPlayerBuffNames({ "Well Fed" }))
 end
 
 local function ReadGroupBuff(buff)
@@ -815,6 +854,75 @@ local function ReadGroupBuff(buff)
     return false
 end
 
+local function DemonPresence()
+    if not UnitExists or not UnitIsDeadOrGhost then return nil end
+    local ok, exists, dead = pcall(function()
+        local present = UnitExists("pet")
+        return present, present and UnitIsDeadOrGhost("pet")
+    end)
+    if not ok or (issecretvalue and (issecretvalue(exists) or issecretvalue(dead))) then
+        return nil
+    end
+    if exists and not dead then return true end
+    return false
+end
+
+local function ReadDemonologyBuff(buff)
+    if InCombatLockdown() then return nil end
+    return ReadGroupBuff(buff)
+end
+
+function WarlockHudRowVisibility.DemonLayoutNeeded()
+    return DemonPresence() == false
+        and ReadDemonologyBuff(SACRIFICE_BUFF) == false
+end
+
+local function ReadSoulLink()
+    if InCombatLockdown() or not C_UnitAuras
+        or not C_UnitAuras.GetAuraDataBySpellName
+        or (C_Secrets and C_Secrets.ShouldAurasBeSecret
+            and C_Secrets.ShouldAurasBeSecret()) then return nil end
+    for _, unit in ipairs({ "pet", "player" }) do
+        local ok, aura = pcall(C_UnitAuras.GetAuraDataBySpellName,
+            unit, "Soul Link", "HELPFUL")
+        if not ok or (issecretvalue and issecretvalue(aura)) then return nil end
+        if aura then return true end
+    end
+    return false
+end
+
+local function UpdateDemonology()
+    if not profile then return end
+    local pet = DemonPresence()
+    local sacrifice = ReadDemonologyBuff(SACRIFICE_BUFF)
+    sacrificeState = sacrifice
+    local demonReminder = groupBuffIcons.demonReminder
+    if demonReminder then
+        local missing = pet == false and sacrifice == false
+        demonReminder.icon:SetShown(missing)
+        demonReminder.border:SetShown(missing)
+        demonReminder.glow:SetShown(missing)
+        if not missing then demonReminder.icon:SetAlpha(1) end
+    end
+    if (pet == true or sacrifice == true or (pet == false and sacrifice == false))
+        and groupBuffIcons.demonLayoutVisible ~= (pet == false and sacrifice == false) then
+        pendingDemonRebuild = true
+    end
+    local soulLinkReminder = groupBuffIcons.soulLinkReminder
+    if soulLinkReminder then
+        local active = ReadSoulLink()
+        local missing = pet == true and active == false
+        soulLinkReminder.icon:SetShown(missing)
+        soulLinkReminder.border:SetShown(missing)
+        soulLinkReminder.glow:SetShown(missing)
+        if not missing then soulLinkReminder.icon:SetAlpha(1) end
+        soulLinkReminder.holder:SetShown(pet == true or active ~= false)
+    end
+    if groupBuffIcons.holders and groupBuffIcons.holders.sacrifice then
+        groupBuffIcons.holders.sacrifice:SetShown(sacrificeState ~= false)
+    end
+end
+
 local function GroupCasterClasses()
     if InCombatLockdown() then return lastGroupCasterClasses end
     local classes = {}
@@ -836,6 +944,7 @@ local function GroupCasterClasses()
 end
 
 local function UpdateGroupBuffs()
+    UpdateDemonology()
     local classes = GroupCasterClasses()
     for _, entry in ipairs(groupBuffIcons) do
         if not entry.buff.activeOnly then
@@ -863,6 +972,9 @@ local function UpdateGroupBuffs()
                 breathHolder = holder
             else
                 local shown = key == "armor" or key == "wellfed"
+                    or (key == "sacrifice" and sacrificeState ~= false)
+                    or (key == "soullink" and groupBuffIcons.soulLinkReminder
+                        and groupBuffIcons.soulLinkReminder.holder:IsShown())
                 if not shown then
                     for _, entry in ipairs(groupBuffIcons) do
                         if entry.buff.key == key then
@@ -1009,6 +1121,12 @@ local function Build()
         Report("Could not create the player buff container.")
         return
     end
+    local petAuras = CreateFrame("AuraContainer", nil,
+        WarlockHudRowVisibility.masks.buffs, "CustomAuraContainerTemplate")
+    if not petAuras or type(petAuras.AddAuraSlot) ~= "function" then
+        Report("Could not create the pet buff container.")
+        return
+    end
     local utilityAuras = CreateFrame("AuraContainer", nil,
         WarlockHudRowVisibility.masks.utility, "CustomAuraContainerTemplate")
     local procAuras = CreateFrame("AuraContainer", nil,
@@ -1022,12 +1140,16 @@ local function Build()
     utilityAuras:SetFrameLevel(hudRoot:GetFrameLevel() + 2)
     playerAuras:SetFrameStrata(hudRoot:GetFrameStrata())
     playerAuras:SetFrameLevel(hudRoot:GetFrameLevel() + 2)
+    petAuras:SetFrameStrata(hudRoot:GetFrameStrata())
+    petAuras:SetFrameLevel(hudRoot:GetFrameLevel() + 2)
     procAuras:SetFrameStrata(hudRoot:GetFrameStrata())
     procAuras:SetFrameLevel(hudRoot:GetFrameLevel() + 2)
     WarlockHudRowVisibility.containers.utility = utilityAuras
     WarlockHudRowVisibility.containers.procs = procAuras
+    WarlockHudRowVisibility.containers.pet = petAuras
     LearnWellFed()
     LearnBuffs()
+    groupBuffIcons.demonLayoutVisible = WarlockHudRowVisibility.DemonLayoutNeeded()
 
     local mainOrder = VisibleOrder(profile.mainOrder)
     local cooldownOrder = VisibleOrder(profile.cooldownOrder)
@@ -1294,6 +1416,23 @@ local function Build()
             border = MakeBorder(cooldownAnchor, x, COOLDOWN_ICON_SIZE),
         }
         end
+    end
+
+    local demonX = CooldownX("demon")
+    if demonX then
+        local icon = cooldownAnchor:CreateTexture(nil, "ARTWORK")
+        icon:SetSize(COOLDOWN_ICON_SIZE, COOLDOWN_ICON_SIZE)
+        icon:SetPoint("CENTER", cooldownAnchor, "CENTER", demonX, 0)
+        icon:SetTexture(C_Spell.GetSpellTexture(5500))
+        icon:SetTexCoord(ICON_CROP, 1 - ICON_CROP, ICON_CROP, 1 - ICON_CROP)
+        icon:SetVertexColor(1, 0.3, 0.3, 1)
+        local border = MakeBorder(cooldownAnchor, demonX, COOLDOWN_ICON_SIZE)
+        local glow = MakeReminderGlow(cooldownAnchor, demonX, border,
+            COOLDOWN_ICON_SIZE, true)
+        glow.pulseIcon = icon
+        groupBuffIcons.demonReminder = { icon = icon, border = border, glow = glow }
+        icon:Hide()
+        border:Hide()
     end
 
     if profile.enabled.soulshards ~= false then
@@ -1583,12 +1722,26 @@ local function Build()
                 border = MakeBorder(holder, 0, BUFF_ICON_SIZE)
                 glow = MakeReminderGlow(holder, 0, border, BUFF_ICON_SIZE, true)
                 glow.pulseIcon = icon
+            elseif buff.key == "soullink" then
+                icon = holder:CreateTexture(nil, "ARTWORK")
+                icon:SetAllPoints(holder)
+                icon:SetTexture(C_Spell.GetSpellTexture(19028)
+                    or "Interface\\Icons\\Spell_Shadow_GatherShadows")
+                icon:SetTexCoord(ICON_CROP, 1 - ICON_CROP, ICON_CROP, 1 - ICON_CROP)
+                icon:SetDesaturated(profile.colorActiveBuffs ~= false)
+                border = MakeBorder(holder, 0, BUFF_ICON_SIZE)
+                glow = MakeReminderGlow(holder, 0, border, BUFF_ICON_SIZE, true)
+                glow.pulseIcon = icon
+                groupBuffIcons.soulLinkReminder = { holder = holder, icon = icon,
+                    border = border, glow = glow }
+                icon:Hide()
+                border:Hide()
             end
             groupBuffIcons[#groupBuffIcons + 1] = {
                 buff = buff, icon = icon, border = border, glow = glow,
             }
             buffSlotCreated[buff.key] = true
-            playerAuras:AddAuraSlot(buff.key, "HELPFUL", {
+            (buff.key == "soullink" and petAuras or playerAuras):AddAuraSlot(buff.key, "HELPFUL", {
                 candidateFilters = { includeSpellIDs = buffIDs[buff.key] },
                 initializeFrame = function(button)
                     button:SetSize(BUFF_ICON_SIZE, BUFF_ICON_SIZE)
@@ -1662,6 +1815,8 @@ local function Build()
 
     playerAuras:SetSize(math.max(1, #buffOrder * BUFF_ICON_SIZE), BUFF_ICON_SIZE)
     playerAuras:SetPoint("CENTER", buffAnchor, "CENTER")
+    petAuras:SetSize(math.max(1, #buffOrder * BUFF_ICON_SIZE), BUFF_ICON_SIZE)
+    petAuras:SetPoint("CENTER", buffAnchor, "CENTER")
     utilityAuras:SetSize(cooldownWidth, COOLDOWN_ICON_SIZE)
     utilityAuras:SetPoint("CENTER", cooldownAnchor, "CENTER")
     procAuras:SetSize(math.max(1, #procOrder * PROC_ICON_SIZE), PROC_ICON_SIZE)
@@ -1676,6 +1831,9 @@ local function Build()
     playerAuras:SetUnit("player")
     playerAuras:Show()
     playerAuras:UpdateAllAuras()
+    petAuras:SetUnit("pet")
+    petAuras:Show()
+    petAuras:UpdateAllAuras()
     procAuras:SetUnit("player")
     procAuras:Show()
     procAuras:UpdateAllAuras()
@@ -1719,6 +1877,7 @@ local function Rebuild()
     if not IsAddonEnabled() then
         pendingKnownRebuild = false
         pendingSpecRebuild = false
+        pendingDemonRebuild = false
         if WarlockHudRefreshNameplates then WarlockHudRefreshNameplates() end
         return true
     end
@@ -1727,6 +1886,7 @@ local function Rebuild()
     if container then
         pendingKnownRebuild = false
         pendingSpecRebuild = false
+        pendingDemonRebuild = false
         return true
     end
     return false
@@ -1791,7 +1951,9 @@ events:RegisterEvent("SPELL_UPDATE_COOLDOWN")
 events:RegisterEvent("GROUP_ROSTER_UPDATE")
 events:RegisterEvent("PLAYER_ENTERING_WORLD")
 events:RegisterEvent("ZONE_CHANGED_NEW_AREA")
-events:RegisterUnitEvent("UNIT_AURA", "player")
+events:RegisterUnitEvent("UNIT_AURA", "player", "pet")
+events:RegisterUnitEvent("UNIT_PET", "player")
+events:RegisterUnitEvent("UNIT_HEALTH", "pet")
 events:SetScript("OnEvent", function(_, event)
     if event == "PLAYER_LOGIN" then InitializeProfiles() end
     if not IsAddonEnabled() then return end
@@ -1839,10 +2001,19 @@ events:SetScript("OnEvent", function(_, event)
         LearnWellFed()
         LearnBuffs()
         if playerAuraContainer then playerAuraContainer:UpdateAllAuras() end
+        if WarlockHudRowVisibility.containers.pet then
+            WarlockHudRowVisibility.containers.pet:UpdateAllAuras()
+        end
         if WarlockHudRowVisibility.containers.procs then
             WarlockHudRowVisibility.containers.procs:UpdateAllAuras()
         end
         UpdateWellFedGlow()
+        UpdateGroupBuffs()
+        UpdateRowVisibility()
+    elseif event == "UNIT_PET" or event == "UNIT_HEALTH" then
+        if event == "UNIT_PET" and WarlockHudRowVisibility.containers.pet then
+            WarlockHudRowVisibility.containers.pet:UpdateAllAuras()
+        end
         UpdateGroupBuffs()
         UpdateRowVisibility()
     elseif event == "GROUP_ROSTER_UPDATE" or event == "PLAYER_ENTERING_WORLD"
@@ -1866,7 +2037,7 @@ events:SetScript("OnUpdate", function(_, elapsed)
     rangeElapsed = rangeElapsed + elapsed
     if rangeElapsed >= 0.2 then
         rangeElapsed = 0
-        if pendingSpecRebuild or pendingKnownRebuild then Rebuild() end
+        if pendingSpecRebuild or pendingKnownRebuild or pendingDemonRebuild then Rebuild() end
         if container then
             if soulstoneLabel then
                 local status = WarlockHudSoulstoneText and WarlockHudSoulstoneText()
@@ -1876,8 +2047,6 @@ events:SetScript("OnUpdate", function(_, elapsed)
             UpdateRange()
             UpdateStones()
             UpdateRacials()
-            UpdateArmorGlow()
-            UpdateWellFedGlow()
             if editMover then
                 local inEditMode = EditModeManagerFrame and EditModeManagerFrame:IsShown()
                 if inEditMode then
@@ -1954,7 +2123,49 @@ local function DebugState()
         end
     end
 end
+local function TracePetBuffs()
+    if InCombatLockdown() or (C_Secrets and C_Secrets.ShouldAurasBeSecret
+        and C_Secrets.ShouldAurasBeSecret()) then
+        Report("Pet buff scan is unavailable during combat or secret aura states.")
+        return
+    end
+    if not C_UnitAuras or not C_UnitAuras.GetBuffDataByIndex then
+        Report("Pet buff scan API is unavailable on this client.")
+        return
+    end
+    local ok, exists = pcall(UnitExists, "pet")
+    if not ok or (issecretvalue and issecretvalue(exists)) then
+        Report("Pet presence is unreadable.")
+        return
+    end
+    if not exists then
+        Report("No pet to scan.")
+        return
+    end
+    local count = 0
+    for index = 1, 40 do
+        local readOK, aura = pcall(C_UnitAuras.GetBuffDataByIndex, "pet", index)
+        if not readOK or (issecretvalue and issecretvalue(aura)) then
+            Report("Pet buff " .. index .. " is unreadable; scan stopped.")
+            return
+        end
+        if not aura then break end
+        local name, spellID = aura.name, aura.spellId
+        if (issecretvalue and (issecretvalue(name) or issecretvalue(spellID))) then
+            Report("Pet buff " .. index .. " has restricted fields; scan stopped.")
+            return
+        end
+        Report("Pet buff " .. index .. ": " .. tostring(name)
+            .. " (ID " .. tostring(spellID) .. ")")
+        count = count + 1
+    end
+    if count == 0 then Report("Pet has no visible buffs.") end
+end
 SlashCmdList.WARLOCKHUD = function(message)
+    if message == "petbuffs" then
+        TracePetBuffs()
+        return
+    end
     if message == "announceassignments" and WarlockHudAnnounceAssignments then
         WarlockHudAnnounceAssignments()
         return
