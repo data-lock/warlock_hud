@@ -1,5 +1,13 @@
 # Changelog
 
+## v0.36.2
+
+- Add Conflagrate to the Utility row when learned, with its native spell
+  cooldown and per-profile icon ordering and visibility.
+- Color and pulse the Conflagrate icon while the existing native Immolate
+  tracker shows your Immolate on the current target. It returns to grey when
+  that effect expires, is consumed, or the target changes.
+
 ## v0.36.0
 
 - Add a red flashing Sense Demons reminder to the Utility row when no living

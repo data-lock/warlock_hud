@@ -45,7 +45,7 @@ local playerAuraContainer
 local wellFedSlotCreated = false
 local icons = {}
 local itemIcons = {}
-local racialIcons = {}
+local spellCooldownIcons = {}
 local groupBuffIcons = {}
 local sacrificeState
 WarlockHudRowVisibility = {
@@ -71,7 +71,7 @@ end
 local MAIN_KEYS = { "corruption", "bane", "curse", "drain", "immolate", "siphonlife" }
 local DEFAULT_SUMMON_KEYWORDS = "123, sum, summ"
 local DOT_DEFAULT_SLOTS = { bane = 2, curse = 3, drain = 4 }
-local COOLDOWN_KEYS = { "healthstone", "soulstone", "fear", "racial1", "racial2", "demon" }
+local COOLDOWN_KEYS = { "healthstone", "soulstone", "fear", "conflagrate", "racial1", "racial2", "demon" }
 local BUFF_KEYS = { "fort", "motw", "int", "spirit", "kings", "salv", "armor", "wellfed", "thorns", "sacrifice", "soullink", "breath" }
 local PROC_KEYS = { "powerinfusion", "nightfall" }
 local PROCS = {
@@ -406,6 +406,32 @@ local function KnownSpell(spell)
     return not checked
 end
 
+function WarlockHudRowVisibility.ConflagrateSpellID()
+    local spellID = C_Spell and C_Spell.GetSpellIDForSpellIdentifier
+        and C_Spell.GetSpellIDForSpellIdentifier("Conflagrate")
+    if spellID and KnownSpellID(spellID) == true then return spellID end
+    for _, rankID in ipairs({ 18932, 18931, 18930, 17962, 1293818, 1293817 }) do
+        if KnownSpellID(rankID) == true then return rankID end
+    end
+end
+
+function WarlockHudRowVisibility.RefreshConflagrate()
+    local entry = groupBuffIcons.conflagrate
+    if not entry then return end
+    local immolateActive = false
+    for _, button in ipairs(entry.immolateButtons) do
+        local ok, shown = pcall(button.IsShown, button)
+        if not ok or (issecretvalue and issecretvalue(shown)) then return end
+        if shown then
+            immolateActive = true
+            break
+        end
+    end
+    entry.icon:SetDesaturated(not immolateActive)
+    entry.glow:SetShown(immolateActive)
+    if not immolateActive then entry.icon:SetAlpha(1) end
+end
+
 local function VisibleOrder(order)
     local visible = {}
     for _, key in ipairs(order) do
@@ -425,6 +451,8 @@ local function VisibleOrder(order)
             hasSpell = KnownSpell(ARMOR_SPELL)
         elseif key == "soullink" then
             hasSpell = KnownSpellID(19028) == true
+        elseif key == "conflagrate" then
+            hasSpell = WarlockHudRowVisibility.ConflagrateSpellID() ~= nil
         elseif key == "demon" then
             hasSpell = KnownSpellID(688) == true
                 and groupBuffIcons.demonLayoutVisible == true
@@ -784,11 +812,11 @@ function WarlockHudRefreshSoulstoneWarning()
     UpdateStones()
 end
 
-local function UpdateRacials()
+local function UpdateSpellCooldowns()
     if not C_Spell or not C_Spell.GetSpellCooldownDuration then
         return
     end
-    for _, entry in ipairs(racialIcons) do
+    for _, entry in ipairs(spellCooldownIcons) do
         local duration = C_Spell.GetSpellCooldownDuration(entry.spellID, true)
         if duration then
             pcall(entry.cooldown.SetCooldownFromDurationObject, entry.cooldown, duration)
@@ -1411,11 +1439,37 @@ local function Build()
         cooldown:SetDrawBling(false)
         cooldown:SetDrawEdge(false)
         cooldown:SetHideCountdownNumbers(true)
-        racialIcons[#racialIcons + 1] = {
+        spellCooldownIcons[#spellCooldownIcons + 1] = {
             spellID = racial[2], cooldown = cooldown,
             border = MakeBorder(cooldownAnchor, x, COOLDOWN_ICON_SIZE),
         }
         end
+    end
+
+    local conflagrateID = WarlockHudRowVisibility.ConflagrateSpellID()
+    local conflagrateX = CooldownX("conflagrate")
+    if conflagrateID and conflagrateX then
+        local icon = cooldownAnchor:CreateTexture(nil, "ARTWORK")
+        icon:SetSize(COOLDOWN_ICON_SIZE, COOLDOWN_ICON_SIZE)
+        icon:SetPoint("CENTER", cooldownAnchor, "CENTER", conflagrateX, 0)
+        icon:SetTexture(C_Spell.GetSpellTexture(conflagrateID))
+        icon:SetTexCoord(ICON_CROP, 1 - ICON_CROP, ICON_CROP, 1 - ICON_CROP)
+        local cooldown = CreateFrame("Cooldown", nil, cooldownAnchor, "CooldownFrameTemplate")
+        cooldown:SetAllPoints(icon)
+        cooldown:SetDrawBling(false)
+        cooldown:SetDrawEdge(false)
+        cooldown:SetHideCountdownNumbers(false)
+        spellCooldownIcons[#spellCooldownIcons + 1] = {
+            spellID = conflagrateID, cooldown = cooldown,
+            border = MakeBorder(cooldownAnchor, conflagrateX, COOLDOWN_ICON_SIZE),
+        }
+        local glow = MakeReminderGlow(cooldownAnchor, conflagrateX, nil,
+            COOLDOWN_ICON_SIZE)
+        glow.pulseIcon = icon
+        groupBuffIcons.conflagrate = {
+            icon = icon, glow = glow, immolateButtons = {},
+        }
+        icon:SetDesaturated(true)
     end
 
     local demonX = CooldownX("demon")
@@ -1582,6 +1636,14 @@ local function Build()
                     button:SetSize(iconSize, iconSize)
                     button:ClearAllPoints()
                     button:SetPoint("CENTER", anchor, "CENTER", x, 0)
+                    if spell.name == "Immolate" and groupBuffIcons.conflagrate then
+                        local entry = groupBuffIcons.conflagrate
+                        entry.immolateButtons[#entry.immolateButtons + 1] = button
+                        button:HookScript("OnShow",
+                            WarlockHudRowVisibility.RefreshConflagrate)
+                        button:HookScript("OnHide",
+                            WarlockHudRowVisibility.RefreshConflagrate)
+                    end
 
                     local auraIcon = button:CreateTexture(nil, "ARTWORK")
                     auraIcon:SetAllPoints(button)
@@ -1842,7 +1904,8 @@ local function Build()
     UpdateVisualState()
     UpdateRange()
     UpdateStones()
-    UpdateRacials()
+    UpdateSpellCooldowns()
+    WarlockHudRowVisibility.RefreshConflagrate()
     UpdateArmorGlow()
     UpdateWellFedGlow()
     UpdateGroupBuffs()
@@ -1870,7 +1933,7 @@ local function Rebuild()
     soulstoneLabel = nil
     buffAnchor, buffMover = nil, nil
     procAnchor, procMover = nil, nil
-    icons, itemIcons, racialIcons, groupBuffIcons = {}, {}, {}, {}
+    icons, itemIcons, spellCooldownIcons, groupBuffIcons = {}, {}, {}, {}
     WarlockHudRowVisibility.masks = {}
     WarlockHudRowVisibility.containers = {}
     assignmentFlashes = {}
@@ -1995,7 +2058,7 @@ events:SetScript("OnEvent", function(_, event)
     elseif event == "PLAYER_EQUIPMENT_CHANGED" then
         UpdateShardCount()
     elseif event == "SPELL_UPDATE_COOLDOWN" then
-        UpdateRacials()
+        UpdateSpellCooldowns()
     elseif event == "UNIT_AURA" then
         UpdateArmorGlow()
         LearnWellFed()
@@ -2023,6 +2086,7 @@ events:SetScript("OnEvent", function(_, event)
     elseif event == "PLAYER_TARGET_CHANGED" and container then
         -- Target swaps are not aura changes on the previous target.
         container:UpdateAllAuras()
+        WarlockHudRowVisibility.RefreshConflagrate()
         if WarlockHudRowVisibility.containers.utility then
             WarlockHudRowVisibility.containers.utility:UpdateAllAuras()
         end
@@ -2046,7 +2110,7 @@ events:SetScript("OnUpdate", function(_, elapsed)
             UpdateVisualState()
             UpdateRange()
             UpdateStones()
-            UpdateRacials()
+            UpdateSpellCooldowns()
             if editMover then
                 local inEditMode = EditModeManagerFrame and EditModeManagerFrame:IsShown()
                 if inEditMode then

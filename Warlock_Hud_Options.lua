@@ -11,6 +11,7 @@ local LABELS = {
     corruption = "Corruption", bane = "Banes", curse = "Curses", drain = "Drains",
     immolate = "Immolate", siphonlife = "Siphon Life",
     healthstone = "Healthstone", soulstone = "Soulstone", fear = "Fear",
+    conflagrate = "Conflagrate",
     demon = "Missing Demon Reminder", sacrifice = "Demonic Sacrifice",
     soullink = "Soul Link",
     soulshards = "Soul Shards",
@@ -33,6 +34,7 @@ local ICON_HELP = {
     healthstone = "Shows your Healthstone and its item cooldown.",
     soulstone = "Shows your Soulstone and its item cooldown.",
     fear = "Shows Fear in the Utility row when available.",
+    conflagrate = "Shows Conflagrate and its cooldown when learned. The icon pulses when your Immolate is active on the current target.",
     demon = "Flash a warning when no demon is summoned and no active Demonic Sacrifice is detected.",
     sacrifice = "Shows an active Demonic Sacrifice effect with its native duration.",
     soullink = "Remind you when Soul Link is known, a demon is summoned, and the buff is confirmed missing.",
@@ -223,7 +225,8 @@ local function IconForKey(key)
     end
     local spellIDs = {
         corruption = 6222, bane = 1014, drain = 1120, immolate = 348,
-        siphonlife = 18265, fear = 5782, armor = 706, wellfed = 19705,
+        siphonlife = 18265, fear = 5782, conflagrate = 1293817,
+        armor = 706, wellfed = 19705,
         demon = 5500, sacrifice = 18788, soullink = 19028,
         fort = 1243, motw = 1126, int = 1459,
         spirit = 14752, kings = 20217, salv = 1038,

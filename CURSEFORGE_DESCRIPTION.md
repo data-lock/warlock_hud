@@ -4,7 +4,7 @@ A configurable combat HUD for Warlocks in **World of Warcraft: Forever beta**. T
 
 Coordinate Curse, Bane, Control raid-icon, and Soulstone assignments with your group, including a flashing Soulstone reminder when your assigned target needs one. See drain ticks on the player castbar, manage summon requests and Healthstone trades, and Shift+Right-click an enemy in the game world to start shooting when you have a wand equipped.
 
-Get chat reminders when you cast an outdated spell rank. At demon trainers, colored grimoire icons show what each summoned pet knows and whether a better rank is available for sale.
+Get chat reminders when you cast an outdated spell rank. At demon trainers, colored grimoire icons show what each summoned pet knows and whether a better rank is available for sale. Demonology reminders track a missing demon, active Demonic Sacrifice effects, and a missing Soul Link buff when you know the spell and have a demon.
 
 **Found a bug? Want a feature? Have feedback? Leave a comment! I want this to help as many people as possible.**
 
@@ -12,7 +12,6 @@ Get chat reminders when you cast an outdated spell rank. At demon trainers, colo
 
 *   Raid consumables tracking
 *   Gear and trinket CDs/Procs
-*   Demonology support
 
 
 ![Warlock HUD in play](https://raw.githubusercontent.com/data-lock/warlock_hud/main/screenshots/warlock_hud_overview.png)
@@ -20,15 +19,17 @@ Get chat reminders when you cast an outdated spell rank. At demon trainers, colo
 ## What it shows
 
 - **Target effects:** Corruption, Immolate, Siphon Life, Banes, Curses, and Drains. Active effects use the game's native aura countdowns. Choose whether active icons appear colored or grey.
-- **Utility:** Healthstone, Soulstone, Fear, and available racial abilities.
-- **Buffs and procs:** Armor and group buff reminders, plus Power Infusion and Nightfall while active. Arrange the bars and choose which slots to show.
-- **Assignments:** Assign a Curse, Bane, and Soulstone target to each Warlock in your group. Multiple Warlocks can choose the same Soulstone target. The window can sync choices with group members using the addon, announce them to group chat, and clear them all at once. Solo assignments start unset on login.
+- **Utility:** Healthstone, Soulstone, Fear, available racial abilities, and a red flashing Sense Demons reminder when no living demon or active Demonic Sacrifice is confirmed. Conflagrate appears when learned, shows its spell cooldown, and pulses while your Immolate is active on the current target. The row recenters when the demon reminder appears or clears.
+- **Buffs and procs:** Armor and group buff reminders, active Demonic Sacrifice effects with native aura countdowns, and a Soul Link reminder that flashes when you know the spell, have a demon, and are confirmed missing its buff. Soul Link and Demonic Sacrifice can display together. Power Infusion and Nightfall appear while active. Arrange the bars and choose which slots to show.
+- **Assignments:** Assign a Curse, Bane, Control raid marker, and Soulstone target to each Warlock in your group. Multiple Warlocks can choose the same Soulstone target. The window can sync choices with group members using the addon, announce them to group chat, and clear them all at once. Solo assignments start unset on login.
 - **Soulstone reminder:** Your Soulstone icon flashes red when your assigned target is confirmed missing the buff and your Soulstone is ready. An unknown aura state does not trigger the reminder.
 - **Drain channel ticks:** Four interior tick markers appear on the player castbar for Drain Life, Drain Mana, and Drain Soul.
 - **Soul Shards:** A separate count icon with configurable red low-shard and yellow high-shard warnings. The default warnings are 4 or fewer and 18 or more. An optional warning detects shards in regular bags when you have an equipped Soul Bag. Click the icon to destroy one shard from a regular bag, subject to your configured reserve; destruction is unavailable in combat.
 - **Nameplates:** An optional 20% health marker on attackable enemies.
 - **Stones:** Track a confirmed active Soulstone recipient and record group members who completed a Healthstone trade with you. Optionally place one Healthstone into an empty trade with a current group member. **You must press Accept yourself.** A completed-trade record does not prove that the recipient still carries the stone.
 - **Summon requests:** Group members can type `123`, `sum`, or `summ` by default in party, raid, instance chat, or a whisper to join a separate summon queue. The accepted words and channels are configurable.
+
+**Forever beta note:** Extra talent points can make Soul Link castable below level 30. At level 25, casting it applied no detectable buff to the player or pet in our tests, so the missing-buff reminder continued to flash. Active Soul Link behavior still needs an in-game check at level 30.
 
 ![All HUD bars in demo mode](https://raw.githubusercontent.com/data-lock/warlock_hud/main/screenshots/warlock_hud_overview_demo.png)
 
