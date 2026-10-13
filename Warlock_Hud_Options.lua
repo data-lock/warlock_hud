@@ -4,7 +4,7 @@ local refreshers = {}
 local dirty = false
 local NUMERIC_DEFAULTS = {
     mainSize = 48, cooldownSize = 24, buffSize = 24,
-    procSize = 32, shardSize = 32,
+    procSize = 32, consumeSize = 24, shardSize = 32,
 }
 
 local LABELS = {
@@ -284,7 +284,7 @@ local function ShowIconDemo()
             local width = #order * size + math.max(0, #order - 1) * 4 + 8
             local row = CreateFrame("Frame", nil, demo)
             row:SetSize(width, size + 8)
-            if orderKey == "buffOrder" then
+            if orderKey == "buffOrder" or orderKey == "consumeOrder" then
                 row:SetPoint("LEFT", anchor, "LEFT", -4, 0)
             else
                 row:SetPoint("CENTER", anchor, "CENTER")
@@ -294,7 +294,8 @@ local function ShowIconDemo()
             background:SetColorTexture(0, 0, 0, 0.9)
             local rowLabel = row:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
             rowLabel:SetSize(95, 18)
-            local rowLeft = orderKey == "buffOrder" and anchor:GetLeft()
+            local rowLeft = (orderKey == "buffOrder" or orderKey == "consumeOrder")
+                and anchor:GetLeft()
                 or (anchor:GetCenter() or 0) - width / 2
             if rowLeft < 110 then
                 rowLabel:SetPoint("LEFT", row, "RIGHT", 6, 0)
@@ -328,6 +329,7 @@ local function ShowIconDemo()
 
         DemoRow("Target DoTs", api.MainKeys, "mainOrder", "mainSize", anchors.main)
         DemoRow("Utility", api.CooldownKeys, "cooldownOrder", "cooldownSize", anchors.utility)
+        DemoRow("Consumes", api.ConsumeKeys, "consumeOrder", "consumeSize", anchors.consumes)
         DemoRow("Buffs", api.BuffKeys, "buffOrder", "buffSize", anchors.buffs)
         DemoRow("Procs", api.ProcKeys, "procOrder", "procSize", anchors.procs)
         local shardAnchor = anchors.shards
@@ -519,7 +521,7 @@ Text(general, "Hidden rows appear in combat and Edit Mode.",
     20, -274, "GameFontHighlightSmall")
 for index, option in ipairs({
     { "main", "Target DoTs" }, { "utility", "Utility" },
-    { "buffs", "Buffs" }, { "procs", "Procs" },
+    { "consumes", "Consumes" }, { "buffs", "Buffs" }, { "procs", "Procs" },
     { "shards", "Soul Shards" },
 }) do
     local key, label = option[1], option[2]
@@ -564,6 +566,40 @@ ResetPageButton(layout, "Rows & Layout", function()
     MarkChanged()
 end)
 
+local consumeLayout = Panel("Warlock HUD - Consumes")
+Text(consumeLayout, "Move this row in Edit Mode. Drag icons to reorder them; use the checks to show or hide them.",
+    20, -50, "GameFontHighlightSmall")
+Check(consumeLayout, 20, -80, "Enable Consumes row",
+    function() return Profile().consumesEnabled ~= false end,
+    function(value)
+        Profile().consumesEnabled = value
+        if api.RefreshRowVisibility then api.RefreshRowVisibility() end
+    end, "The row stays movable in Edit Mode when disabled.", false)
+Text(consumeLayout, "Icon size", 20, -125, "GameFontNormal")
+SizeSlider(consumeLayout, "Consume icon size", "consumeSize", 16, 64, 20, -150)
+OrderSection(consumeLayout, "Tracked consumables", "consumeOrder", api.ConsumeKeys,
+    -205, nil, function()
+        ResetRowValues("consumeSize", "consumeOrder", api.ConsumeKeys, DefaultProfile())
+        Profile().colorActiveConsumes = nil
+        MarkChanged()
+    end)
+Text(consumeLayout, "Well Fed uses a native aura countdown. Its reminder flashes only when confirmed missing.",
+    20, -335, "GameFontHighlightSmall")
+Check(consumeLayout, 20, -375, "Color when active; grey when missing",
+    function() return Profile().colorActiveConsumes ~= false end,
+    function(value)
+        if value then Profile().colorActiveConsumes = nil
+        else Profile().colorActiveConsumes = false end
+    end, "On (default): color when active, grey when missing. Off reverses the colors.")
+ResetPageButton(consumeLayout, "Consumes", function()
+    local defaults = DefaultProfile()
+    ResetRowValues("consumeSize", "consumeOrder", api.ConsumeKeys, defaults)
+    Profile().consumesEnabled = nil
+    Profile().showOutOfCombat.consumes = nil
+    Profile().colorActiveConsumes = nil
+    MarkChanged()
+end)
+
 local buffLayout = Panel("Warlock HUD - Buffs")
 Text(buffLayout, "Move this row in Edit Mode. Drag icons to reorder them; use the checks to show or hide them.",
     20, -50, "GameFontHighlightSmall")
@@ -577,7 +613,7 @@ end)
 Text(buffLayout, "Buff reminders", 20, -400, "GameFontNormal")
 Text(buffLayout, "Fortitude, Wild, Intellect, Spirit, Kings, and Salvation include group versions.",
     20, -427, "GameFontHighlightSmall")
-Text(buffLayout, "Demon Armor / Skin and Well Fed glow when missing.",
+Text(buffLayout, "Demon Armor / Skin glows when missing.",
     20, -449, "GameFontHighlightSmall")
 Text(buffLayout, "Missing group buffs pulse red when your group has the matching class.",
     20, -471, "GameFontHighlightSmall")
@@ -962,10 +998,12 @@ refreshers[#refreshers + 1] = function()
     profileSummary:SetText("Selected: " .. db.activeProfile
         .. "\nEnabled slots: " .. EnabledCount(api.MainKeys)
         .. " / " .. EnabledCount(api.CooldownKeys)
-        .. " / " .. EnabledCount(api.BuffKeys) .. " / " .. EnabledCount(api.ProcKeys)
+        .. " / " .. EnabledCount(api.ConsumeKeys) .. " / "
+        .. EnabledCount(api.BuffKeys) .. " / " .. EnabledCount(api.ProcKeys)
         .. "\nSizes: " .. profile.mainSize .. " / " .. profile.cooldownSize
-        .. " / " .. profile.buffSize .. " / " .. profile.procSize .. " px"
-        .. "\n(DoTs / Utility / Buffs / Procs)")
+        .. " / " .. profile.consumeSize .. " / " .. profile.buffSize
+        .. " / " .. profile.procSize .. " px"
+        .. "\n(DoTs / Utility / Consumes / Buffs / Procs)")
 
     if not db.autoSpecProfiles then
         specStatus:SetText("Automatic switching is off.")
@@ -979,6 +1017,149 @@ refreshers[#refreshers + 1] = function()
     end
 end
 
+local sharingPanel = Panel("Warlock HUD - Share Settings")
+Text(sharingPanel, "Choose sections, then export. Paste a code to preview it before importing.",
+    20, -50, "GameFontHighlightSmall")
+local share = WarlockHudSharing
+local labels = {
+    bars = "Bars and tracked icons", positions = "Edit Mode locations",
+    notifications = "Notifications", summons = "Summons",
+    stones = "Stone options", shards = "Soul Shards",
+}
+local selected = {}
+for index, section in ipairs(share.Sections) do
+    selected[section] = true
+    local x = index <= 3 and 20 or 335
+    local y = -80 - ((index - 1) % 3) * 31
+    local check = CreateFrame("CheckButton", nil, sharingPanel, "UICheckButtonTemplate")
+    check:SetPoint("TOPLEFT", sharingPanel, "TOPLEFT", x, y)
+    check:SetChecked(true)
+    Text(sharingPanel, labels[section], x + 28, y - 5, "GameFontHighlight")
+    check:SetScript("OnClick", function(self) selected[section] = self:GetChecked() and true or false end)
+end
+local allProfiles = false
+local allCheck = CreateFrame("CheckButton", nil, sharingPanel, "UICheckButtonTemplate")
+allCheck:SetPoint("TOPLEFT", sharingPanel, "TOPLEFT", 20, -182)
+Text(sharingPanel, "All profiles (otherwise current profile)", 48, -187, "GameFontHighlight")
+allCheck:SetScript("OnClick", function(self) allProfiles = self:GetChecked() and true or false end)
+Text(sharingPanel, "Importing one profile merges selected sections into the current profile.",
+    20, -213, "GameFontHighlightSmall")
+Text(sharingPanel, "Importing all creates profiles; existing names receive an 'Imported' suffix.",
+    20, -230, "GameFontHighlightSmall")
+Text(sharingPanel, "Share code", 20, -257, "GameFontNormal")
+local shareArea = CreateFrame("Frame", nil, sharingPanel)
+shareArea:SetPoint("TOPLEFT", sharingPanel, "TOPLEFT", 20, -278)
+shareArea:SetSize(575, 158)
+local shareBackground = shareArea:CreateTexture(nil, "BACKGROUND")
+shareBackground:SetAllPoints()
+shareBackground:SetColorTexture(0.04, 0.04, 0.06, 0.85)
+for _, edge in ipairs({ "TOP", "BOTTOM", "LEFT", "RIGHT" }) do
+    local border = shareArea:CreateTexture(nil, "BORDER")
+    border:SetColorTexture(0.45, 0.45, 0.45, 0.7)
+    if edge == "TOP" or edge == "BOTTOM" then
+        border:SetHeight(1)
+        border:SetPoint(edge .. "LEFT", shareArea, edge .. "LEFT")
+        border:SetPoint(edge .. "RIGHT", shareArea, edge .. "RIGHT")
+    else
+        border:SetWidth(1)
+        border:SetPoint("TOP" .. edge, shareArea, "TOP" .. edge)
+        border:SetPoint("BOTTOM" .. edge, shareArea, "BOTTOM" .. edge)
+    end
+end
+local shareScroll = CreateFrame("ScrollFrame", nil, shareArea, "UIPanelScrollFrameTemplate")
+shareScroll:SetPoint("TOPLEFT", shareArea, "TOPLEFT", 8, -7)
+shareScroll:SetSize(540, 144)
+local shareInput = CreateFrame("EditBox", nil, shareScroll)
+shareInput:SetMultiLine(true)
+shareInput:SetAutoFocus(false)
+shareInput:SetMaxLetters(60000)
+shareInput:SetSize(530, 144)
+shareInput:SetFontObject("ChatFontNormal")
+shareInput:SetScript("OnEscapePressed", function(self) self:ClearFocus() end)
+local shareMeasure = shareInput:CreateFontString(nil, "ARTWORK", "ChatFontNormal")
+shareMeasure:SetWidth(530)
+shareInput:SetScript("OnTextChanged", function(self)
+    shareMeasure:SetText(self:GetText())
+    self:SetHeight(math.max(144, shareMeasure:GetStringHeight() + 20))
+end)
+shareScroll:SetScrollChild(shareInput)
+local shareStatus = Text(sharingPanel, "", 20, -485, "GameFontHighlightSmall")
+shareStatus:SetWidth(570)
+shareStatus:SetJustifyH("LEFT")
+local function SetShareStatus(message, good)
+    shareStatus:SetText(message)
+    shareStatus:SetTextColor(good and 0.4 or 1, good and 1 or 0.5, 0.4)
+end
+Button(sharingPanel, "Export", 20, -448, 105, function()
+    local any
+    for _, section in ipairs(share.Sections) do
+        if selected[section] then any = true; break end
+    end
+    if not any then SetShareStatus("Select at least one section to export.", false); return end
+    local code = share.Export(selected, allProfiles)
+    shareInput:SetText(code)
+    shareInput:SetFocus()
+    shareInput:HighlightText()
+    SetShareStatus("Export ready. Press Ctrl+C to copy the selected code.", true)
+end)
+Button(sharingPanel, "Preview Import", 135, -448, 125, function()
+    local parsed, reason = share.Decode(shareInput:GetText())
+    if not parsed then SetShareStatus(reason, false); return end
+    local count, included = 0, {}
+    for _ in pairs(parsed.profiles) do count = count + 1 end
+    for _, section in ipairs(share.Sections) do
+        if parsed.available[section] then included[#included + 1] = labels[section] end
+    end
+    SetShareStatus("Code v" .. parsed.version .. "; " .. count .. " profile(s). Available: "
+        .. table.concat(included, ", ") .. ".", true)
+end)
+StaticPopupDialogs.WARLOCKHUD_CONFIRM_IMPORT = {
+    text = "Import from addon version %s?\n%s\nSelected settings save immediately. The HUD refreshes when safe.",
+    button1 = "Import Settings",
+    button2 = CANCEL,
+    OnAccept = function(_, request)
+        if not request then return end
+        if not request.allProfiles and api.GetDB().activeProfile ~= request.profileName then
+            SetShareStatus("Active profile changed. Review the import again.", false)
+            return
+        end
+        local imported, result = share.Import(request.parsed, request.selected, request.allProfiles)
+        if not imported then SetShareStatus(result, false); return end
+        MarkChanged()
+        SetShareStatus(result .. " Saved now; HUD refreshes when safe.", true)
+    end,
+    timeout = 0,
+    whileDead = true,
+    hideOnEscape = true,
+}
+Button(sharingPanel, "Import Selected", 270, -448, 125, function()
+    local parsed, reason = share.Decode(shareInput:GetText())
+    if not parsed then SetShareStatus(reason, false); return end
+    local chosen, snapshot = {}, {}
+    for _, section in ipairs(share.Sections) do
+        snapshot[section] = selected[section]
+        if selected[section] and parsed.available[section] then
+            chosen[#chosen + 1] = labels[section]
+        end
+    end
+    if #chosen == 0 then
+        SetShareStatus("Select at least one section available in the code.", false)
+        return
+    end
+    local profileName = api.GetDB().activeProfile
+    local destination = allProfiles and "Create new profiles" or
+        ("Merge into current profile: " .. profileName)
+    StaticPopup_Show("WARLOCKHUD_CONFIRM_IMPORT", parsed.version,
+        destination .. "\nSections: " .. table.concat(chosen, ", "),
+        { parsed = parsed, selected = snapshot, allProfiles = allProfiles,
+            profileName = profileName })
+end)
+Button(sharingPanel, "Clear", 405, -448, 90, function()
+    shareInput:SetText("")
+    shareInput:ClearFocus()
+    shareScroll:SetVerticalScroll(0)
+    SetShareStatus("Share code cleared.", true)
+end)
 local notifications = Panel("Warlock HUD - Notifications")
 Text(notifications, "Choose which Warlock actions show a chat notification.",
     20, -50, "GameFontHighlightSmall")
@@ -1323,6 +1504,36 @@ Text(about, "Settings save automatically to the current profile.",
     20, -279, "GameFontHighlight")
 Text(about, "GitHub", 20, -319, "GameFontNormal")
 Text(about, "https://github.com/data-lock/warlock_hud", 20, -346, "GameFontHighlight")
+Text(about, "Reset addon", 20, -390, "GameFontNormal")
+Text(about, "Deletes all Warlock HUD profiles, settings, and saved character data.",
+    20, -415, "GameFontHighlightSmall")
+local resetStatus = Text(about, "", 20, -485, "GameFontHighlightSmall")
+local resetReload = CreateFrame("Frame")
+resetReload:SetScript("OnEvent", function(self)
+    self:UnregisterEvent("PLAYER_REGEN_ENABLED")
+    ReloadUI()
+end)
+StaticPopupDialogs.WARLOCKHUD_RESET_ALL = {
+    text = "Reset all Warlock HUD data to defaults?\nThis deletes every profile, setting, and saved character record. Export a share code first if you want a backup. The UI will reload.",
+    button1 = "Reset Everything",
+    button2 = CANCEL,
+    OnAccept = function()
+        WarlockHudDB = {}
+        api.InitializeProfiles()
+        if InCombatLockdown() then
+            resetStatus:SetText("Reset saved. UI will reload after combat.")
+            resetReload:RegisterEvent("PLAYER_REGEN_ENABLED")
+        else
+            ReloadUI()
+        end
+    end,
+    timeout = 0,
+    whileDead = true,
+    hideOnEscape = true,
+}
+Button(about, "Reset All Data", 20, -445, 140, function()
+    StaticPopup_Show("WARLOCKHUD_RESET_ALL")
+end)
 
 local category
 local registration = CreateFrame("Frame")
@@ -1355,9 +1566,11 @@ registration:SetScript("OnEvent", function(_, event)
     Settings.RegisterAddOnCategory(category)
     Settings.RegisterCanvasLayoutSubcategory(category, general, "General")
     Settings.RegisterCanvasLayoutSubcategory(category, spells, "Tracked Auras")
+    Settings.RegisterCanvasLayoutSubcategory(category, consumeLayout, "Consumes")
     Settings.RegisterCanvasLayoutSubcategory(category, buffLayout, "Buffs")
     Settings.RegisterCanvasLayoutSubcategory(category, procLayout, "Procs")
     Settings.RegisterCanvasLayoutSubcategory(category, profiles, "Profiles")
+    Settings.RegisterCanvasLayoutSubcategory(category, sharingPanel, "Share Settings")
     Settings.RegisterCanvasLayoutSubcategory(category, notifications, "Notifications")
     Settings.RegisterCanvasLayoutSubcategory(category, summons, "Summons")
     Settings.RegisterCanvasLayoutSubcategory(category, stones, "Stones")

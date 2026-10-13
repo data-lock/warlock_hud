@@ -20,6 +20,7 @@ local SPELLS = {
 local ICON_SIZE = 48
 local COOLDOWN_ICON_SIZE = 24
 local BUFF_ICON_SIZE = 24
+local consumeState = { size = 24, keys = { "wellfed" } }
 local PROC_ICON_SIZE = 32
 local ICON_SPACING = 4
 local BORDER_SIZE = 2
@@ -29,15 +30,8 @@ local OUT_OF_RANGE_COLOR = CreateColor(1, 0.2, 0.2, 1)
 
 local container
 local hudRoot
-local hudAnchor
-local editMover
-local cooldownAnchor
+local rowFrames = {}
 local soulstoneLabel
-local cooldownMover
-local buffAnchor
-local buffMover
-local procAnchor
-local procMover
 local armorGlow
 local wellFedGlow
 local shardState = {}
@@ -72,7 +66,7 @@ local MAIN_KEYS = { "corruption", "bane", "curse", "drain", "immolate", "siphonl
 local DEFAULT_SUMMON_KEYWORDS = "123, sum, summ"
 local DOT_DEFAULT_SLOTS = { bane = 2, curse = 3, drain = 4 }
 local COOLDOWN_KEYS = { "healthstone", "soulstone", "fear", "conflagrate", "racial1", "racial2", "demon" }
-local BUFF_KEYS = { "fort", "motw", "int", "spirit", "kings", "salv", "armor", "wellfed", "thorns", "sacrifice", "soullink", "breath" }
+local BUFF_KEYS = { "fort", "motw", "int", "spirit", "kings", "salv", "armor", "thorns", "sacrifice", "soullink", "breath" }
 local PROC_KEYS = { "powerinfusion", "nightfall" }
 local PROCS = {
     { key = "powerinfusion", name = "Power Infusion", ids = { 10060 } },
@@ -165,9 +159,9 @@ local function LearnWellFed()
     wellFedIDs[spellID] = true
     WarlockHudDB.wellFedIDs = WarlockHudDB.wellFedIDs or {}
     WarlockHudDB.wellFedIDs[spellID] = true
-    if playerAuraContainer and wellFedSlotCreated then
-        playerAuraContainer:SetAuraSlotCandidateFilters("Well Fed", { includeSpellIDs = wellFedIDs })
-        playerAuraContainer:UpdateAllAuras()
+    if consumeState.auraContainer and wellFedSlotCreated then
+        consumeState.auraContainer:SetAuraSlotCandidateFilters("Well Fed", { includeSpellIDs = wellFedIDs })
+        consumeState.auraContainer:UpdateAllAuras()
     end
 end
 
@@ -219,6 +213,18 @@ local function NormalizeProfile(p)
     end
     p.shardSize = math.max(16, math.min(64, tonumber(p.shardSize) or 32))
     p.buffSize = math.max(16, math.min(64, tonumber(p.buffSize) or 24))
+    if (tonumber(p.consumesSchemaVersion) or 0) < 1 then
+        -- Well Fed keeps its existing enabled flag. Copy row preferences once;
+        -- subsequent loads must not follow later Buffs changes.
+        if p.consumeSize == nil then p.consumeSize = p.buffSize end
+        if p.colorActiveConsumes == nil then p.colorActiveConsumes = p.colorActiveBuffs end
+        if type(p.showOutOfCombat) == "table"
+            and p.showOutOfCombat.consumes == nil then
+            p.showOutOfCombat.consumes = p.showOutOfCombat.buffs
+        end
+        p.consumesSchemaVersion = 1
+    end
+    p.consumeSize = math.max(16, math.min(64, tonumber(p.consumeSize) or 24))
     p.procSize = math.max(20, math.min(64, tonumber(p.procSize) or 32))
     p.shardDestroyCount = nil
     p.shardKeepCount = math.max(0, math.min(64, math.floor(tonumber(p.shardKeepCount) or 8)))
@@ -237,6 +243,7 @@ local function NormalizeProfile(p)
     p.mainOrder = NormalizeOrder(p.mainOrder, MAIN_KEYS)
     p.cooldownOrder = NormalizeOrder(p.cooldownOrder, COOLDOWN_KEYS)
     p.buffOrder = NormalizeOrder(p.buffOrder, BUFF_KEYS)
+    p.consumeOrder = NormalizeOrder(p.consumeOrder, consumeState.keys)
     if type(p.showOutOfCombat) ~= "table" then p.showOutOfCombat = {} end
     -- Unending Breath is optional and its native button is anchored after
     -- the packed buffs, so keep its settings tile at that same right edge.
@@ -323,6 +330,9 @@ local function InitializeProfiles()
     if not next(WarlockHudDB.profiles) then
         WarlockHudDB.profiles.Default = NormalizeProfile({})
     end
+    for name, savedProfile in pairs(WarlockHudDB.profiles) do
+        WarlockHudDB.profiles[name] = NormalizeProfile(savedProfile)
+    end
     if type(WarlockHudDB.activeProfile) ~= "string"
         or not WarlockHudDB.profiles[WarlockHudDB.activeProfile] then
         WarlockHudDB.activeProfile = WarlockHudDB.profiles.Default and "Default"
@@ -335,11 +345,11 @@ local function InitializeProfiles()
             WarlockHudDB.activeProfile = assigned
         end
     end
-    profile = NormalizeProfile(WarlockHudDB.profiles[WarlockHudDB.activeProfile])
-    WarlockHudDB.profiles[WarlockHudDB.activeProfile] = profile
+    profile = WarlockHudDB.profiles[WarlockHudDB.activeProfile]
     ICON_SIZE = profile.mainSize
     COOLDOWN_ICON_SIZE = profile.cooldownSize
     BUFF_ICON_SIZE = profile.buffSize
+    consumeState.size = profile.consumeSize
     PROC_ICON_SIZE = profile.procSize
 end
 
@@ -381,6 +391,23 @@ local function GetDotDefaultSpell(key)
     end
 end
 
+local function CastSpellTexture(spell, currentID)
+    if not spell or not C_Spell or not C_Spell.GetSpellTexture then return nil end
+    local identifiers = {}
+    if currentID then identifiers[#identifiers + 1] = currentID end
+    identifiers[#identifiers + 1] = spell.name
+    for _, id in ipairs(spell.ids) do identifiers[#identifiers + 1] = id end
+    for _, identifier in ipairs(identifiers) do
+        local ok, texture = pcall(C_Spell.GetSpellTexture, identifier)
+        if ok and texture and (not issecretvalue or not issecretvalue(texture))
+            and texture ~= 134400
+            and (type(texture) ~= "string"
+                or not texture:lower():find("questionmark", 1, true)) then
+            return texture
+        end
+    end
+end
+
 local function KnownSpellID(spellID)
     local checker = C_SpellBook and C_SpellBook.IsSpellKnown or IsPlayerSpell
     if not checker then return nil end
@@ -418,10 +445,20 @@ end
 function WarlockHudRowVisibility.RefreshConflagrate()
     local entry = groupBuffIcons.conflagrate
     if not entry then return end
+    if C_Secrets and C_Secrets.ShouldAurasBeSecret
+        and C_Secrets.ShouldAurasBeSecret() then
+        entry.icon:SetDesaturated(true)
+        entry.glow:Hide()
+        return
+    end
     local immolateActive = false
     for _, button in ipairs(entry.immolateButtons) do
         local ok, shown = pcall(button.IsShown, button)
-        if not ok or (issecretvalue and issecretvalue(shown)) then return end
+        if not ok or (issecretvalue and issecretvalue(shown)) then
+            entry.icon:SetDesaturated(true)
+            entry.glow:Hide()
+            return
+        end
         if shown then
             immolateActive = true
             break
@@ -719,6 +756,9 @@ end
 local function RowAlpha(key)
     if not profile then return end
     local editMode = EditModeManagerFrame and EditModeManagerFrame:IsShown()
+    if key == "consumes" and profile.consumesEnabled == false and not editMode then
+        return 0
+    end
     local settings = profile.showOutOfCombat or {}
     return (InCombatLockdown() or editMode or settings[key] ~= false) and 1 or 0
 end
@@ -837,11 +877,11 @@ local function ReadPlayerBuffNames(names)
     return false
 end
 
-local function SetMissingGlow(glow, status)
+local function SetMissingGlow(glow, status, colorActive)
     if not glow then return end
     if status ~= nil and glow.pulseIcon and profile then
         glow.pulseIcon:SetDesaturated((status == true)
-            ~= (profile.colorActiveBuffs ~= false))
+            ~= (colorActive ~= false))
     end
     local missing = status == false
     glow:SetShown(missing)
@@ -849,11 +889,13 @@ local function SetMissingGlow(glow, status)
 end
 
 local function UpdateArmorGlow()
-    SetMissingGlow(armorGlow, ReadPlayerBuffNames({ "Demon Armor", "Demon Skin" }))
+    SetMissingGlow(armorGlow, ReadPlayerBuffNames({ "Demon Armor", "Demon Skin" }),
+        profile.colorActiveBuffs)
 end
 
 local function UpdateWellFedGlow()
-    SetMissingGlow(wellFedGlow, ReadPlayerBuffNames({ "Well Fed" }))
+    SetMissingGlow(wellFedGlow, ReadPlayerBuffNames({ "Well Fed" }),
+        profile.colorActiveConsumes)
 end
 
 local function ReadGroupBuff(buff)
@@ -999,7 +1041,7 @@ local function UpdateGroupBuffs()
             if key == "breath" then
                 breathHolder = holder
             else
-                local shown = key == "armor" or key == "wellfed"
+                local shown = key == "armor"
                     or (key == "sacrifice" and sacrificeState ~= false)
                     or (key == "soullink" and groupBuffIcons.soulLinkReminder
                         and groupBuffIcons.soulLinkReminder.holder:IsShown())
@@ -1014,7 +1056,7 @@ local function UpdateGroupBuffs()
                 holder:SetShown(shown and true or false)
                 if shown then
                     holder:ClearAllPoints()
-                    holder:SetPoint("CENTER", buffAnchor, "LEFT",
+                    holder:SetPoint("CENTER", rowFrames.buffAnchor, "LEFT",
                         visible * (BUFF_ICON_SIZE + ICON_SPACING) + BUFF_ICON_SIZE / 2, 0)
                     visible = visible + 1
                 end
@@ -1023,7 +1065,7 @@ local function UpdateGroupBuffs()
     end
     if breathHolder then
         breathHolder:ClearAllPoints()
-        breathHolder:SetPoint("CENTER", buffAnchor, "LEFT",
+        breathHolder:SetPoint("CENTER", rowFrames.buffAnchor, "LEFT",
             visible * (BUFF_ICON_SIZE + ICON_SPACING) + BUFF_ICON_SIZE / 2, 0)
         breathHolder:Show()
     end
@@ -1130,7 +1172,7 @@ local function Build()
     hudRoot:SetAllPoints(UIParent)
     hudRoot:SetFrameStrata(PlayerFrame and PlayerFrame:GetFrameStrata() or "LOW")
     hudRoot:SetFrameLevel(PlayerFrame and PlayerFrame:GetFrameLevel() or 1)
-    for _, key in ipairs({ "main", "utility", "buffs", "procs", "shards" }) do
+    for _, key in ipairs({ "main", "utility", "consumes", "buffs", "procs", "shards" }) do
         local mask = CreateFrame("Frame", nil, hudRoot)
         mask:SetAllPoints(UIParent)
         WarlockHudRowVisibility.masks[key] = mask
@@ -1147,6 +1189,12 @@ local function Build()
         WarlockHudRowVisibility.masks.buffs, "CustomAuraContainerTemplate")
     if not playerAuras or type(playerAuras.AddAuraSlot) ~= "function" then
         Report("Could not create the player buff container.")
+        return
+    end
+    local consumeAuras = CreateFrame("AuraContainer", nil,
+        WarlockHudRowVisibility.masks.consumes, "CustomAuraContainerTemplate")
+    if not consumeAuras or type(consumeAuras.AddAuraSlot) ~= "function" then
+        Report("Could not create the consumables aura container.")
         return
     end
     local petAuras = CreateFrame("AuraContainer", nil,
@@ -1168,6 +1216,8 @@ local function Build()
     utilityAuras:SetFrameLevel(hudRoot:GetFrameLevel() + 2)
     playerAuras:SetFrameStrata(hudRoot:GetFrameStrata())
     playerAuras:SetFrameLevel(hudRoot:GetFrameLevel() + 2)
+    consumeAuras:SetFrameStrata(hudRoot:GetFrameStrata())
+    consumeAuras:SetFrameLevel(hudRoot:GetFrameLevel() + 2)
     petAuras:SetFrameStrata(hudRoot:GetFrameStrata())
     petAuras:SetFrameLevel(hudRoot:GetFrameLevel() + 2)
     procAuras:SetFrameStrata(hudRoot:GetFrameStrata())
@@ -1175,6 +1225,7 @@ local function Build()
     WarlockHudRowVisibility.containers.utility = utilityAuras
     WarlockHudRowVisibility.containers.procs = procAuras
     WarlockHudRowVisibility.containers.pet = petAuras
+    WarlockHudRowVisibility.containers.consumes = consumeAuras
     LearnWellFed()
     LearnBuffs()
     groupBuffIcons.demonLayoutVisible = WarlockHudRowVisibility.DemonLayoutNeeded()
@@ -1182,39 +1233,40 @@ local function Build()
     local mainOrder = VisibleOrder(profile.mainOrder)
     local cooldownOrder = VisibleOrder(profile.cooldownOrder)
     local buffOrder = VisibleOrder(profile.buffOrder)
+    local consumeOrder = VisibleOrder(profile.consumeOrder)
     local procOrder = VisibleOrder(profile.procOrder)
     local rowWidth = math.max(1, #mainOrder * ICON_SIZE + math.max(0, #mainOrder - 1) * ICON_SPACING)
-    hudAnchor = CreateFrame("Frame", nil, WarlockHudRowVisibility.masks.main)
-    hudAnchor:SetSize(rowWidth, ICON_SIZE)
-    hudAnchor:SetMovable(true)
-    hudAnchor:SetClampedToScreen(true)
+    rowFrames.hudAnchor = CreateFrame("Frame", nil, WarlockHudRowVisibility.masks.main)
+    rowFrames.hudAnchor:SetSize(rowWidth, ICON_SIZE)
+    rowFrames.hudAnchor:SetMovable(true)
+    rowFrames.hudAnchor:SetClampedToScreen(true)
     local saved = profile
     if type(saved) == "table" and type(saved.x) == "number" and type(saved.y) == "number" then
-        hudAnchor:SetPoint("CENTER", UIParent, "BOTTOMLEFT",
+        rowFrames.hudAnchor:SetPoint("CENTER", UIParent, "BOTTOMLEFT",
             saved.x * UIParent:GetWidth(), saved.y * UIParent:GetHeight())
     else
-        hudAnchor:SetPoint("CENTER", UIParent, "CENTER", 0, -120)
+        rowFrames.hudAnchor:SetPoint("CENTER", UIParent, "CENTER", 0, -120)
     end
 
-    editMover = CreateFrame("Button", nil, hudAnchor)
-    editMover:SetAllPoints(hudAnchor)
-    editMover:SetFrameStrata("DIALOG")
-    editMover:EnableMouse(true)
-    editMover:RegisterForDrag("LeftButton")
-    local moverShade = editMover:CreateTexture(nil, "BACKGROUND")
-    moverShade:SetAllPoints(editMover)
+    rowFrames.editMover = CreateFrame("Button", nil, rowFrames.hudAnchor)
+    rowFrames.editMover:SetAllPoints(rowFrames.hudAnchor)
+    rowFrames.editMover:SetFrameStrata("DIALOG")
+    rowFrames.editMover:EnableMouse(true)
+    rowFrames.editMover:RegisterForDrag("LeftButton")
+    local moverShade = rowFrames.editMover:CreateTexture(nil, "BACKGROUND")
+    moverShade:SetAllPoints(rowFrames.editMover)
     moverShade:SetColorTexture(0, 0.65, 0.85, 0.25)
-    local moverLabel = editMover:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
-    moverLabel:SetPoint("BOTTOM", editMover, "TOP", 0, 5)
+    local moverLabel = rowFrames.editMover:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
+    moverLabel:SetPoint("BOTTOM", rowFrames.editMover, "TOP", 0, 5)
     moverLabel:SetText("Warlock HUD")
-    editMover:SetScript("OnDragStart", function()
+    rowFrames.editMover:SetScript("OnDragStart", function()
         if not InCombatLockdown() then
-            hudAnchor:StartMoving()
+            rowFrames.hudAnchor:StartMoving()
         end
     end)
-    editMover:SetScript("OnDragStop", function()
-        hudAnchor:StopMovingOrSizing()
-        local centerX, centerY = hudAnchor:GetCenter()
+    rowFrames.editMover:SetScript("OnDragStop", function()
+        rowFrames.hudAnchor:StopMovingOrSizing()
+        local centerX, centerY = rowFrames.hudAnchor:GetCenter()
         if centerX and centerY then
             local grid = EditModeManagerFrame and EditModeManagerFrame.Grid
             if grid and grid:IsShown() and type(grid.gridSpacing) == "number"
@@ -1224,48 +1276,48 @@ local function Build()
                     local spacing = grid.gridSpacing
                     centerX = gridX + math.floor((centerX - gridX) / spacing + 0.5) * spacing
                     centerY = gridY + math.floor((centerY - gridY) / spacing + 0.5) * spacing
-                    hudAnchor:ClearAllPoints()
-                    hudAnchor:SetPoint("CENTER", UIParent, "BOTTOMLEFT", centerX, centerY)
+                    rowFrames.hudAnchor:ClearAllPoints()
+                    rowFrames.hudAnchor:SetPoint("CENTER", UIParent, "BOTTOMLEFT", centerX, centerY)
                 end
             end
             profile.x = centerX / UIParent:GetWidth()
             profile.y = centerY / UIParent:GetHeight()
         end
     end)
-    editMover:Hide()
+    rowFrames.editMover:Hide()
 
     local cooldownWidth = math.max(1, #cooldownOrder * COOLDOWN_ICON_SIZE
         + math.max(0, #cooldownOrder - 1) * ICON_SPACING)
-    cooldownAnchor = CreateFrame("Frame", nil, WarlockHudRowVisibility.masks.utility)
-    cooldownAnchor:SetSize(cooldownWidth, COOLDOWN_ICON_SIZE)
-    cooldownAnchor:SetMovable(true)
-    cooldownAnchor:SetClampedToScreen(true)
+    rowFrames.cooldownAnchor = CreateFrame("Frame", nil, WarlockHudRowVisibility.masks.utility)
+    rowFrames.cooldownAnchor:SetSize(cooldownWidth, COOLDOWN_ICON_SIZE)
+    rowFrames.cooldownAnchor:SetMovable(true)
+    rowFrames.cooldownAnchor:SetClampedToScreen(true)
     if type(saved) == "table" and type(saved.cooldownX) == "number"
         and type(saved.cooldownY) == "number" then
-        cooldownAnchor:SetPoint("CENTER", UIParent, "BOTTOMLEFT",
+        rowFrames.cooldownAnchor:SetPoint("CENTER", UIParent, "BOTTOMLEFT",
             saved.cooldownX * UIParent:GetWidth(), saved.cooldownY * UIParent:GetHeight())
     else
-        cooldownAnchor:SetPoint("CENTER", hudAnchor, "CENTER", 0, -60)
+        rowFrames.cooldownAnchor:SetPoint("CENTER", rowFrames.hudAnchor, "CENTER", 0, -60)
     end
-    cooldownMover = CreateFrame("Button", nil, cooldownAnchor)
-    cooldownMover:SetAllPoints(cooldownAnchor)
-    cooldownMover:SetFrameStrata("DIALOG")
-    cooldownMover:EnableMouse(true)
-    cooldownMover:RegisterForDrag("LeftButton")
-    local cooldownShade = cooldownMover:CreateTexture(nil, "BACKGROUND")
-    cooldownShade:SetAllPoints(cooldownMover)
+    rowFrames.cooldownMover = CreateFrame("Button", nil, rowFrames.cooldownAnchor)
+    rowFrames.cooldownMover:SetAllPoints(rowFrames.cooldownAnchor)
+    rowFrames.cooldownMover:SetFrameStrata("DIALOG")
+    rowFrames.cooldownMover:EnableMouse(true)
+    rowFrames.cooldownMover:RegisterForDrag("LeftButton")
+    local cooldownShade = rowFrames.cooldownMover:CreateTexture(nil, "BACKGROUND")
+    cooldownShade:SetAllPoints(rowFrames.cooldownMover)
     cooldownShade:SetColorTexture(0, 0.65, 0.85, 0.25)
-    local cooldownLabel = cooldownMover:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
-    cooldownLabel:SetPoint("BOTTOM", cooldownMover, "TOP", 0, 5)
+    local cooldownLabel = rowFrames.cooldownMover:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
+    cooldownLabel:SetPoint("BOTTOM", rowFrames.cooldownMover, "TOP", 0, 5)
     cooldownLabel:SetText("Warlock HUD Cooldowns")
-    cooldownMover:SetScript("OnDragStart", function()
+    rowFrames.cooldownMover:SetScript("OnDragStart", function()
         if not InCombatLockdown() then
-            cooldownAnchor:StartMoving()
+            rowFrames.cooldownAnchor:StartMoving()
         end
     end)
-    cooldownMover:SetScript("OnDragStop", function()
-        cooldownAnchor:StopMovingOrSizing()
-        local centerX, centerY = cooldownAnchor:GetCenter()
+    rowFrames.cooldownMover:SetScript("OnDragStop", function()
+        rowFrames.cooldownAnchor:StopMovingOrSizing()
+        local centerX, centerY = rowFrames.cooldownAnchor:GetCenter()
         if centerX and centerY then
             local grid = EditModeManagerFrame and EditModeManagerFrame.Grid
             if grid and grid:IsShown() and type(grid.gridSpacing) == "number"
@@ -1275,56 +1327,56 @@ local function Build()
                     local spacing = grid.gridSpacing
                     centerX = gridX + math.floor((centerX - gridX) / spacing + 0.5) * spacing
                     centerY = gridY + math.floor((centerY - gridY) / spacing + 0.5) * spacing
-                    cooldownAnchor:ClearAllPoints()
-                    cooldownAnchor:SetPoint("CENTER", UIParent, "BOTTOMLEFT", centerX, centerY)
+                    rowFrames.cooldownAnchor:ClearAllPoints()
+                    rowFrames.cooldownAnchor:SetPoint("CENTER", UIParent, "BOTTOMLEFT", centerX, centerY)
                 end
             end
             profile.cooldownX = centerX / UIParent:GetWidth()
             profile.cooldownY = centerY / UIParent:GetHeight()
         end
     end)
-    cooldownMover:Hide()
+    rowFrames.cooldownMover:Hide()
 
     local buffWidth = math.max(1, #buffOrder * BUFF_ICON_SIZE
         + math.max(0, #buffOrder - 1) * ICON_SPACING)
-    buffAnchor = CreateFrame("Frame", nil, WarlockHudRowVisibility.masks.buffs)
-    buffAnchor:SetSize(buffWidth, BUFF_ICON_SIZE)
-    buffAnchor:SetMovable(true)
-    buffAnchor:SetClampedToScreen(true)
+    rowFrames.buffAnchor = CreateFrame("Frame", nil, WarlockHudRowVisibility.masks.buffs)
+    rowFrames.buffAnchor:SetSize(buffWidth, BUFF_ICON_SIZE)
+    rowFrames.buffAnchor:SetMovable(true)
+    rowFrames.buffAnchor:SetClampedToScreen(true)
     if type(saved.buffX) == "number" and type(saved.buffY) == "number" then
         if not saved.buffLeftAligned then
             saved.buffX = saved.buffX - buffWidth / (2 * UIParent:GetWidth())
             saved.buffLeftAligned = true
         end
-        buffAnchor:SetPoint("LEFT", UIParent, "BOTTOMLEFT",
+        rowFrames.buffAnchor:SetPoint("LEFT", UIParent, "BOTTOMLEFT",
             saved.buffX * UIParent:GetWidth(), saved.buffY * UIParent:GetHeight())
     elseif PlayerFrame then
         local fullWidth = #BUFF_KEYS * BUFF_ICON_SIZE
             + (#BUFF_KEYS - 1) * ICON_SPACING
-        buffAnchor:SetPoint("LEFT", PlayerFrame, "TOP",
+        rowFrames.buffAnchor:SetPoint("LEFT", PlayerFrame, "TOP",
             -fullWidth / 2, 12 + BUFF_ICON_SIZE / 2)
     else
-        buffAnchor:SetPoint("LEFT", UIParent, "BOTTOMLEFT",
+        rowFrames.buffAnchor:SetPoint("LEFT", UIParent, "BOTTOMLEFT",
             180, 210 + BUFF_ICON_SIZE / 2)
     end
-    buffMover = CreateFrame("Button", nil, buffAnchor)
-    buffMover:SetAllPoints(buffAnchor)
-    buffMover:SetFrameStrata("DIALOG")
-    buffMover:EnableMouse(true)
-    buffMover:RegisterForDrag("LeftButton")
-    local buffShade = buffMover:CreateTexture(nil, "BACKGROUND")
-    buffShade:SetAllPoints(buffMover)
+    rowFrames.buffMover = CreateFrame("Button", nil, rowFrames.buffAnchor)
+    rowFrames.buffMover:SetAllPoints(rowFrames.buffAnchor)
+    rowFrames.buffMover:SetFrameStrata("DIALOG")
+    rowFrames.buffMover:EnableMouse(true)
+    rowFrames.buffMover:RegisterForDrag("LeftButton")
+    local buffShade = rowFrames.buffMover:CreateTexture(nil, "BACKGROUND")
+    buffShade:SetAllPoints(rowFrames.buffMover)
     buffShade:SetColorTexture(0, 0.65, 0.85, 0.25)
-    local buffLabel = buffMover:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
-    buffLabel:SetPoint("BOTTOM", buffMover, "TOP", 0, 5)
+    local buffLabel = rowFrames.buffMover:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
+    buffLabel:SetPoint("BOTTOM", rowFrames.buffMover, "TOP", 0, 5)
     buffLabel:SetText("Warlock HUD Buffs")
-    buffMover:SetScript("OnDragStart", function()
-        if not InCombatLockdown() then buffAnchor:StartMoving() end
+    rowFrames.buffMover:SetScript("OnDragStart", function()
+        if not InCombatLockdown() then rowFrames.buffAnchor:StartMoving() end
     end)
-    buffMover:SetScript("OnDragStop", function()
-        buffAnchor:StopMovingOrSizing()
-        local leftX = buffAnchor:GetLeft()
-        local _, centerY = buffAnchor:GetCenter()
+    rowFrames.buffMover:SetScript("OnDragStop", function()
+        rowFrames.buffAnchor:StopMovingOrSizing()
+        local leftX = rowFrames.buffAnchor:GetLeft()
+        local _, centerY = rowFrames.buffAnchor:GetCenter()
         if leftX and centerY then
             local grid = EditModeManagerFrame and EditModeManagerFrame.Grid
             if grid and grid:IsShown() and type(grid.gridSpacing) == "number"
@@ -1334,8 +1386,8 @@ local function Build()
                     local spacing = grid.gridSpacing
                     leftX = gridX + math.floor((leftX - gridX) / spacing + 0.5) * spacing
                     centerY = gridY + math.floor((centerY - gridY) / spacing + 0.5) * spacing
-                    buffAnchor:ClearAllPoints()
-                    buffAnchor:SetPoint("LEFT", UIParent, "BOTTOMLEFT", leftX, centerY)
+                    rowFrames.buffAnchor:ClearAllPoints()
+                    rowFrames.buffAnchor:SetPoint("LEFT", UIParent, "BOTTOMLEFT", leftX, centerY)
                 end
             end
             profile.buffX = leftX / UIParent:GetWidth()
@@ -1343,37 +1395,108 @@ local function Build()
             profile.buffLeftAligned = true
         end
     end)
-    buffMover:Hide()
+    rowFrames.buffMover:Hide()
+
+    local consumeWidth = math.max(1, #consumeOrder * consumeState.size
+        + math.max(0, #consumeOrder - 1) * ICON_SPACING)
+    consumeState.anchor = CreateFrame("Frame", nil, WarlockHudRowVisibility.masks.consumes)
+    consumeState.anchor:SetSize(consumeWidth, consumeState.size)
+    consumeState.anchor:SetMovable(true)
+    consumeState.anchor:SetClampedToScreen(true)
+    if type(saved.consumeX) == "number" and type(saved.consumeY) == "number" then
+        if not saved.consumeLeftAligned then
+            local buffCenterX, buffCenterY = rowFrames.buffAnchor:GetCenter()
+            local defaultY = buffCenterY
+                and buffCenterY + (BUFF_ICON_SIZE + consumeState.size) / 2 + 18
+            if buffCenterX and defaultY and rowFrames.buffAnchor:GetLeft()
+                and math.abs(saved.consumeX * UIParent:GetWidth() - buffCenterX) < 1
+                and math.abs(saved.consumeY * UIParent:GetHeight() - defaultY) < 1 then
+                saved.consumeX = rowFrames.buffAnchor:GetLeft() / UIParent:GetWidth()
+            else
+                saved.consumeX = saved.consumeX - consumeWidth / (2 * UIParent:GetWidth())
+            end
+            saved.consumeLeftAligned = true
+        end
+        consumeState.anchor:SetPoint("LEFT", UIParent, "BOTTOMLEFT",
+            saved.consumeX * UIParent:GetWidth(), saved.consumeY * UIParent:GetHeight())
+    else
+        local buffLeftX = rowFrames.buffAnchor:GetLeft()
+        local _, buffCenterY = rowFrames.buffAnchor:GetCenter()
+        buffLeftX = buffLeftX or UIParent:GetWidth() / 2
+        buffCenterY = buffCenterY or UIParent:GetHeight() / 2
+        local consumeY = buffCenterY + (BUFF_ICON_SIZE + consumeState.size) / 2 + 18
+        consumeState.anchor:SetPoint("LEFT", UIParent, "BOTTOMLEFT", buffLeftX, consumeY)
+        saved.consumeX = buffLeftX / UIParent:GetWidth()
+        saved.consumeY = consumeY / UIParent:GetHeight()
+        saved.consumeLeftAligned = true
+    end
+    consumeState.mover = CreateFrame("Button", nil, consumeState.anchor)
+    consumeState.mover:SetAllPoints(consumeState.anchor)
+    consumeState.mover:SetFrameStrata("DIALOG")
+    consumeState.mover:EnableMouse(true)
+    consumeState.mover:RegisterForDrag("LeftButton")
+    local consumeShade = consumeState.mover:CreateTexture(nil, "BACKGROUND")
+    consumeShade:SetAllPoints(consumeState.mover)
+    consumeShade:SetColorTexture(0, 0.65, 0.85, 0.25)
+    local consumeLabel = consumeState.mover:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
+    consumeLabel:SetPoint("BOTTOM", consumeState.mover, "TOP", 0, 5)
+    consumeLabel:SetText("Warlock HUD Consumes")
+    consumeState.mover:SetScript("OnDragStart", function()
+        if not InCombatLockdown() then consumeState.anchor:StartMoving() end
+    end)
+    consumeState.mover:SetScript("OnDragStop", function()
+        consumeState.anchor:StopMovingOrSizing()
+        local leftX = consumeState.anchor:GetLeft()
+        local _, centerY = consumeState.anchor:GetCenter()
+        if leftX and centerY then
+            local grid = EditModeManagerFrame and EditModeManagerFrame.Grid
+            if grid and grid:IsShown() and type(grid.gridSpacing) == "number"
+                and grid.gridSpacing > 0 then
+                local gridX, gridY = grid:GetCenter()
+                if gridX and gridY then
+                    local spacing = grid.gridSpacing
+                    leftX = gridX + math.floor((leftX - gridX) / spacing + 0.5) * spacing
+                    centerY = gridY + math.floor((centerY - gridY) / spacing + 0.5) * spacing
+                    consumeState.anchor:ClearAllPoints()
+                    consumeState.anchor:SetPoint("LEFT", UIParent, "BOTTOMLEFT", leftX, centerY)
+                end
+            end
+            profile.consumeX = leftX / UIParent:GetWidth()
+            profile.consumeY = centerY / UIParent:GetHeight()
+            profile.consumeLeftAligned = true
+        end
+    end)
+    consumeState.mover:Hide()
 
     local procWidth = math.max(1, #procOrder * PROC_ICON_SIZE
         + math.max(0, #procOrder - 1) * ICON_SPACING)
-    procAnchor = CreateFrame("Frame", nil, WarlockHudRowVisibility.masks.procs)
-    procAnchor:SetSize(procWidth, PROC_ICON_SIZE)
-    procAnchor:SetMovable(true)
-    procAnchor:SetClampedToScreen(true)
+    rowFrames.procAnchor = CreateFrame("Frame", nil, WarlockHudRowVisibility.masks.procs)
+    rowFrames.procAnchor:SetSize(procWidth, PROC_ICON_SIZE)
+    rowFrames.procAnchor:SetMovable(true)
+    rowFrames.procAnchor:SetClampedToScreen(true)
     if type(saved.procX) == "number" and type(saved.procY) == "number" then
-        procAnchor:SetPoint("CENTER", UIParent, "BOTTOMLEFT",
+        rowFrames.procAnchor:SetPoint("CENTER", UIParent, "BOTTOMLEFT",
             saved.procX * UIParent:GetWidth(), saved.procY * UIParent:GetHeight())
     else
-        procAnchor:SetPoint("BOTTOM", hudAnchor, "TOP", 0, 12)
+        rowFrames.procAnchor:SetPoint("BOTTOM", rowFrames.hudAnchor, "TOP", 0, 12)
     end
-    procMover = CreateFrame("Button", nil, procAnchor)
-    procMover:SetAllPoints(procAnchor)
-    procMover:SetFrameStrata("DIALOG")
-    procMover:EnableMouse(true)
-    procMover:RegisterForDrag("LeftButton")
-    local procShade = procMover:CreateTexture(nil, "BACKGROUND")
-    procShade:SetAllPoints(procMover)
+    rowFrames.procMover = CreateFrame("Button", nil, rowFrames.procAnchor)
+    rowFrames.procMover:SetAllPoints(rowFrames.procAnchor)
+    rowFrames.procMover:SetFrameStrata("DIALOG")
+    rowFrames.procMover:EnableMouse(true)
+    rowFrames.procMover:RegisterForDrag("LeftButton")
+    local procShade = rowFrames.procMover:CreateTexture(nil, "BACKGROUND")
+    procShade:SetAllPoints(rowFrames.procMover)
     procShade:SetColorTexture(0, 0.65, 0.85, 0.25)
-    local procLabel = procMover:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
-    procLabel:SetPoint("BOTTOM", procMover, "TOP", 0, 5)
+    local procLabel = rowFrames.procMover:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
+    procLabel:SetPoint("BOTTOM", rowFrames.procMover, "TOP", 0, 5)
     procLabel:SetText("Warlock HUD Procs")
-    procMover:SetScript("OnDragStart", function()
-        if not InCombatLockdown() then procAnchor:StartMoving() end
+    rowFrames.procMover:SetScript("OnDragStart", function()
+        if not InCombatLockdown() then rowFrames.procAnchor:StartMoving() end
     end)
-    procMover:SetScript("OnDragStop", function()
-        procAnchor:StopMovingOrSizing()
-        local centerX, centerY = procAnchor:GetCenter()
+    rowFrames.procMover:SetScript("OnDragStop", function()
+        rowFrames.procAnchor:StopMovingOrSizing()
+        local centerX, centerY = rowFrames.procAnchor:GetCenter()
         if centerX and centerY then
             local grid = EditModeManagerFrame and EditModeManagerFrame.Grid
             if grid and grid:IsShown() and type(grid.gridSpacing) == "number"
@@ -1383,39 +1506,39 @@ local function Build()
                     local spacing = grid.gridSpacing
                     centerX = gridX + math.floor((centerX - gridX) / spacing + 0.5) * spacing
                     centerY = gridY + math.floor((centerY - gridY) / spacing + 0.5) * spacing
-                    procAnchor:ClearAllPoints()
-                    procAnchor:SetPoint("CENTER", UIParent, "BOTTOMLEFT", centerX, centerY)
+                    rowFrames.procAnchor:ClearAllPoints()
+                    rowFrames.procAnchor:SetPoint("CENTER", UIParent, "BOTTOMLEFT", centerX, centerY)
                 end
             end
             profile.procX = centerX / UIParent:GetWidth()
             profile.procY = centerY / UIParent:GetHeight()
         end
     end)
-    procMover:Hide()
+    rowFrames.procMover:Hide()
 
     for _, stone in ipairs(STONES) do
         local x = CooldownX(stone.name == "Healthstone" and "healthstone" or "soulstone")
         if x then
-        local icon = cooldownAnchor:CreateTexture(nil, "ARTWORK")
+        local icon = rowFrames.cooldownAnchor:CreateTexture(nil, "ARTWORK")
         icon:SetSize(COOLDOWN_ICON_SIZE, COOLDOWN_ICON_SIZE)
-        icon:SetPoint("CENTER", cooldownAnchor, "CENTER", x, 0)
+        icon:SetPoint("CENTER", rowFrames.cooldownAnchor, "CENTER", x, 0)
         icon:SetTexture(C_Item and C_Item.GetItemIconByID and C_Item.GetItemIconByID(stone.defaultID))
         icon:SetTexCoord(ICON_CROP, 1 - ICON_CROP, ICON_CROP, 1 - ICON_CROP)
         if stone.name == "Soulstone" then
-            soulstoneLabel = cooldownAnchor:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-            soulstoneLabel:SetPoint("TOP", cooldownAnchor, "BOTTOM", 0, -5)
+            soulstoneLabel = rowFrames.cooldownAnchor:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+            soulstoneLabel:SetPoint("TOP", rowFrames.cooldownAnchor, "BOTTOM", 0, -5)
             soulstoneLabel:SetWidth(220)
             soulstoneLabel:SetJustifyH("CENTER")
         end
-        local cooldown = CreateFrame("Cooldown", nil, cooldownAnchor, "CooldownFrameTemplate")
+        local cooldown = CreateFrame("Cooldown", nil, rowFrames.cooldownAnchor, "CooldownFrameTemplate")
         cooldown:SetAllPoints(icon)
         cooldown:SetDrawBling(false)
         cooldown:SetDrawEdge(false)
         cooldown:SetHideCountdownNumbers(true)
-        local border = MakeBorder(cooldownAnchor, x, COOLDOWN_ICON_SIZE)
+        local border = MakeBorder(rowFrames.cooldownAnchor, x, COOLDOWN_ICON_SIZE)
         local glow
         if stone.name == "Soulstone" then
-            glow = MakeReminderGlow(cooldownAnchor, x, border, COOLDOWN_ICON_SIZE, true)
+            glow = MakeReminderGlow(rowFrames.cooldownAnchor, x, border, COOLDOWN_ICON_SIZE, true)
             glow.pulseIcon = icon
         end
         itemIcons[#itemIcons + 1] = {
@@ -1429,19 +1552,19 @@ local function Build()
     for index, racial in ipairs(RACIALS[raceID] or {}) do
         local x = CooldownX("racial" .. index)
         if x then
-        local icon = cooldownAnchor:CreateTexture(nil, "ARTWORK")
+        local icon = rowFrames.cooldownAnchor:CreateTexture(nil, "ARTWORK")
         icon:SetSize(COOLDOWN_ICON_SIZE, COOLDOWN_ICON_SIZE)
-        icon:SetPoint("CENTER", cooldownAnchor, "CENTER", x, 0)
+        icon:SetPoint("CENTER", rowFrames.cooldownAnchor, "CENTER", x, 0)
         icon:SetTexture(C_Spell.GetSpellTexture(racial[2]))
         icon:SetTexCoord(ICON_CROP, 1 - ICON_CROP, ICON_CROP, 1 - ICON_CROP)
-        local cooldown = CreateFrame("Cooldown", nil, cooldownAnchor, "CooldownFrameTemplate")
+        local cooldown = CreateFrame("Cooldown", nil, rowFrames.cooldownAnchor, "CooldownFrameTemplate")
         cooldown:SetAllPoints(icon)
         cooldown:SetDrawBling(false)
         cooldown:SetDrawEdge(false)
         cooldown:SetHideCountdownNumbers(true)
         spellCooldownIcons[#spellCooldownIcons + 1] = {
             spellID = racial[2], cooldown = cooldown,
-            border = MakeBorder(cooldownAnchor, x, COOLDOWN_ICON_SIZE),
+            border = MakeBorder(rowFrames.cooldownAnchor, x, COOLDOWN_ICON_SIZE),
         }
         end
     end
@@ -1449,21 +1572,21 @@ local function Build()
     local conflagrateID = WarlockHudRowVisibility.ConflagrateSpellID()
     local conflagrateX = CooldownX("conflagrate")
     if conflagrateID and conflagrateX then
-        local icon = cooldownAnchor:CreateTexture(nil, "ARTWORK")
+        local icon = rowFrames.cooldownAnchor:CreateTexture(nil, "ARTWORK")
         icon:SetSize(COOLDOWN_ICON_SIZE, COOLDOWN_ICON_SIZE)
-        icon:SetPoint("CENTER", cooldownAnchor, "CENTER", conflagrateX, 0)
+        icon:SetPoint("CENTER", rowFrames.cooldownAnchor, "CENTER", conflagrateX, 0)
         icon:SetTexture(C_Spell.GetSpellTexture(conflagrateID))
         icon:SetTexCoord(ICON_CROP, 1 - ICON_CROP, ICON_CROP, 1 - ICON_CROP)
-        local cooldown = CreateFrame("Cooldown", nil, cooldownAnchor, "CooldownFrameTemplate")
+        local cooldown = CreateFrame("Cooldown", nil, rowFrames.cooldownAnchor, "CooldownFrameTemplate")
         cooldown:SetAllPoints(icon)
         cooldown:SetDrawBling(false)
         cooldown:SetDrawEdge(false)
         cooldown:SetHideCountdownNumbers(false)
         spellCooldownIcons[#spellCooldownIcons + 1] = {
             spellID = conflagrateID, cooldown = cooldown,
-            border = MakeBorder(cooldownAnchor, conflagrateX, COOLDOWN_ICON_SIZE),
+            border = MakeBorder(rowFrames.cooldownAnchor, conflagrateX, COOLDOWN_ICON_SIZE),
         }
-        local glow = MakeReminderGlow(cooldownAnchor, conflagrateX, nil,
+        local glow = MakeReminderGlow(rowFrames.cooldownAnchor, conflagrateX, nil,
             COOLDOWN_ICON_SIZE)
         glow.pulseIcon = icon
         groupBuffIcons.conflagrate = {
@@ -1474,14 +1597,14 @@ local function Build()
 
     local demonX = CooldownX("demon")
     if demonX then
-        local icon = cooldownAnchor:CreateTexture(nil, "ARTWORK")
+        local icon = rowFrames.cooldownAnchor:CreateTexture(nil, "ARTWORK")
         icon:SetSize(COOLDOWN_ICON_SIZE, COOLDOWN_ICON_SIZE)
-        icon:SetPoint("CENTER", cooldownAnchor, "CENTER", demonX, 0)
+        icon:SetPoint("CENTER", rowFrames.cooldownAnchor, "CENTER", demonX, 0)
         icon:SetTexture(C_Spell.GetSpellTexture(5500))
         icon:SetTexCoord(ICON_CROP, 1 - ICON_CROP, ICON_CROP, 1 - ICON_CROP)
         icon:SetVertexColor(1, 0.3, 0.3, 1)
-        local border = MakeBorder(cooldownAnchor, demonX, COOLDOWN_ICON_SIZE)
-        local glow = MakeReminderGlow(cooldownAnchor, demonX, border,
+        local border = MakeBorder(rowFrames.cooldownAnchor, demonX, COOLDOWN_ICON_SIZE)
+        local glow = MakeReminderGlow(rowFrames.cooldownAnchor, demonX, border,
             COOLDOWN_ICON_SIZE, true)
         glow.pulseIcon = icon
         groupBuffIcons.demonReminder = { icon = icon, border = border, glow = glow }
@@ -1574,7 +1697,7 @@ local function Build()
     end
 
     auraContainer:SetSize(rowWidth, ICON_SIZE)
-    auraContainer:SetPoint("CENTER", hudAnchor, "CENTER")
+    auraContainer:SetPoint("CENTER", rowFrames.hudAnchor, "CENTER")
 
     local baseCreated = {}
     for _, spell in ipairs(SPELLS) do
@@ -1591,7 +1714,7 @@ local function Build()
         local x = spell.group == 2 and CooldownX(groupKey)
             or Position(mainOrder, groupKey, ICON_SIZE)
         if x and Enabled(spell.name) and KnownSpell(spell) and next(includeSpellIDs) then
-            local anchor = spell.group == 2 and cooldownAnchor or hudAnchor
+            local anchor = spell.group == 2 and rowFrames.cooldownAnchor or rowFrames.hudAnchor
             local iconSize = spell.group == 2 and COOLDOWN_ICON_SIZE or ICON_SIZE
             if not baseCreated[groupKey] then
                 local assigned = WarlockHudAssignmentSpell
@@ -1614,8 +1737,8 @@ local function Build()
                 local icon = anchor:CreateTexture(nil, "ARTWORK")
                 icon:SetSize(iconSize, iconSize)
                 icon:SetPoint("CENTER", anchor, "CENTER", x, 0)
-                icon:SetTexture(C_Spell.GetSpellTexture(previewID)
-                    or C_Spell.GetSpellTexture(currentSpellID or spell.ids[1]))
+                icon:SetTexture(CastSpellTexture(preview, previewID)
+                    or CastSpellTexture(spell, currentSpellID))
                 icon:SetTexCoord(ICON_CROP, 1 - ICON_CROP, ICON_CROP, 1 - ICON_CROP)
                 if spell.group ~= 2 then
                     icon:SetDesaturated(profile.colorActiveDoTs ~= false)
@@ -1639,10 +1762,6 @@ local function Build()
                     if spell.name == "Immolate" and groupBuffIcons.conflagrate then
                         local entry = groupBuffIcons.conflagrate
                         entry.immolateButtons[#entry.immolateButtons + 1] = button
-                        button:HookScript("OnShow",
-                            WarlockHudRowVisibility.RefreshConflagrate)
-                        button:HookScript("OnHide",
-                            WarlockHudRowVisibility.RefreshConflagrate)
                     end
 
                     local auraIcon = button:CreateTexture(nil, "ARTWORK")
@@ -1652,6 +1771,21 @@ local function Build()
                         auraIcon:SetDesaturated(profile.colorActiveDoTs == false)
                     end
                     button:SetIcon(auraIcon)
+                    if spell.group ~= 2 then
+                        -- Forever can supply a question-mark aura texture for a
+                        -- custom effect. This slot represents one cast spell,
+                        -- so its known cast texture can cover that placeholder
+                        -- while Blizzard still owns visibility and duration.
+                        local castTexture = CastSpellTexture(spell, currentSpellID)
+                        if castTexture then
+                            local castIcon = button:CreateTexture(nil, "OVERLAY")
+                            castIcon:SetAllPoints(button)
+                            castIcon:SetTexture(castTexture)
+                            castIcon:SetTexCoord(ICON_CROP, 1 - ICON_CROP,
+                                ICON_CROP, 1 - ICON_CROP)
+                            castIcon:SetDesaturated(profile.colorActiveDoTs == false)
+                        end
+                    end
 
                     local cooldown = CreateFrame("Cooldown", nil, button, "CooldownFrameTemplate")
                     cooldown:SetAllPoints(button)
@@ -1670,9 +1804,9 @@ local function Build()
     end
 
     for _, key in ipairs(buffOrder) do
-        local holder = CreateFrame("Frame", nil, buffAnchor)
+        local holder = CreateFrame("Frame", nil, rowFrames.buffAnchor)
         holder:SetSize(BUFF_ICON_SIZE, BUFF_ICON_SIZE)
-        holder:SetPoint("CENTER", buffAnchor, "CENTER",
+        holder:SetPoint("CENTER", rowFrames.buffAnchor, "CENTER",
             Position(buffOrder, key, BUFF_ICON_SIZE), 0)
         groupBuffIcons.holders = groupBuffIcons.holders or {}
         groupBuffIcons.holders[key] = holder
@@ -1729,28 +1863,37 @@ local function Build()
     })
     end
 
-    local foodX = Position(buffOrder, "wellfed", BUFF_ICON_SIZE)
+    local consumeHolders = {}
+    for index, key in ipairs(consumeOrder) do
+        local holder = CreateFrame("Frame", nil, consumeState.anchor)
+        holder:SetSize(consumeState.size, consumeState.size)
+        holder:SetPoint("CENTER", consumeState.anchor, "LEFT",
+            (index - 1) * (consumeState.size + ICON_SPACING)
+                + consumeState.size / 2, 0)
+        consumeHolders[key] = holder
+    end
+    local foodX = Position(consumeOrder, "wellfed", consumeState.size)
     if foodX then
-        local foodHolder = groupBuffIcons.holders.wellfed
+        local foodHolder = consumeHolders.wellfed
         wellFedSlotCreated = true
         local foodIcon = foodHolder:CreateTexture(nil, "ARTWORK")
-        foodIcon:SetSize(BUFF_ICON_SIZE, BUFF_ICON_SIZE)
+        foodIcon:SetSize(consumeState.size, consumeState.size)
         foodIcon:SetPoint("CENTER", foodHolder, "CENTER")
         foodIcon:SetTexture(C_Spell.GetSpellTexture(19705) or "Interface\\Icons\\INV_Misc_Food_15")
         foodIcon:SetTexCoord(ICON_CROP, 1 - ICON_CROP, ICON_CROP, 1 - ICON_CROP)
-        foodIcon:SetDesaturated(profile.colorActiveBuffs ~= false)
-        local foodBorder = MakeBorder(foodHolder, 0, BUFF_ICON_SIZE)
-        wellFedGlow = MakeReminderGlow(foodHolder, 0, foodBorder, BUFF_ICON_SIZE)
+        foodIcon:SetDesaturated(profile.colorActiveConsumes ~= false)
+        local foodBorder = MakeBorder(foodHolder, 0, consumeState.size)
+        wellFedGlow = MakeReminderGlow(foodHolder, 0, foodBorder, consumeState.size)
         wellFedGlow.pulseIcon = foodIcon
-        playerAuras:AddAuraSlot("Well Fed", "HELPFUL", {
+        consumeAuras:AddAuraSlot("Well Fed", "HELPFUL", {
             candidateFilters = { includeSpellIDs = wellFedIDs },
             initializeFrame = function(button)
-                button:SetSize(BUFF_ICON_SIZE, BUFF_ICON_SIZE)
+                button:SetSize(consumeState.size, consumeState.size)
                 button:ClearAllPoints()
                 button:SetPoint("CENTER", foodHolder, "CENTER")
                 local auraIcon = button:CreateTexture(nil, "ARTWORK")
                 auraIcon:SetAllPoints(button)
-                auraIcon:SetDesaturated(profile.colorActiveBuffs == false)
+                auraIcon:SetDesaturated(profile.colorActiveConsumes == false)
                 auraIcon:SetTexCoord(ICON_CROP, 1 - ICON_CROP, ICON_CROP, 1 - ICON_CROP)
                 button:SetIcon(auraIcon)
                 local cooldown = CreateFrame("Cooldown", nil, button, "CooldownFrameTemplate")
@@ -1841,7 +1984,7 @@ local function Build()
                 initializeFrame = function(button)
                     button:SetSize(PROC_ICON_SIZE, PROC_ICON_SIZE)
                     button:ClearAllPoints()
-                    button:SetPoint("CENTER", procAnchor, "CENTER", x, 0)
+                    button:SetPoint("CENTER", rowFrames.procAnchor, "CENTER", x, 0)
                     local auraIcon = button:CreateTexture(nil, "ARTWORK")
                     auraIcon:SetAllPoints(button)
                     auraIcon:SetTexCoord(ICON_CROP, 1 - ICON_CROP, ICON_CROP, 1 - ICON_CROP)
@@ -1876,13 +2019,15 @@ local function Build()
     end
 
     playerAuras:SetSize(math.max(1, #buffOrder * BUFF_ICON_SIZE), BUFF_ICON_SIZE)
-    playerAuras:SetPoint("CENTER", buffAnchor, "CENTER")
+    playerAuras:SetPoint("CENTER", rowFrames.buffAnchor, "CENTER")
+    consumeAuras:SetSize(consumeWidth, consumeState.size)
+    consumeAuras:SetPoint("LEFT", consumeState.anchor, "LEFT")
     petAuras:SetSize(math.max(1, #buffOrder * BUFF_ICON_SIZE), BUFF_ICON_SIZE)
-    petAuras:SetPoint("CENTER", buffAnchor, "CENTER")
+    petAuras:SetPoint("CENTER", rowFrames.buffAnchor, "CENTER")
     utilityAuras:SetSize(cooldownWidth, COOLDOWN_ICON_SIZE)
-    utilityAuras:SetPoint("CENTER", cooldownAnchor, "CENTER")
+    utilityAuras:SetPoint("CENTER", rowFrames.cooldownAnchor, "CENTER")
     procAuras:SetSize(math.max(1, #procOrder * PROC_ICON_SIZE), PROC_ICON_SIZE)
-    procAuras:SetPoint("CENTER", procAnchor, "CENTER")
+    procAuras:SetPoint("CENTER", rowFrames.procAnchor, "CENTER")
 
     auraContainer:SetUnit("target")
     auraContainer:Show()
@@ -1893,6 +2038,9 @@ local function Build()
     playerAuras:SetUnit("player")
     playerAuras:Show()
     playerAuras:UpdateAllAuras()
+    consumeAuras:SetUnit("player")
+    consumeAuras:Show()
+    consumeAuras:UpdateAllAuras()
     petAuras:SetUnit("pet")
     petAuras:Show()
     petAuras:UpdateAllAuras()
@@ -1900,6 +2048,7 @@ local function Build()
     procAuras:Show()
     procAuras:UpdateAllAuras()
     playerAuraContainer = playerAuras
+    consumeState.auraContainer = consumeAuras
     container = auraContainer
     UpdateVisualState()
     UpdateRange()
@@ -1922,6 +2071,7 @@ local function Rebuild()
     hudRoot = nil
     container = nil
     playerAuraContainer = nil
+    consumeState.auraContainer = nil
     wellFedSlotCreated = false
     buffSlotCreated = {}
     armorGlow = nil
@@ -1929,10 +2079,11 @@ local function Rebuild()
     shardState.button, shardState.countText = nil, nil
     shardState.anchor, shardState.mover = nil, nil
     shardState.icon, shardState.glow = nil, nil
-    hudAnchor, editMover, cooldownAnchor, cooldownMover = nil, nil, nil, nil
+    rowFrames.hudAnchor, rowFrames.editMover, rowFrames.cooldownAnchor, rowFrames.cooldownMover = nil, nil, nil, nil
     soulstoneLabel = nil
-    buffAnchor, buffMover = nil, nil
-    procAnchor, procMover = nil, nil
+    rowFrames.buffAnchor, rowFrames.buffMover = nil, nil
+    consumeState.anchor, consumeState.mover = nil, nil
+    rowFrames.procAnchor, rowFrames.procMover = nil, nil
     icons, itemIcons, spellCooldownIcons, groupBuffIcons = {}, {}, {}, {}
     WarlockHudRowVisibility.masks = {}
     WarlockHudRowVisibility.containers = {}
@@ -1966,10 +2117,8 @@ function WarlockHudRefreshAssignmentIcons()
             local id = C_Spell and C_Spell.GetSpellIDForSpellIdentifier
                 and C_Spell.GetSpellIDForSpellIdentifier(preview.name)
                 or preview.ids[1]
-            if C_Spell and C_Spell.GetSpellTexture then
-                entry.icon:SetTexture(C_Spell.GetSpellTexture(id)
-                    or C_Spell.GetSpellTexture(preview.ids[1]))
-            end
+            local texture = CastSpellTexture(preview, id)
+            if texture then entry.icon:SetTexture(texture) end
         end
     end
     UpdateRange()
@@ -2107,23 +2256,26 @@ events:SetScript("OnUpdate", function(_, elapsed)
                 local status = WarlockHudSoulstoneText and WarlockHudSoulstoneText()
                 soulstoneLabel:SetText(status or "")
             end
+            WarlockHudRowVisibility.RefreshConflagrate()
             UpdateVisualState()
             UpdateRange()
             UpdateStones()
             UpdateSpellCooldowns()
-            if editMover then
+            if rowFrames.editMover then
                 local inEditMode = EditModeManagerFrame and EditModeManagerFrame:IsShown()
                 if inEditMode then
-                    editMover:Show()
-                    cooldownMover:Show()
-                    buffMover:Show()
-                    procMover:Show()
+                    rowFrames.editMover:Show()
+                    rowFrames.cooldownMover:Show()
+                    rowFrames.buffMover:Show()
+                    consumeState.mover:Show()
+                    rowFrames.procMover:Show()
                     if shardState.mover then shardState.mover:Show() end
                 else
-                    editMover:Hide()
-                    cooldownMover:Hide()
-                    buffMover:Hide()
-                    procMover:Hide()
+                    rowFrames.editMover:Hide()
+                    rowFrames.cooldownMover:Hide()
+                    rowFrames.buffMover:Hide()
+                    consumeState.mover:Hide()
+                    rowFrames.procMover:Hide()
                     if shardState.mover then shardState.mover:Hide() end
                 end
             end
@@ -2143,6 +2295,7 @@ local function DebugState()
             { "Target DoTs", profile.mainOrder },
             { "Utility", profile.cooldownOrder },
             { "Buffs", profile.buffOrder },
+            { "Consumes", profile.consumeOrder },
             { "Procs", profile.procOrder },
         }) do
             local enabled = {}
@@ -2299,6 +2452,7 @@ WarlockHudAPI = {
     MainKeys = MAIN_KEYS,
     CooldownKeys = COOLDOWN_KEYS,
     BuffKeys = BUFF_KEYS,
+    ConsumeKeys = consumeState.keys,
     Buffs = BUFFS,
     ProcKeys = PROC_KEYS,
     Procs = PROCS,
@@ -2313,10 +2467,11 @@ WarlockHudAPI = {
         if not container or not hudRoot then return nil end
         return {
             root = hudRoot,
-            main = hudAnchor,
-            utility = cooldownAnchor,
-            buffs = buffAnchor,
-            procs = procAnchor,
+            main = rowFrames.hudAnchor,
+            utility = rowFrames.cooldownAnchor,
+            buffs = rowFrames.buffAnchor,
+            consumes = consumeState.anchor,
+            procs = rowFrames.procAnchor,
             shards = shardState.anchor,
         }
     end,
