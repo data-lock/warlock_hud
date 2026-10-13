@@ -540,9 +540,10 @@ Button(multiDotPanel, "Reset position", 20, -195, 130, function()
 end)
 Button(multiDotPanel, "Reset size", 163, -195, 110, function()
     Profile().multiDotScale = 1
+    Profile().multiDotWidth, Profile().multiDotHeight = 310, 316
     if WarlockHudMultiTarget then WarlockHudMultiTarget.Refresh() end
 end)
-Text(multiDotPanel, "Outside combat: drag the title to move or the lower-right corner to resize. X closes in combat too.",
+Text(multiDotPanel, "Outside combat: drag the title to move or the lower-right corner to resize width and height. X closes in combat too.",
     20, -235, "GameFontHighlightSmall")
 Text(multiDotPanel, "A nameplate token can be reused; its old label is cleared on removal.",
     20, -267, "GameFontHighlightSmall")

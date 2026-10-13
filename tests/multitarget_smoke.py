@@ -9,8 +9,8 @@ frames = {}
 plates = {}
 combat = false
 profile = { multiDotEnabled = true, multiDotSize = 24 }
-cursor = 500
-GetCursorPosition = function() return cursor, 0 end
+cursorX, cursorY = 500, 500
+GetCursorPosition = function() return cursorX, cursorY end
 WarlockHudAPI = {
     GetProfile = function() return profile end,
     InitializeProfiles = function() end,
@@ -42,6 +42,9 @@ function methods:SetText(value) self.text = value end
 function methods:SetShown(value) self.shown = value end
 function methods:SetColorTexture(...) self.color = {...} end
 function methods:SetSize(w, h) self.width, self.height = w, h end
+function methods:SetWidth(w) self.width = w end
+function methods:GetSize() return self.width, self.height end
+function methods:GetEffectiveScale() return 1 end
 function methods:SetScale(value) self.scale = value end
 function methods:GetFrameLevel() return 1 end
 function methods:GetCenter() return 600, 400 end
@@ -87,10 +90,14 @@ move.scripts.OnDragStop()
 assert(profile.multiDotX == 0.5 and profile.multiDotY == 0.5)
 local resize = frames.WarlockHudMultiTargetResize
 resize.scripts.OnDragStart()
-cursor = 550
+cursorX, cursorY = 550, 500
+resize.scripts.OnUpdate()
+assert(root.width > 310 and root.height == 316)
+cursorY = 460
 resize.scripts.OnUpdate()
 resize.scripts.OnDragStop()
-assert(root.scale > 1 and profile.multiDotScale == root.scale)
+assert(root.width > 310 and root.height > 316)
+assert(profile.multiDotWidth == root.width and profile.multiDotHeight == root.height)
 local close = frames.WarlockHudMultiTargetClose
 assert(close.frameRefs.window == root)
 assert(close.attributes._onclick:find(':Hide()', 1, true))

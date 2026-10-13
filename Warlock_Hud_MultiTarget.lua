@@ -4,9 +4,11 @@ local api = WarlockHudAPI
 local rows = {}
 local root
 local status
+local mover
 local built, pending, auraWarning, failed = false, false, false, false
 local ROWS = 8
 local ICON_SIZE = 24
+local BASE_WIDTH, BASE_HEIGHT = 310, 316
 local SPELLS = {
     { "Corruption", { 172, 6222, 6223, 7648, 11671, 11672, 25311 } },
     { "Immolate", { 348, 707, 1094, 2941, 11665, 11667, 11668, 25309 } },
@@ -17,6 +19,14 @@ local SPELLS = {
 local RAID_ICONS = "Interface\\TargetingFrame\\UI-RaidTargetingIcons"
 local function ClampScale(value)
     return math.max(0.7, math.min(1.6, tonumber(value) or 1))
+end
+
+local function ClampWidth(value)
+    return math.max(260, math.min(600, tonumber(value) or BASE_WIDTH))
+end
+
+local function ClampHeight(value)
+    return math.max(287, math.min(640, tonumber(value) or BASE_HEIGHT))
 end
 
 local function Safe()
@@ -118,6 +128,20 @@ local function UpdateStatus()
     end
 end
 
+local function ApplyLayout(width, height)
+    root:SetSize(width, height)
+    if mover then mover:SetWidth(width - 35) end
+    local displayWidth = width - 126
+    local step = (height - 84) / (ROWS - 1)
+    for i, row in ipairs(rows) do
+        row.display:SetWidth(displayWidth)
+        row.display:ClearAllPoints()
+        row.display:SetPoint("TOPLEFT", root, "TOPLEFT", 7,
+            -50 - (i - 1) * step)
+        row.name:SetWidth(math.max(65, displayWidth - 64))
+    end
+end
+
 local function CreateAuraSlot(row, spell, index, size)
     local idSet = {}
     for _, id in ipairs(spell[2]) do idSet[id] = true end
@@ -163,14 +187,13 @@ local function Build()
     end
 
     local size = ICON_SIZE
-    local width = 190 + 4 * (size + 3)
-    local height = ROWS * (size + 9) + 52
+    local width = ClampWidth(p.multiDotWidth or BASE_WIDTH * ClampScale(p.multiDotScale))
+    local height = ClampHeight(p.multiDotHeight or BASE_HEIGHT * ClampScale(p.multiDotScale))
     root = CreateFrame("Frame", "WarlockHudMultiTargetWindow", UIParent)
     root:SetSize(width, height)
     root:SetFrameStrata("MEDIUM")
     root:SetMovable(true)
     root:SetClampedToScreen(true)
-    root:SetScale(ClampScale(p.multiDotScale))
     Position()
     local bg = root:CreateTexture(nil, "BACKGROUND")
     bg:SetAllPoints(root)
@@ -181,7 +204,7 @@ local function Build()
     status = root:CreateFontString(nil, "ARTWORK", "GameFontDisableSmall")
     status:SetPoint("TOPLEFT", root, "TOPLEFT", 10, -30)
     status:SetText("Waiting for enemy nameplates. Toggle them with V.")
-    local mover = CreateFrame("Button", "WarlockHudMultiTargetMove", root)
+    mover = CreateFrame("Button", "WarlockHudMultiTargetMove", root)
     mover:SetSize(width - 35, 28)
     mover:SetPoint("TOPLEFT", root, "TOPLEFT")
     mover:SetFrameLevel(root:GetFrameLevel() + 1)
@@ -223,34 +246,35 @@ local function Build()
     local grip = resize:CreateTexture(nil, "ARTWORK")
     grip:SetAllPoints(resize)
     grip:SetTexture("Interface\\ChatFrame\\UI-ChatIM-SizeGrabber-Up")
-    local resizing, startCursor, startScale = false, nil, nil
+    local resizing, startX, startY, startWidth, startHeight = false
     resize:SetScript("OnDragStart", function()
         if InCombatLockdown() then return end
         resizing = true
-        startCursor = GetCursorPosition()
-        startScale = ClampScale(Profile().multiDotScale)
+        startX, startY = GetCursorPosition()
+        startWidth, startHeight = root:GetSize()
     end)
     resize:SetScript("OnUpdate", function()
         if not resizing then return end
         if InCombatLockdown() then resizing = false; return end
-        local cursor = GetCursorPosition()
-        if not Plain(cursor) then return end
-        local parentScale = UIParent:GetEffectiveScale()
-        local scale = ClampScale(startScale
-            + (cursor - startCursor) / (width * parentScale))
-        root:SetScale(scale)
-        Profile().multiDotScale = scale
+        local x, y = GetCursorPosition()
+        if not Plain(x) or not Plain(y) then return end
+        local scale = root:GetEffectiveScale()
+        local newWidth = ClampWidth(startWidth + (x - startX) / scale)
+        local newHeight = ClampHeight(startHeight - (y - startY) / scale)
+        ApplyLayout(newWidth, newHeight)
+        local current = Profile()
+        current.multiDotWidth, current.multiDotHeight = newWidth, newHeight
     end)
     resize:SetScript("OnDragStop", function() resizing = false end)
     for i = 1, ROWS do
         local unit = "nameplate" .. i
         local display = CreateFrame("Frame", nil, root)
-        display:SetSize(184, size + 5)
+        display:SetSize(width - 126, size + 5)
         display:SetPoint("TOPLEFT", root, "TOPLEFT", 7,
-            -50 - (i - 1) * (size + 9))
+            -50 - (i - 1) * ((height - 84) / (ROWS - 1)))
         local button = CreateFrame("Button", "WarlockHudMultiTarget" .. i,
             root, "SecureActionButtonTemplate")
-        button:SetSize(184, size + 5)
+        button:SetSize(width - 126, size + 5)
         button:SetAllPoints(display)
         button:SetFrameLevel(display:GetFrameLevel() + 2)
         button:RegisterForClicks("AnyUp")
@@ -270,7 +294,7 @@ local function Build()
         marker:Hide()
         local name = display:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
         name:SetPoint("LEFT", display, "LEFT", 24, 0)
-        name:SetWidth(120)
+        name:SetWidth(math.max(65, width - 190))
         name:SetJustifyH("LEFT")
         local engaged = display:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
         engaged:SetPoint("RIGHT", display, "RIGHT", -3, 0)
@@ -289,6 +313,7 @@ local function Build()
         UpdateIdentity(row)
     end
     UpdateStatus()
+    ApplyLayout(width, height)
     built, pending = true, false
     root:SetShown(p.multiDotEnabled)
     return true
@@ -299,7 +324,9 @@ local function Refresh()
     if not p then return false end
     if not built then return Build() end
     if not Safe() then pending = true; return false end
-    root:SetScale(ClampScale(p.multiDotScale))
+    local width = ClampWidth(p.multiDotWidth or BASE_WIDTH * ClampScale(p.multiDotScale))
+    local height = ClampHeight(p.multiDotHeight or BASE_HEIGHT * ClampScale(p.multiDotScale))
+    ApplyLayout(width, height)
     Position()
     root:SetShown(p.multiDotEnabled and api.IsAddonEnabled())
     pending = false

@@ -8,6 +8,7 @@ lua = LuaRuntime(unpack_returned_tuples=True)
 lua.execute("""
 local db = { activeProfile = 'Default', profiles = {
     Default = { mainSize = 48, multiDotEnabled = true, multiDotScale = 1.25,
+        multiDotWidth = 370, multiDotHeight = 410,
         multiDotX = 0.55, multiDotY = 0.48, consumesSchemaVersion = 2,
         consumeSize = 35, consumeOrder = {'wellfed', 'flask'},
         consumeReminders = { wellfed = true, flask = false },
@@ -50,6 +51,8 @@ assert(parsed.version and parsed.available.bars and parsed.available.shards)
 assert(parsed.profiles.Default.bars.consumeSize == 35)
 assert(parsed.profiles.Default.bars.multiDotEnabled == true)
 assert(parsed.profiles.Default.bars.multiDotScale == 1.25)
+assert(parsed.profiles.Default.bars.multiDotWidth == 370)
+assert(parsed.profiles.Default.bars.multiDotHeight == 410)
 assert(parsed.profiles.Default.positions.multiDotX == 0.55)
 assert(parsed.profiles.Default.positions.multiDotY == 0.48)
 assert(parsed.profiles.Default.bars.consumesSchemaVersion == 2)
@@ -69,6 +72,13 @@ assert(db.profiles.Default.mainSize == 48 and db.profiles.Default.x == 0.8)
 assert(db.profiles.Default.enabled.notifySummon == false)
 assert(db.profiles.Default.enabled.soulshards == false)
 assert(db.profiles.Default.shardLayoutAdjusted == true)
+local legacy = WarlockHudSharing.Decode(WarlockHudSharing.Export({bars=true}, false))
+legacy.profiles.Default.bars.multiDotWidth = nil
+legacy.profiles.Default.bars.multiDotHeight = nil
+legacy.profiles.Default.bars.multiDotScale = 1.4
+local legacyCount = WarlockHudSharing.Import(legacy, {bars=true}, false)
+assert(legacyCount == 1)
+assert(db.profiles.Default.multiDotWidth == nil and db.profiles.Default.multiDotHeight == nil)
 assert(not WarlockHudSharing.Decode(code:sub(1, -3) .. '!!'))
 local original = db.profiles.Default
 local invalid, reason = WarlockHudSharing.Decode('WHUD1:%%%%')

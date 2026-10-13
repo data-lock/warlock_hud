@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.40.0-review.4
+
+- Resize the Multi-Target window's width and height independently with the
+  lower-right grip. Save both dimensions per profile and in share codes.
+- Migrate existing scale settings to equivalent initial dimensions.
+
 ## v0.40.0-review.3
 
 - Keep the eight token labels visible while their secure target buttons are

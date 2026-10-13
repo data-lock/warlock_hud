@@ -5,7 +5,7 @@ local sharing = {}
 local alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
 local sections = {
     bars = { mainSize="number", cooldownSize="number", multiDotEnabled="boolean",
-        multiDotScale="number",
+        multiDotScale="number", multiDotWidth="number", multiDotHeight="number",
         consumesSchemaVersion="number",
         consumeSize="number",
         buffSize="number", procSize="number", consumesEnabled="boolean",
@@ -295,6 +295,11 @@ function sharing.Import(parsed, selected, importAll)
             end
             -- These flags describe past in-place migrations, not user options.
             -- Imported values already use the share schema's current meaning.
+            local barValues = parsed.profiles[name].bars
+            if barValues and barValues.multiDotScale
+                and not barValues.multiDotWidth and not barValues.multiDotHeight then
+                copy.multiDotWidth, copy.multiDotHeight = nil, nil
+            end
             copy.shardLayoutAdjusted = true
             copy.shardWarningDefaultsV2 = true
             copy.summonKeywordDefaultsV2 = true
