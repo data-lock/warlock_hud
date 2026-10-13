@@ -266,6 +266,7 @@ local function NormalizeProfile(p)
     end
     p.shardSize = math.max(16, math.min(64, tonumber(p.shardSize) or 32))
     p.buffSize = math.max(16, math.min(64, tonumber(p.buffSize) or 24))
+    p.multiDotEnabled = p.multiDotEnabled == true
     if (tonumber(p.consumesSchemaVersion) or 0) < 1 then
         -- Well Fed keeps its existing enabled flag. Copy row preferences once;
         -- subsequent loads must not follow later Buffs changes.

@@ -80,6 +80,7 @@ local function MarkChanged(needsRebuild)
         dirty = true
         if api.Rebuild() then dirty = false end
     end
+    if WarlockHudMultiTarget then WarlockHudMultiTarget.Refresh() end
     RefreshAll()
 end
 
@@ -520,6 +521,37 @@ end
 
 local layout = Panel("Warlock HUD - Rows & Layout")
 local general = Panel("Warlock HUD - General", false)
+local multiDotPanel = Panel("Warlock HUD - Multi-Target DoTs", false)
+Text(multiDotPanel, "Eight fixed nameplate rows. Each row always clicks its own unit token.",
+    20, -54, "GameFontHighlight")
+Text(multiDotPanel, "Visible hostile nameplates are shown in token order. Group threat is marked when confirmed.",
+    20, -81, "GameFontHighlightSmall")
+Text(multiDotPanel, "Combat targeting and native aura behavior need verification on this Forever build.",
+    20, -106, "GameFontHighlightSmall")
+Check(multiDotPanel, 20, -145, "Enable multi-target DoT window",
+    function() return Profile().multiDotEnabled == true end,
+    function(value)
+        Profile().multiDotEnabled = value
+    end,
+    "Saved now. If native frames are protected, the window updates after combat.", false)
+local moveMultiDot = Button(multiDotPanel, "Move window", 20, -195, 155, function(self)
+    self.moving = not self.moving
+    if WarlockHudMultiTarget then WarlockHudMultiTarget.SetMoveMode(self.moving) end
+    self:SetText(self.moving and "Finish moving" or "Move window")
+end)
+Button(multiDotPanel, "Reset position", 188, -195, 130, function()
+    Profile().multiDotX, Profile().multiDotY = nil, nil
+    if WarlockHudMultiTarget then WarlockHudMultiTarget.Refresh() end
+end)
+Text(multiDotPanel, "Drag the window title while move mode is on. Position is saved per profile.",
+    20, -235, "GameFontHighlightSmall")
+Text(multiDotPanel, "A nameplate token can be reused; its old label is cleared on removal.",
+    20, -267, "GameFontHighlightSmall")
+Text(multiDotPanel, "Native aura slots: Corruption, Immolate, Siphon Life, and Banes.",
+    20, -292, "GameFontHighlightSmall")
+refreshers[#refreshers + 1] = function()
+    moveMultiDot:SetEnabled(not InCombatLockdown())
+end
 Text(general, "Enabled by default for Warlocks. Other classes can turn it on here.",
     20, -50, "GameFontHighlightSmall")
 Check(general, 20, -85, "Enable Warlock HUD on this character",
@@ -1612,6 +1644,7 @@ registration:SetScript("OnEvent", function(_, event)
     category = Settings.RegisterCanvasLayoutCategory(layout, "Warlock HUD")
     Settings.RegisterAddOnCategory(category)
     Settings.RegisterCanvasLayoutSubcategory(category, general, "General")
+    Settings.RegisterCanvasLayoutSubcategory(category, multiDotPanel, "Multi-Target DoTs")
     Settings.RegisterCanvasLayoutSubcategory(category, spells, "Tracked Auras")
     Settings.RegisterCanvasLayoutSubcategory(category, consumeLayout, "Consumes")
     Settings.RegisterCanvasLayoutSubcategory(category, buffLayout, "Buffs")

@@ -4,7 +4,8 @@ local sharing = {}
 -- when a field's meaning changes so older clients reject incompatible codes.
 local alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
 local sections = {
-    bars = { mainSize="number", cooldownSize="number", consumesSchemaVersion="number",
+    bars = { mainSize="number", cooldownSize="number", multiDotEnabled="boolean",
+        consumesSchemaVersion="number",
         consumeSize="number",
         buffSize="number", procSize="number", consumesEnabled="boolean",
         mainOrder="list", cooldownOrder="list", consumeOrder="list",
@@ -15,6 +16,7 @@ local sections = {
         assignmentsEnabled="boolean", assignmentWarnings="boolean", assignmentWindowCompact="boolean",
         assignmentWindowWidth="number", assignmentWindowHeight="number" },
     positions = { x="number", y="number", cooldownX="number", cooldownY="number",
+        multiDotX="number", multiDotY="number",
         consumeX="number", consumeY="number", consumeLeftAligned="boolean",
         buffX="number", buffY="number",
         buffLeftAligned="boolean", procX="number", procY="number",

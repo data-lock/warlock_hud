@@ -1,0 +1,122 @@
+"""Run with: uv run --with lupa python tests/multitarget_smoke.py"""
+
+from pathlib import Path
+from lupa.lua51 import LuaRuntime
+
+lua = LuaRuntime(unpack_returned_tuples=True)
+lua.execute(r'''
+frames = {}
+plates = {}
+combat = false
+profile = { multiDotEnabled = true, multiDotSize = 24 }
+WarlockHudAPI = {
+    GetProfile = function() return profile end,
+    InitializeProfiles = function() end,
+    IsAddonEnabled = function() return true end,
+}
+UIParent = { GetWidth = function() return 1200 end,
+    GetHeight = function() return 800 end }
+InCombatLockdown = function() return combat end
+C_Secrets = { ShouldAurasBeSecret = function() return false end }
+issecretvalue = function(value) return value == 'SECRET' end
+C_AddOns = { IsAddOnLoaded = function() return true end,
+    LoadAddOn = function() return true end }
+C_Spell = { GetSpellTexture = function() return 123 end }
+UnitExists = function(unit) return plates[unit] ~= nil end
+UnitName = function(unit) return plates[unit] end
+UnitIsUnit = function(unit) return unit == 'nameplate2' end
+UnitThreatSituation = function(member, unit)
+    if member == 'player' and unit == 'nameplate2' then return 0 end
+end
+GetRaidTargetIndex = function() return nil end
+IsInRaid = function() return false end
+IsInGroup = function() return false end
+local methods = {}
+setmetatable(methods, { __index = function()
+    return function() end
+end })
+function methods:SetText(value) self.text = value end
+function methods:SetShown(value) self.shown = value end
+function methods:SetColorTexture(...) self.color = {...} end
+function methods:SetSize(w, h) self.width, self.height = w, h end
+function methods:SetAttribute(key, value) self.attributes[key] = value end
+function methods:SetDurationCooldown(value) self.cooldown = value end
+function methods:SetScript(key, value) self.scripts[key] = value end
+function methods:CreateTexture() return CreateFrame('Texture', nil, self) end
+function methods:CreateFontString() return CreateFrame('FontString', nil, self) end
+function methods:AddAuraSlot(key, filter, options)
+    self.slots[#self.slots + 1] = {key, filter, options}
+    local aura = CreateFrame('AuraButton', nil, self)
+    options.initializeFrame(aura)
+end
+function CreateFrame(kind, name, parent)
+    local frame = setmetatable({kind=kind, parent=parent, attributes={},
+        scripts={}, slots={}, children={}}, {__index=methods})
+    if parent then
+        parent.children = parent.children or {}
+        parent.children[#parent.children + 1] = frame
+    end
+    if name then frames[name] = frame end
+    if kind == 'Frame' and not parent then eventFrame = frame end
+    return frame
+end
+RegisterStateDriver = function(button, state, condition)
+    button.driver = {state, condition}
+end
+''')
+lua.execute(Path("Warlock_Hud_MultiTarget.lua").read_text(encoding="utf-8"))
+lua.execute(r'''
+eventFrame.scripts.OnEvent(nil, 'PLAYER_LOGIN')
+local root = frames.WarlockHudMultiTargetWindow
+assert(root and root.shown == true)
+for i = 1, 8 do
+    local row = frames['WarlockHudMultiTarget' .. i]
+    assert(row.attributes.type1 == 'target')
+    assert(row.attributes.unit == 'nameplate' .. i)
+    assert(row.driver[2]:find('nameplate' .. i, 1, true))
+    assert(row.parent == root)
+    local container = row.children[#row.children]
+    assert(container.kind == 'AuraContainer' and #container.slots == 4)
+    assert(container.slots[1][1] == 'Corruption')
+    assert(container.slots[4][1] == 'Banes')
+    for _, aura in ipairs(container.children) do
+        assert(aura.cooldown and aura.cooldown.kind == 'Cooldown')
+    end
+end
+plates.nameplate2 = 'First Mob'
+eventFrame.scripts.OnEvent(nil, 'NAME_PLATE_UNIT_ADDED', 'nameplate2')
+local second = frames.WarlockHudMultiTarget2
+local name = second.children[3]
+assert(name.text == 'First Mob')
+assert(second.attributes.unit == 'nameplate2')
+assert(second.attributes.type1 == 'target')
+eventFrame.scripts.OnEvent(nil, 'NAME_PLATE_UNIT_REMOVED', 'nameplate2')
+assert(name.text == '')
+assert(second.attributes.unit == 'nameplate2')
+plates.nameplate2 = 'Second Mob'
+eventFrame.scripts.OnEvent(nil, 'NAME_PLATE_UNIT_ADDED', 'nameplate2')
+assert(name.text == 'Second Mob')
+assert(second.attributes.unit == 'nameplate2')
+combat = true
+profile.multiDotEnabled = false
+assert(WarlockHudMultiTarget.Refresh() == false)
+assert(root.shown == true)
+combat = false
+eventFrame.scripts.OnEvent(nil, 'PLAYER_REGEN_ENABLED')
+assert(root.shown == false)
+''')
+
+deferred = LuaRuntime(unpack_returned_tuples=True)
+deferred.execute(r'''
+WarlockHudAPI = { GetProfile = function() return { multiDotEnabled = true } end,
+    InitializeProfiles = function() end, IsAddonEnabled = function() return true end }
+combat = true
+InCombatLockdown = function() return combat end
+C_Secrets = { ShouldAurasBeSecret = function() return false end }
+CreateFrame = function()
+    return { RegisterEvent = function() end, SetScript = function(self, _, fn) self.event = fn end }
+end
+''')
+deferred.execute(Path("Warlock_Hud_MultiTarget.lua").read_text(encoding="utf-8"))
+deferred.execute("assert(WarlockHudMultiTarget.Refresh() == false)")
+print("Multi-target fixed-token smoke tests OK")

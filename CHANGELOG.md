@@ -1,5 +1,15 @@
 # Changelog
 
+## v0.40.0-review.1
+
+- Add an opt-in Multi-Target DoTs review window with eight fixed nameplate
+  token rows, secure target actions, native DoT countdowns, target highlighting,
+  safe identity clearing on token reuse, and per-profile position.
+- Keep group engagement as a confirmed indicator when group-member threat is
+  readable. Unknown threat does not remove a visible hostile row.
+- Keep the existing Target DoTs HUD unchanged. Combat targeting and native
+  nameplate aura behavior require in-game verification before release.
+
 ## v0.39.0
 
 - Add opt-in trackers and per-category reminders for Supreme Power flask,

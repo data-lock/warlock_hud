@@ -7,7 +7,8 @@ from lupa import LuaRuntime
 lua = LuaRuntime(unpack_returned_tuples=True)
 lua.execute("""
 local db = { activeProfile = 'Default', profiles = {
-    Default = { mainSize = 48, consumesSchemaVersion = 2,
+    Default = { mainSize = 48, multiDotEnabled = true,
+        multiDotX = 0.55, multiDotY = 0.48, consumesSchemaVersion = 2,
         consumeSize = 35, consumeOrder = {'wellfed', 'flask'},
         consumeReminders = { wellfed = true, flask = false },
         consumeX = 0.42, consumeY = 0.61, consumeLeftAligned = true,
@@ -47,6 +48,9 @@ local parsed, err = WarlockHudSharing.Decode(code)
 assert(parsed, err)
 assert(parsed.version and parsed.available.bars and parsed.available.shards)
 assert(parsed.profiles.Default.bars.consumeSize == 35)
+assert(parsed.profiles.Default.bars.multiDotEnabled == true)
+assert(parsed.profiles.Default.positions.multiDotX == 0.55)
+assert(parsed.profiles.Default.positions.multiDotY == 0.48)
 assert(parsed.profiles.Default.bars.consumesSchemaVersion == 2)
 assert(parsed.profiles.Default.bars.consumeReminders.wellfed == true)
 assert(parsed.profiles.Default.bars.enabled.flask == true)
