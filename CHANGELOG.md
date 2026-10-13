@@ -1,5 +1,23 @@
 # Changelog
 
+## v0.39.0
+
+- Add opt-in trackers and per-category reminders for Supreme Power flask,
+  Arcane Elixirs, Shadow Power, Greater Firepower, Mageblood effects, and
+  Wizard Oils. Aura effects keep native countdowns; oils use temporary weapon
+  enchant state without a fabricated timer.
+- Explain in General settings and installation notes that a combat `/reload`
+  delays HUD loading until combat ends.
+- Show `/whub debug` diagnostics in the copyable trace window.
+- Initialize the saved profile when an early aura or roster event arrives,
+  preventing a startup error without blocking HUD loading.
+- Retry HUD creation after login if native aura protection deferred the first
+  build.
+- Pulse all group-buff reminders (Fortitude, Mark/Gift of the Wild,
+  Intellect/Brilliance, Spirit, Kings, Salvation, and Thorns) only when a
+  present caster's buff is confirmed missing. An unreadable aura state keeps
+  the placeholder visible without flashing.
+
 ## v0.38.4
 
 - Add selected-section profile sharing with versioned import validation and a confirmation preview, plus a confirmed reset to defaults.

@@ -7,12 +7,13 @@ from lupa import LuaRuntime
 lua = LuaRuntime(unpack_returned_tuples=True)
 lua.execute("""
 local db = { activeProfile = 'Default', profiles = {
-    Default = { mainSize = 48, consumesSchemaVersion = 1,
-        consumeSize = 35, consumeOrder = {'wellfed'},
+    Default = { mainSize = 48, consumesSchemaVersion = 2,
+        consumeSize = 35, consumeOrder = {'wellfed', 'flask'},
+        consumeReminders = { wellfed = true, flask = false },
         consumeX = 0.42, consumeY = 0.61, consumeLeftAligned = true,
         colorActiveConsumes = false,
         shardSize = 24, shardKeepCount = 8,
-        enabled = { notifySummon = false, soulshards = false },
+        enabled = { notifySummon = false, soulshards = false, flask = true },
         mainOrder = {'corruption', 'immolate'},
         stones = { autoPlaceHealthstone = true },
         x = 0.25, notificationChannel = 'GROUP' }
@@ -46,7 +47,9 @@ local parsed, err = WarlockHudSharing.Decode(code)
 assert(parsed, err)
 assert(parsed.version and parsed.available.bars and parsed.available.shards)
 assert(parsed.profiles.Default.bars.consumeSize == 35)
-assert(parsed.profiles.Default.bars.consumesSchemaVersion == 1)
+assert(parsed.profiles.Default.bars.consumesSchemaVersion == 2)
+assert(parsed.profiles.Default.bars.consumeReminders.wellfed == true)
+assert(parsed.profiles.Default.bars.enabled.flask == true)
 assert(parsed.profiles.Default.positions.consumeX == 0.42)
 assert(parsed.profiles.Default.positions.consumeLeftAligned == true)
 assert(parsed.profiles.Default.bars.colorActiveConsumes == false)

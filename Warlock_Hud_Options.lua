@@ -16,13 +16,18 @@ local LABELS = {
     soullink = "Soul Link",
     soulshards = "Soul Shards",
     armor = "Armor / Skin", wellfed = "Well Fed",
+    flask = "Flask", spelldamage = "Spell Damage Elixir",
+    shadow = "Shadow Damage Elixir", fire = "Fire Damage Elixir",
+    wizardoil = "Wizard Oil", manaregen = "Mana Regeneration",
     racial1 = "Racial ability 1", racial2 = "Racial ability 2",
     fort = "Fortitude", motw = "Mark of the Wild", int = "Intellect",
     spirit = "Spirit", kings = "Kings", salv = "Salvation",
     thorns = "Thorns", breath = "Unending Breath",
     powerinfusion = "Power Infusion", nightfall = "Nightfall",
 }
-local TILE_LABELS = { motw = "Wild", breath = "Breath" }
+local TILE_LABELS = { motw = "Wild", breath = "Breath",
+    spelldamage = "Spell Dmg", shadow = "Shadow", fire = "Fire",
+    wizardoil = "Oil", manaregen = "Mana" }
 
 local ICON_HELP = {
     corruption = "Target DoT. Shows its active aura countdown.",
@@ -42,6 +47,12 @@ local ICON_HELP = {
     racial2 = "Shows a second racial ability when available.",
     armor = "Demon Armor or Demon Skin. Glows when missing.",
     wellfed = "Well Fed. Glows when missing.",
+    flask = "Flask of Supreme Power effect. Native aura countdown.",
+    spelldamage = "Lesser, regular, or Greater Arcane Elixir effect. Native aura countdown.",
+    shadow = "Shadow Power elixir effect. Native aura countdown.",
+    fire = "Fire Power or Greater Firepower elixir effect. Native aura countdown.",
+    wizardoil = "Wizard Oil family on your main-hand weapon. No HUD timer; status is unknown during protected aura states.",
+    manaregen = "Mageblood family effects, including Mana Regeneration. Native aura countdown.",
     fort = "Includes Power Word: Fortitude and Prayer of Fortitude.",
     motw = "Includes Mark of the Wild and Gift of the Wild.",
     int = "Includes Arcane Intellect and Arcane Brilliance.",
@@ -226,13 +237,18 @@ local function IconForKey(key)
     local spellIDs = {
         corruption = 6222, bane = 1014, drain = 1120, immolate = 348,
         siphonlife = 18265, fear = 5782, conflagrate = 1293817,
-        armor = 706, wellfed = 19705,
+        armor = 706, wellfed = 19705, flask = 17628,
+        spelldamage = 16889, shadow = 11474, fire = 26276,
+        manaregen = 24363,
         demon = 5500, sacrifice = 18788, soullink = 19028,
         fort = 1243, motw = 1126, int = 1459,
         spirit = 14752, kings = 20217, salv = 1038,
         thorns = 467, breath = 5697,
         powerinfusion = 10060, nightfall = 17941,
     }
+    if key == "wizardoil" then
+        return C_Item and C_Item.GetItemIconByID and C_Item.GetItemIconByID(20749)
+    end
     if key == "healthstone" or key == "soulstone" or key == "soulshards" then
         return C_Item and C_Item.GetItemIconByID
             and C_Item.GetItemIconByID(key == "healthstone" and 5512
@@ -361,7 +377,9 @@ local function OrderSection(parent, title, orderKey, defaults, y, columns, onRes
         reset:SetScript("OnEnter", function(self)
             GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
             GameTooltip:SetText(title)
-            GameTooltip:AddLine("Restores icon size, order, and visibility. Edit Mode position stays.",
+            GameTooltip:AddLine(orderKey == "consumeOrder"
+                and "Restores size, order, tracked icons, colors, and reminders. Edit Mode position stays."
+                or "Restores icon size, order, and visibility. Edit Mode position stays.",
                 1, 1, 1, true)
             GameTooltip:Show()
         end)
@@ -440,7 +458,8 @@ local function OrderSection(parent, title, orderKey, defaults, y, columns, onRes
         check:SetScript("OnClick", function(self)
             local key = Profile()[orderKey][index]
             if self:GetChecked() then
-                Profile().enabled[key] = nil
+                Profile().enabled[key] = orderKey == "consumeOrder"
+                    and key ~= "wellfed" and true or nil
             else
                 Profile().enabled[key] = false
             end
@@ -535,6 +554,8 @@ for index, option in ipairs({
         "Show this HUD row outside combat. The row is always visible in combat and Edit Mode.",
         false)
 end
+Text(general, "If you /reload during combat, the HUD loads after combat ends.",
+    20, -520, "GameFontHighlightSmall")
 Text(layout, "Move rows in Edit Mode. Drag icons to reorder them; use the checks to show or hide them.",
     20, -50, "GameFontHighlightSmall")
 Text(layout, "Icon sizes", 20, -82, "GameFontNormal")
@@ -579,21 +600,47 @@ Text(consumeLayout, "Icon size", 20, -125, "GameFontNormal")
 SizeSlider(consumeLayout, "Consume icon size", "consumeSize", 16, 64, 20, -150)
 OrderSection(consumeLayout, "Tracked consumables", "consumeOrder", api.ConsumeKeys,
     -205, nil, function()
-        ResetRowValues("consumeSize", "consumeOrder", api.ConsumeKeys, DefaultProfile())
+        local defaults = DefaultProfile()
+        ResetRowValues("consumeSize", "consumeOrder", api.ConsumeKeys, defaults)
+        for _, key in ipairs(api.ConsumeKeys) do
+            Profile().enabled[key] = defaults.enabled[key]
+        end
+        Profile().consumeReminders = defaults.consumeReminders
         Profile().colorActiveConsumes = nil
         MarkChanged()
     end)
-Text(consumeLayout, "Well Fed uses a native aura countdown. Its reminder flashes only when confirmed missing.",
-    20, -335, "GameFontHighlightSmall")
-Check(consumeLayout, 20, -375, "Color when active; grey when missing",
+Text(consumeLayout, "Checked icons are tracked. Only checked reminders flash when confirmed missing.",
+    20, -325, "GameFontHighlightSmall")
+Check(consumeLayout, 20, -345, "Color when active; grey when missing",
     function() return Profile().colorActiveConsumes ~= false end,
     function(value)
         if value then Profile().colorActiveConsumes = nil
         else Profile().colorActiveConsumes = false end
     end, "On (default): color when active, grey when missing. Off reverses the colors.")
+Text(consumeLayout, "Remind when missing", 20, -380, "GameFontNormal")
+for index, option in ipairs({
+    { "wellfed", "Well Fed" }, { "flask", "Flask" },
+    { "spelldamage", "Spell Damage" }, { "shadow", "Shadow Damage" },
+    { "fire", "Fire Damage" }, { "wizardoil", "Wizard Oil" },
+    { "manaregen", "Mana Regeneration" },
+}) do
+    local key, label = option[1], option[2]
+    Check(consumeLayout, 20 + ((index - 1) % 2) * 340,
+        -399 - math.floor((index - 1) / 2) * 27, label,
+        function() return Profile().consumeReminders[key] == true end,
+        function(value)
+            Profile().consumeReminders[key] = value
+            if api.RefreshConsumableGlows then api.RefreshConsumableGlows() end
+        end, "Only flashes when this tracker is enabled and the effect is confirmed missing.",
+        false)
+end
 ResetPageButton(consumeLayout, "Consumes", function()
     local defaults = DefaultProfile()
     ResetRowValues("consumeSize", "consumeOrder", api.ConsumeKeys, defaults)
+    for _, key in ipairs(api.ConsumeKeys) do
+        Profile().enabled[key] = defaults.enabled[key]
+    end
+    Profile().consumeReminders = defaults.consumeReminders
     Profile().consumesEnabled = nil
     Profile().showOutOfCombat.consumes = nil
     Profile().colorActiveConsumes = nil

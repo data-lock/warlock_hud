@@ -20,7 +20,9 @@ local SPELLS = {
 local ICON_SIZE = 48
 local COOLDOWN_ICON_SIZE = 24
 local BUFF_ICON_SIZE = 24
-local consumeState = { size = 24, keys = { "wellfed" } }
+local consumeState = { size = 24, keys = {
+    "wellfed", "flask", "spelldamage", "shadow", "fire", "wizardoil", "manaregen",
+}, glows = {} }
 local PROC_ICON_SIZE = 32
 local ICON_SPACING = 4
 local BORDER_SIZE = 2
@@ -106,6 +108,29 @@ local BUFFS = {
 local SACRIFICE_BUFF = BUFFS[#BUFFS - 1]
 local profile
 local wellFedIDs = { [19705] = true }
+-- Forever aura IDs are item effects, not alchemy recipe or item IDs. The
+-- unverified Greater Mageblood effect ID can be learned out of combat.
+consumeState.effects = {
+    { key = "flask", label = "Flask", names = { "Supreme Power" },
+        ids = { [17628] = true }, itemID = 13512 },
+    { key = "spelldamage", label = "Spell Damage Elixir",
+        names = { "Lesser Arcane Elixir", "Arcane Elixir", "Greater Arcane Elixir" },
+        ids = { [1250971] = true, [439959] = true, [11390] = true,
+            [16889] = true }, itemID = 13454 },
+    { key = "shadow", label = "Shadow Damage Elixir", names = { "Shadow Power" },
+        ids = { [11474] = true }, itemID = 9264 },
+    { key = "fire", label = "Fire Damage Elixir",
+        names = { "Fire Power", "Greater Firepower" },
+        ids = { [7844] = true, [26276] = true }, itemID = 21546 },
+    { key = "manaregen", label = "Mana Regeneration",
+        names = { "Minor Mageblood Elixir", "Lesser Mageblood Elixir",
+            "Mana Regeneration", "Greater Mageblood Elixir" },
+        learnNames = { "Greater Mageblood Elixir" },
+        ids = { [1250942] = true, [1250944] = true, [24363] = true },
+        itemID = 20007 },
+}
+consumeState.oilEnchantIDs = { [2623] = true, [2626] = true,
+    [2627] = true, [2628] = true }
 local buffIDs = {}
 local buffSlotCreated = {}
 
@@ -162,6 +187,34 @@ local function LearnWellFed()
     if consumeState.auraContainer and wellFedSlotCreated then
         consumeState.auraContainer:SetAuraSlotCandidateFilters("Well Fed", { includeSpellIDs = wellFedIDs })
         consumeState.auraContainer:UpdateAllAuras()
+    end
+end
+
+local function LearnConsumables()
+    if not C_UnitAuras or not C_UnitAuras.GetAuraDataBySpellName
+        or InCombatLockdown()
+        or (C_Secrets and C_Secrets.ShouldAurasBeSecret
+            and C_Secrets.ShouldAurasBeSecret()) then return end
+    for _, effect in ipairs(consumeState.effects) do
+        for _, name in ipairs(effect.learnNames or {}) do
+            local ok, spellID = pcall(function()
+                local aura = C_UnitAuras.GetAuraDataBySpellName("player", name, "HELPFUL")
+                if aura then return aura.spellId end
+            end)
+            if ok and (not issecretvalue or not issecretvalue(spellID))
+                and type(spellID) == "number" and not effect.ids[spellID] then
+                effect.ids[spellID] = true
+                WarlockHudDB.consumeIDs = WarlockHudDB.consumeIDs or {}
+                WarlockHudDB.consumeIDs[effect.key] = WarlockHudDB.consumeIDs[effect.key] or {}
+                WarlockHudDB.consumeIDs[effect.key][spellID] = true
+                if consumeState.auraContainer and consumeState.slots
+                    and consumeState.slots[effect.key] then
+                    consumeState.auraContainer:SetAuraSlotCandidateFilters(
+                        effect.label, { includeSpellIDs = effect.ids })
+                    consumeState.auraContainer:UpdateAllAuras()
+                end
+            end
+        end
     end
 end
 
@@ -224,6 +277,16 @@ local function NormalizeProfile(p)
         end
         p.consumesSchemaVersion = 1
     end
+    if type(p.enabled) ~= "table" then p.enabled = {} end
+    -- New categories stay opt-in even when an older share code omits them.
+    for _, key in ipairs(consumeState.keys) do
+        if key ~= "wellfed" and p.enabled[key] == nil then
+            p.enabled[key] = false
+        end
+    end
+    p.consumesSchemaVersion = 2
+    if type(p.consumeReminders) ~= "table" then p.consumeReminders = {} end
+    if p.consumeReminders.wellfed == nil then p.consumeReminders.wellfed = true end
     p.consumeSize = math.max(16, math.min(64, tonumber(p.consumeSize) or 24))
     p.procSize = math.max(20, math.min(64, tonumber(p.procSize) or 32))
     p.shardDestroyCount = nil
@@ -285,7 +348,6 @@ local function NormalizeProfile(p)
     p.summonQueueEnabled = p.summonQueueEnabled ~= false
     p.summonAutoRemoveNearby = p.summonAutoRemoveNearby ~= false
     if type(p.summonSources) ~= "table" then p.summonSources = {} end
-    if type(p.enabled) ~= "table" then p.enabled = {} end
     return p
 end
 
@@ -309,6 +371,18 @@ local function InitializeProfiles()
     if type(WarlockHudDB.wellFedIDs) == "table" then
         for spellID, known in pairs(WarlockHudDB.wellFedIDs) do
             if type(spellID) == "number" and known then wellFedIDs[spellID] = true end
+        end
+    end
+    if type(WarlockHudDB.consumeIDs) == "table" then
+        for _, effect in ipairs(consumeState.effects) do
+            local ids = WarlockHudDB.consumeIDs[effect.key]
+            if type(ids) == "table" then
+                for spellID, known in pairs(ids) do
+                    if type(spellID) == "number" and known then
+                        effect.ids[spellID] = true
+                    end
+                end
+            end
         end
     end
     if type(WarlockHudDB.buffIDs) == "table" then
@@ -896,6 +970,73 @@ end
 local function UpdateWellFedGlow()
     SetMissingGlow(wellFedGlow, ReadPlayerBuffNames({ "Well Fed" }),
         profile.colorActiveConsumes)
+    if wellFedGlow and profile.consumeReminders.wellfed == false then
+        wellFedGlow:Hide()
+        if wellFedGlow.pulseIcon then wellFedGlow.pulseIcon:SetAlpha(1) end
+    end
+end
+
+local function ReadConsumableEffect(effect)
+    if InCombatLockdown() or not C_UnitAuras
+        or (C_Secrets and C_Secrets.ShouldAurasBeSecret
+            and C_Secrets.ShouldAurasBeSecret()) then return nil end
+    if not C_UnitAuras.GetPlayerAuraBySpellID then
+        return ReadPlayerBuffNames(effect.names)
+    end
+    for spellID in pairs(effect.ids) do
+        local ok, aura = pcall(C_UnitAuras.GetPlayerAuraBySpellID, spellID)
+        if not ok or (issecretvalue and issecretvalue(aura)) then return nil end
+        if aura then return true end
+    end
+    return false
+end
+
+local function ReadWizardOil()
+    -- Oils are temporary weapon enchants, not UNIT_AURA buffs. Never inspect
+    -- or calculate their protected remaining time in Lua.
+    if InCombatLockdown() or not C_Item or not C_Item.GetWeaponEnchantInfo
+        or (C_Secrets and C_Secrets.ShouldAurasBeSecret
+            and C_Secrets.ShouldAurasBeSecret()) then return nil end
+    local ok, status = pcall(function()
+        local enchants = C_Item.GetWeaponEnchantInfo(0)
+        if (issecretvalue and issecretvalue(enchants))
+            or type(enchants) ~= "table" then return nil end
+        for _, enchant in ipairs(enchants) do
+            if type(enchant) ~= "table" then return nil end
+            local present, enchantType, id = enchant.hasEnchant,
+                enchant.enchantType, enchant.enchantID
+            if issecretvalue and (issecretvalue(present)
+                or issecretvalue(enchantType) or issecretvalue(id)) then return nil end
+            if present and type(id) ~= "number" then return nil end
+            if present and consumeState.oilEnchantIDs[id] then return true end
+        end
+        return false
+    end)
+    if not ok or (issecretvalue and issecretvalue(status)) then return nil end
+    return status
+end
+
+local function UpdateConsumableGlows()
+    if not profile then return end
+    for _, effect in ipairs(consumeState.effects) do
+        local glow = consumeState.glows[effect.key]
+        if glow then
+            SetMissingGlow(glow, ReadConsumableEffect(effect),
+                profile.colorActiveConsumes)
+            if not profile.consumeReminders[effect.key] then
+                glow:Hide()
+                glow.pulseIcon:SetAlpha(1)
+            end
+        end
+    end
+    local oilGlow = consumeState.glows.wizardoil
+    if oilGlow then
+        SetMissingGlow(oilGlow, ReadWizardOil(), profile.colorActiveConsumes)
+        if not profile.consumeReminders.wizardoil then
+            oilGlow:Hide()
+            oilGlow.pulseIcon:SetAlpha(1)
+        end
+    end
 end
 
 local function ReadGroupBuff(buff)
@@ -1014,6 +1155,7 @@ local function GroupCasterClasses()
 end
 
 local function UpdateGroupBuffs()
+    if not profile then return end
     UpdateDemonology()
     local classes = GroupCasterClasses()
     for _, entry in ipairs(groupBuffIcons) do
@@ -1030,7 +1172,11 @@ local function UpdateGroupBuffs()
                 and (hasBuff == nil or entry.hasBuff ~= true))
             entry.border:SetShown(hasCaster
                 or (hasBuff ~= nil and entry.hasBuff == true))
-            entry.glow:SetShown(hasCaster)
+            -- A caster being present does not prove the buff is absent. Keep
+            -- the placeholder during unknown aura states, but only pulse on
+            -- a confirmed missing result.
+            entry.glow:SetShown(hasCaster and hasBuff == false)
+            if hasBuff ~= false and entry.icon then entry.icon:SetAlpha(1) end
         end
     end
     local visible = 0
@@ -1154,6 +1300,7 @@ local function Build()
         (C_Secrets and C_Secrets.ShouldAurasBeSecret and C_Secrets.ShouldAurasBeSecret()) then
         return
     end
+    LearnConsumables()
 
     if not C_AddOns or not C_AddOns.LoadAddOn then
         Report("C_AddOns.LoadAddOn is unavailable.")
@@ -1907,6 +2054,74 @@ local function Build()
         })
     end
 
+    consumeState.glows = {}
+    consumeState.slots = {}
+    for _, effect in ipairs(consumeState.effects) do
+        local holder = consumeHolders[effect.key]
+        if holder then
+            local icon = holder:CreateTexture(nil, "ARTWORK")
+            icon:SetAllPoints(holder)
+            icon:SetTexture(C_Item and C_Item.GetItemIconByID
+                and C_Item.GetItemIconByID(effect.itemID)
+                or C_Spell.GetSpellTexture(next(effect.ids)))
+            icon:SetTexCoord(ICON_CROP, 1 - ICON_CROP, ICON_CROP, 1 - ICON_CROP)
+            icon:SetDesaturated(profile.colorActiveConsumes ~= false)
+            local border = MakeBorder(holder, 0, consumeState.size)
+            local glow = MakeReminderGlow(holder, 0, border, consumeState.size, true)
+            glow.pulseIcon = icon
+            consumeState.glows[effect.key] = glow
+            consumeState.slots[effect.key] = true
+            consumeAuras:AddAuraSlot(effect.label, "HELPFUL|PLAYER", {
+                candidateFilters = { includeSpellIDs = effect.ids },
+                initializeFrame = function(button)
+                    button:SetSize(consumeState.size, consumeState.size)
+                    button:ClearAllPoints()
+                    button:SetPoint("CENTER", holder, "CENTER")
+                    local auraIcon = button:CreateTexture(nil, "ARTWORK")
+                    auraIcon:SetAllPoints(button)
+                    auraIcon:SetDesaturated(profile.colorActiveConsumes == false)
+                    auraIcon:SetTexCoord(ICON_CROP, 1 - ICON_CROP,
+                        ICON_CROP, 1 - ICON_CROP)
+                    button:SetIcon(auraIcon)
+                    local cooldown = CreateFrame("Cooldown", nil, button,
+                        "CooldownFrameTemplate")
+                    cooldown:SetAllPoints(button)
+                    cooldown:SetDrawBling(false)
+                    cooldown:SetDrawEdge(false)
+                    cooldown:SetHideCountdownNumbers(true)
+                    cooldown:SetReverse(true)
+                    button:SetDurationCooldown(cooldown)
+                end,
+            })
+        end
+    end
+    local oilHolder = consumeHolders.wizardoil
+    if oilHolder then
+        oilHolder:EnableMouse(true)
+        oilHolder:SetScript("OnEnter", function(self)
+            GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+            GameTooltip:SetText("Wizard Oil")
+            GameTooltip:AddLine("Tracks Minor, Lesser, regular, or Brilliant Wizard Oil on your main-hand weapon.",
+                1, 1, 1, true)
+            GameTooltip:AddLine("No HUD timer is shown for temporary weapon enchants.",
+                1, 1, 1, true)
+            GameTooltip:Show()
+        end)
+        oilHolder:SetScript("OnLeave", function() GameTooltip:Hide() end)
+        local oilIcon = oilHolder:CreateTexture(nil, "ARTWORK")
+        oilIcon:SetAllPoints(oilHolder)
+        oilIcon:SetTexture(C_Item and C_Item.GetItemIconByID
+            and C_Item.GetItemIconByID(20749)
+            or "Interface\\Icons\\INV_Potion_104")
+        oilIcon:SetTexCoord(ICON_CROP, 1 - ICON_CROP, ICON_CROP, 1 - ICON_CROP)
+        oilIcon:SetDesaturated(profile.colorActiveConsumes ~= false)
+        local oilBorder = MakeBorder(oilHolder, 0, consumeState.size)
+        local oilGlow = MakeReminderGlow(oilHolder, 0, oilBorder,
+            consumeState.size, true)
+        oilGlow.pulseIcon = oilIcon
+        consumeState.glows.wizardoil = oilGlow
+    end
+
     for _, buff in ipairs(BUFFS) do
         local x = Position(buffOrder, buff.key, BUFF_ICON_SIZE)
         if x then
@@ -2057,6 +2272,7 @@ local function Build()
     WarlockHudRowVisibility.RefreshConflagrate()
     UpdateArmorGlow()
     UpdateWellFedGlow()
+    UpdateConsumableGlows()
     UpdateGroupBuffs()
     WarlockHudRowVisibility.Update()
     WarlockHudPositionAssignmentHighlights()
@@ -2072,6 +2288,7 @@ local function Rebuild()
     container = nil
     playerAuraContainer = nil
     consumeState.auraContainer = nil
+    consumeState.glows, consumeState.slots = {}, nil
     wellFedSlotCreated = false
     buffSlotCreated = {}
     armorGlow = nil
@@ -2159,6 +2376,7 @@ events:RegisterEvent("PLAYER_TARGET_CHANGED")
 events:RegisterEvent("BAG_UPDATE_DELAYED")
 events:RegisterEvent("BAG_UPDATE_COOLDOWN")
 events:RegisterEvent("PLAYER_EQUIPMENT_CHANGED")
+events:RegisterUnitEvent("UNIT_INVENTORY_CHANGED", "player")
 events:RegisterEvent("SPELL_UPDATE_COOLDOWN")
 events:RegisterEvent("GROUP_ROSTER_UPDATE")
 events:RegisterEvent("PLAYER_ENTERING_WORLD")
@@ -2167,7 +2385,9 @@ events:RegisterUnitEvent("UNIT_AURA", "player", "pet")
 events:RegisterUnitEvent("UNIT_PET", "player")
 events:RegisterUnitEvent("UNIT_HEALTH", "pet")
 events:SetScript("OnEvent", function(_, event)
-    if event == "PLAYER_LOGIN" then InitializeProfiles() end
+    -- Roster and aura events can arrive before PLAYER_LOGIN. Initialize the
+    -- profile on the first event so those events cannot block HUD startup.
+    if event == "PLAYER_LOGIN" or not profile then InitializeProfiles() end
     if not IsAddonEnabled() then return end
     if event == "ACTIVE_TALENT_GROUP_CHANGED" then
         if not UpdateSpecProfile() then
@@ -2185,9 +2405,18 @@ events:SetScript("OnEvent", function(_, event)
         else
             Build()
         end
+        -- Login can happen while native auras are still protected. Retry the
+        -- guarded build when they become available instead of leaving an
+        -- initialized addon with no HUD until another rebuild event occurs.
+        if not container and (InCombatLockdown()
+            or (C_Secrets and C_Secrets.ShouldAurasBeSecret
+                and C_Secrets.ShouldAurasBeSecret())) then
+            pendingKnownRebuild = true
+        end
         UpdateVisualState()
         UpdateArmorGlow()
         UpdateWellFedGlow()
+        UpdateConsumableGlows()
         UpdateGroupBuffs()
         UpdateRowVisibility()
         if event == "PLAYER_LOGIN" then
@@ -2199,6 +2428,7 @@ events:SetScript("OnEvent", function(_, event)
         UpdateVisualState()
         UpdateArmorGlow()
         UpdateWellFedGlow()
+        UpdateConsumableGlows()
         UpdateGroupBuffs()
         UpdateRowVisibility()
     elseif event == "BAG_UPDATE_DELAYED" or event == "BAG_UPDATE_COOLDOWN" then
@@ -2206,11 +2436,15 @@ events:SetScript("OnEvent", function(_, event)
         UpdateShardCount()
     elseif event == "PLAYER_EQUIPMENT_CHANGED" then
         UpdateShardCount()
+        UpdateConsumableGlows()
+    elseif event == "UNIT_INVENTORY_CHANGED" then
+        UpdateConsumableGlows()
     elseif event == "SPELL_UPDATE_COOLDOWN" then
         UpdateSpellCooldowns()
     elseif event == "UNIT_AURA" then
         UpdateArmorGlow()
         LearnWellFed()
+        LearnConsumables()
         LearnBuffs()
         if playerAuraContainer then playerAuraContainer:UpdateAllAuras() end
         if WarlockHudRowVisibility.containers.pet then
@@ -2220,6 +2454,7 @@ events:SetScript("OnEvent", function(_, event)
             WarlockHudRowVisibility.containers.procs:UpdateAllAuras()
         end
         UpdateWellFedGlow()
+        UpdateConsumableGlows()
         UpdateGroupBuffs()
         UpdateRowVisibility()
     elseif event == "UNIT_PET" or event == "UNIT_HEALTH" then
@@ -2288,7 +2523,16 @@ SLASH_WARLOCKHUD1 = "/whud"
 SLASH_WARLOCKHUD2 = "/whub"
 local function DebugState()
     local db = WarlockHudDB
-    Report("Profile: " .. tostring(db and db.activeProfile or "unavailable")
+    local output = WarlockHudTraceHUD or Report
+    local auraSecret = C_Secrets and C_Secrets.ShouldAurasBeSecret
+        and C_Secrets.ShouldAurasBeSecret()
+    output("HUD: " .. (container and "built" or "not built")
+        .. "; enabled: " .. tostring(IsAddonEnabled())
+        .. "; pending rebuild: " .. tostring(pendingKnownRebuild
+            or pendingSpecRebuild or pendingDemonRebuild)
+        .. "; combat: " .. tostring(InCombatLockdown())
+        .. "; secret auras: " .. tostring(auraSecret))
+    output("Profile: " .. tostring(db and db.activeProfile or "unavailable")
         .. "; spec switching: " .. (db and db.autoSpecProfiles and "on" or "off"))
     if profile then
         for _, row in ipairs({
@@ -2302,23 +2546,23 @@ local function DebugState()
             for _, key in ipairs(row[2]) do
                 if Enabled(key) then enabled[#enabled + 1] = key end
             end
-            Report(row[1] .. ": " .. (#enabled > 0 and table.concat(enabled, ", ") or "none"))
+            output(row[1] .. ": " .. (#enabled > 0 and table.concat(enabled, ", ") or "none"))
         end
     end
-    Report("Trackers: target " .. (container and "ready" or "not initialized")
+    output("Trackers: target " .. (container and "ready" or "not initialized")
         .. ", player " .. (playerAuraContainer and "ready" or "not initialized")
         .. "; rebuild pending: " .. ((pendingSpecRebuild or pendingKnownRebuild) and "yes" or "no"))
     if InCombatLockdown() then
-        Report("Target/range: unavailable during combat.")
+        output("Target/range: unavailable during combat.")
     else
         local ok, attackable = pcall(function()
             return UnitExists("target") and not UnitIsDeadOrGhost("target")
                 and UnitCanAttack("player", "target")
         end)
         if not ok or (issecretvalue and issecretvalue(attackable)) then
-            Report("Target/range: unavailable.")
+            output("Target/range: unavailable.")
         elseif not attackable then
-            Report("Target/range: no attackable target.")
+            output("Target/range: no attackable target.")
         else
             local spell = icons[1] and icons[1].rangeSpell
             local rangeOK, inRange
@@ -2330,13 +2574,13 @@ local function DebugState()
                 if inRange == true then range = "in range"
                 elseif inRange == false then range = "out of range" end
             end
-            Report("Target: attackable; " .. (spell and spell.name or "spell")
+            output("Target: attackable; " .. (spell and spell.name or "spell")
                 .. " range: " .. range)
         end
     end
     for _, spell in ipairs(SPELLS) do
         if Enabled(spell.name) then
-            Report("Tracked " .. spell.name .. " IDs: " .. table.concat(spell.ids, ", "))
+            output("Tracked " .. spell.name .. " IDs: " .. table.concat(spell.ids, ", "))
         end
     end
 end
@@ -2432,6 +2676,7 @@ SlashCmdList.WARLOCKHUD = function(message)
         return
     end
     if message == "debug" then
+        if WarlockHudOpenDebugTrace then WarlockHudOpenDebugTrace() end
         DebugState()
         return
     end
@@ -2479,6 +2724,10 @@ WarlockHudAPI = {
     NormalizeProfile = NormalizeProfile,
     GetSoulShardCount = GetSoulShardCount,
     RefreshShardWarning = UpdateShardCount,
+    RefreshConsumableGlows = function()
+        UpdateWellFedGlow()
+        UpdateConsumableGlows()
+    end,
     RefreshRowVisibility = UpdateRowVisibility,
     Rebuild = Rebuild,
 }
