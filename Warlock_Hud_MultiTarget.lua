@@ -2,8 +2,8 @@
 -- only outside combat. A row is never rebound to a different token.
 local api = WarlockHudAPI
 local rows = {}
-local root, mover
-local built, pending, moveMode, auraWarning, failed = false, false, false, false, false
+local root
+local built, pending, auraWarning, failed = false, false, false, false
 local ROWS = 8
 local ICON_SIZE = 24
 local SPELLS = {
@@ -14,6 +14,9 @@ local SPELLS = {
         1225228, 1243339 } },
 }
 local RAID_ICONS = "Interface\\TargetingFrame\\UI-RaidTargetingIcons"
+local function ClampScale(value)
+    return math.max(0.7, math.min(1.6, tonumber(value) or 1))
+end
 
 local function Safe()
     return not InCombatLockdown() and not (C_Secrets
@@ -152,6 +155,7 @@ local function Build()
     root:SetFrameStrata("MEDIUM")
     root:SetMovable(true)
     root:SetClampedToScreen(true)
+    root:SetScale(ClampScale(p.multiDotScale))
     Position()
     local bg = root:CreateTexture(nil, "BACKGROUND")
     bg:SetAllPoints(root)
@@ -159,25 +163,67 @@ local function Build()
     local title = root:CreateFontString(nil, "ARTWORK", "GameFontNormal")
     title:SetPoint("TOPLEFT", root, "TOPLEFT", 9, -8)
     title:SetText("Multi-Target DoTs")
-    mover = CreateFrame("Button", nil, root)
-    mover:SetSize(width, 28)
+    local mover = CreateFrame("Button", "WarlockHudMultiTargetMove", root)
+    mover:SetSize(width - 35, 28)
     mover:SetPoint("TOPLEFT", root, "TOPLEFT")
+    mover:SetFrameLevel(root:GetFrameLevel() + 1)
     mover:EnableMouse(true)
     mover:RegisterForDrag("LeftButton")
     mover:SetScript("OnDragStart", function()
-        if moveMode and not InCombatLockdown() then root:StartMoving() end
+        if Safe() then root:StartMoving() end
     end)
     mover:SetScript("OnDragStop", function()
+        if not Safe() then return end
         root:StopMovingOrSizing()
-        if moveMode then
-            local x, y = root:GetCenter()
-            if Plain(x) and Plain(y) then
-                local current = Profile()
-                current.multiDotX = x / UIParent:GetWidth()
-                current.multiDotY = y / UIParent:GetHeight()
-            end
+        local x, y = root:GetCenter()
+        if Plain(x) and Plain(y) then
+            local current = Profile()
+            current.multiDotX = x / UIParent:GetWidth()
+            current.multiDotY = y / UIParent:GetHeight()
         end
     end)
+    local close = CreateFrame("Button", "WarlockHudMultiTargetClose", root,
+        "UIPanelCloseButton")
+    close:SetSize(27, 27)
+    close:SetPoint("TOPRIGHT", root, "TOPRIGHT", -3, -2)
+    close:SetFrameLevel(root:GetFrameLevel() + 5)
+    close:SetScript("OnClick", function()
+        Profile().multiDotEnabled = false
+        if Safe() then
+            WarlockHudMultiTarget.Refresh()
+        else
+            pending = true
+            print("Warlock HUD: Multi-Target window will close after combat.")
+        end
+    end)
+    local resize = CreateFrame("Button", "WarlockHudMultiTargetResize", root)
+    resize:SetSize(19, 19)
+    resize:SetPoint("BOTTOMRIGHT", root, "BOTTOMRIGHT", -2, 2)
+    resize:SetFrameLevel(root:GetFrameLevel() + 5)
+    resize:EnableMouse(true)
+    resize:RegisterForDrag("LeftButton")
+    local grip = resize:CreateTexture(nil, "ARTWORK")
+    grip:SetAllPoints(resize)
+    grip:SetTexture("Interface\\ChatFrame\\UI-ChatIM-SizeGrabber-Up")
+    local resizing, startCursor, startScale = false, nil, nil
+    resize:SetScript("OnDragStart", function()
+        if not Safe() then return end
+        resizing = true
+        startCursor = GetCursorPosition()
+        startScale = ClampScale(Profile().multiDotScale)
+    end)
+    resize:SetScript("OnUpdate", function()
+        if not resizing then return end
+        if not Safe() then resizing = false; return end
+        local cursor = GetCursorPosition()
+        if not Plain(cursor) then return end
+        local parentScale = UIParent:GetEffectiveScale()
+        local scale = ClampScale(startScale
+            + (cursor - startCursor) / (width * parentScale))
+        root:SetScale(scale)
+        Profile().multiDotScale = scale
+    end)
+    resize:SetScript("OnDragStop", function() resizing = false end)
     for i = 1, ROWS do
         local unit = "nameplate" .. i
         local button = CreateFrame("Button", "WarlockHudMultiTarget" .. i,
@@ -220,7 +266,6 @@ local function Build()
         UpdateIdentity(row)
     end
     built, pending = true, false
-    mover:EnableMouse(false)
     root:SetShown(p.multiDotEnabled)
     return true
 end
@@ -230,6 +275,7 @@ local function Refresh()
     if not p then return false end
     if not built then return Build() end
     if not Safe() then pending = true; return false end
+    root:SetScale(ClampScale(p.multiDotScale))
     Position()
     root:SetShown(p.multiDotEnabled and api.IsAddonEnabled())
     pending = false
@@ -248,11 +294,6 @@ end
 
 WarlockHudMultiTarget = {
     Refresh = GuardedRefresh,
-    SetMoveMode = function(value)
-        if InCombatLockdown() then return end
-        moveMode = value and true or false
-        if mover then mover:EnableMouse(moveMode) end
-    end,
 }
 
 local events = CreateFrame("Frame")

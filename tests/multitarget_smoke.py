@@ -9,13 +9,16 @@ frames = {}
 plates = {}
 combat = false
 profile = { multiDotEnabled = true, multiDotSize = 24 }
+cursor = 500
+GetCursorPosition = function() return cursor, 0 end
 WarlockHudAPI = {
     GetProfile = function() return profile end,
     InitializeProfiles = function() end,
     IsAddonEnabled = function() return true end,
 }
 UIParent = { GetWidth = function() return 1200 end,
-    GetHeight = function() return 800 end }
+    GetHeight = function() return 800 end,
+    GetEffectiveScale = function() return 1 end }
 InCombatLockdown = function() return combat end
 C_Secrets = { ShouldAurasBeSecret = function() return false end }
 issecretvalue = function(value) return value == 'SECRET' end
@@ -39,6 +42,9 @@ function methods:SetText(value) self.text = value end
 function methods:SetShown(value) self.shown = value end
 function methods:SetColorTexture(...) self.color = {...} end
 function methods:SetSize(w, h) self.width, self.height = w, h end
+function methods:SetScale(value) self.scale = value end
+function methods:GetFrameLevel() return 1 end
+function methods:GetCenter() return 600, 400 end
 function methods:SetAttribute(key, value) self.attributes[key] = value end
 function methods:SetDurationCooldown(value) self.cooldown = value end
 function methods:SetScript(key, value) self.scripts[key] = value end
@@ -69,6 +75,17 @@ lua.execute(r'''
 eventFrame.scripts.OnEvent(nil, 'PLAYER_LOGIN')
 local root = frames.WarlockHudMultiTargetWindow
 assert(root and root.shown == true)
+local move = frames.WarlockHudMultiTargetMove
+move.scripts.OnDragStart()
+move.scripts.OnDragStop()
+assert(profile.multiDotX == 0.5 and profile.multiDotY == 0.5)
+local resize = frames.WarlockHudMultiTargetResize
+resize.scripts.OnDragStart()
+cursor = 550
+resize.scripts.OnUpdate()
+resize.scripts.OnDragStop()
+assert(root.scale > 1 and profile.multiDotScale == root.scale)
+local close = frames.WarlockHudMultiTargetClose
 for i = 1, 8 do
     local row = frames['WarlockHudMultiTarget' .. i]
     assert(row.attributes.type1 == 'target')
@@ -98,12 +115,17 @@ eventFrame.scripts.OnEvent(nil, 'NAME_PLATE_UNIT_ADDED', 'nameplate2')
 assert(name.text == 'Second Mob')
 assert(second.attributes.unit == 'nameplate2')
 combat = true
-profile.multiDotEnabled = false
+close.scripts.OnClick()
+assert(profile.multiDotEnabled == false)
 assert(WarlockHudMultiTarget.Refresh() == false)
 assert(root.shown == true)
 combat = false
 eventFrame.scripts.OnEvent(nil, 'PLAYER_REGEN_ENABLED')
 assert(root.shown == false)
+profile.multiDotEnabled = true
+assert(WarlockHudMultiTarget.Refresh() == true)
+close.scripts.OnClick()
+assert(profile.multiDotEnabled == false and root.shown == false)
 ''')
 
 deferred = LuaRuntime(unpack_returned_tuples=True)

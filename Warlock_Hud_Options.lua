@@ -534,24 +534,20 @@ Check(multiDotPanel, 20, -145, "Enable multi-target DoT window",
         Profile().multiDotEnabled = value
     end,
     "Saved now. If native frames are protected, the window updates after combat.", false)
-local moveMultiDot = Button(multiDotPanel, "Move window", 20, -195, 155, function(self)
-    self.moving = not self.moving
-    if WarlockHudMultiTarget then WarlockHudMultiTarget.SetMoveMode(self.moving) end
-    self:SetText(self.moving and "Finish moving" or "Move window")
-end)
-Button(multiDotPanel, "Reset position", 188, -195, 130, function()
+Button(multiDotPanel, "Reset position", 20, -195, 130, function()
     Profile().multiDotX, Profile().multiDotY = nil, nil
     if WarlockHudMultiTarget then WarlockHudMultiTarget.Refresh() end
 end)
-Text(multiDotPanel, "Drag the window title while move mode is on. Position is saved per profile.",
+Button(multiDotPanel, "Reset size", 163, -195, 110, function()
+    Profile().multiDotScale = 1
+    if WarlockHudMultiTarget then WarlockHudMultiTarget.Refresh() end
+end)
+Text(multiDotPanel, "Drag the title to move. Drag the lower-right corner to resize. X closes it.",
     20, -235, "GameFontHighlightSmall")
 Text(multiDotPanel, "A nameplate token can be reused; its old label is cleared on removal.",
     20, -267, "GameFontHighlightSmall")
 Text(multiDotPanel, "Native aura slots: Corruption, Immolate, Siphon Life, and Banes.",
     20, -292, "GameFontHighlightSmall")
-refreshers[#refreshers + 1] = function()
-    moveMultiDot:SetEnabled(not InCombatLockdown())
-end
 Text(general, "Enabled by default for Warlocks. Other classes can turn it on here.",
     20, -50, "GameFontHighlightSmall")
 Check(general, 20, -85, "Enable Warlock HUD on this character",

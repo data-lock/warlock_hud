@@ -1,5 +1,12 @@
 # Changelog
 
+## v0.40.0-review.2
+
+- Drag the Multi-Target window title to move it and its lower-right grip to
+  resize it. Both settings save per profile. X closes the window and clears
+  its enabled setting; settings can reopen it. Visual changes wait until
+  combat ends when protected frames cannot be changed.
+
 ## v0.40.0-review.1
 
 - Add an opt-in Multi-Target DoTs review window with eight fixed nameplate
