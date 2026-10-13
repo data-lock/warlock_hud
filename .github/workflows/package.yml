@@ -15,8 +15,27 @@ permissions:
   contents: read
 
 jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - name: Check addon Lua syntax and smoke tests
+        run: |
+          uv run --with lupa python tests/compile_lua.py
+          uv run --with lupa python tests/cast_icon_smoke.py
+          uv run --with lupa python tests/consumes_migration_smoke.py
+          uv run --with lupa python tests/sharing_smoke.py
+          uv run --with lupa python tests/consumables_smoke.py
+      - name: Run assignment smoke test with Lua 5.1
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y lua5.1
+          lua5.1 tests/assignment_smoke.lua
+
   package:
     runs-on: ubuntu-latest
+    needs: test
     concurrency:
       group: release-${{ inputs.release_tag || github.ref_name }}
       cancel-in-progress: false

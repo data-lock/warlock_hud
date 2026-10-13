@@ -36,6 +36,16 @@ C_UnitAuras.GetPlayerAuraBySpellID = function() return nil end
 combat = true
 assert(ReadConsumableEffectForTest(flask) == nil)
 combat = false
+C_Secrets.ShouldAurasBeSecret = function() return true end
+assert(ReadConsumableEffectForTest(flask) == nil)
+assert(ReadWizardOilForTest() == nil)
+C_Secrets.ShouldAurasBeSecret = function() return false end
+C_UnitAuras.GetPlayerAuraBySpellID = nil
+ReadPlayerBuffNames = function() return nil end
+assert(ReadConsumableEffectForTest(flask) == nil)
+ReadPlayerBuffNames = function() return true end
+assert(ReadConsumableEffectForTest(flask) == true)
+C_UnitAuras.GetPlayerAuraBySpellID = function() return nil end
 C_Item.GetWeaponEnchantInfo = function()
     return { { hasEnchant=true, enchantType=2, enchantID=2628 } }
 end
