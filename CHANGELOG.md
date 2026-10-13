@@ -1,5 +1,12 @@
 # Changelog
 
+## v0.38.4
+
+- Add selected-section profile sharing with versioned import validation and a confirmation preview, plus a confirmed reset to defaults.
+- Add an independent Consumes row and move Well Fed from Buffs, preserving existing profile preferences and native aura countdowns and reminders.
+- Show the cast spell image over active Target DoT auras when Forever supplies a question-mark aura image.
+- Avoid script handlers on Blizzard's pooled aura buttons, fixing a protected `SetShown` error reported by another player.
+
 ## v0.36.2
 
 - Add Conflagrate to the Utility row when learned, with its native spell

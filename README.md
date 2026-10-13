@@ -15,7 +15,7 @@ Target DoTs and buffs use their normal in-game colors and countdowns.
 
 ![Warlock HUD with all bars shown in demo mode](screenshots/warlock_hud_overview_demo.png)
 
-The demo labels **Buffs**, **Procs**, **Target DoTs**, **Utility**, and **Soul
+The demo labels **Consumes**, **Buffs**, **Procs**, **Target DoTs**, **Utility**, and **Soul
 Shards** at their on-screen positions. It shows inactive and disabled icon slots
 so you can see the full layout before choosing what to track. Open it from
 **General → Demo all HUD bars** and close it with **End HUD demo**.
@@ -26,7 +26,8 @@ so you can see the full layout before choosing what to track. Open it from
 | --- | --- |
 | Main row | Corruption, Immolate, Siphon Life, Banes, Curses, and Drain spells. Banes, Curses, and Drains each share an icon slot. Active target effects show a countdown, including milliseconds. |
 | Cooldown row | Healthstone, Soulstone, Fear, Conflagrate when learned, available racial abilities, and an optional flashing Sense Demons reminder when no demon or active Demonic Sacrifice is confirmed. Conflagrate shows its cooldown and pulses while your Immolate is active on the current target. |
-| Buff row | Demon Armor / Demon Skin, Well Fed, Fortitude, Mark or Gift of the Wild, Intellect, Spirit, Kings, Salvation, Thorns, Demonic Sacrifice, Soul Link, and Unending Breath. Active buffs show colored icons with native countdowns when available; a setting reverses active and missing colors. Soul Link reminds when known, a demon is present, and its buff is confirmed missing. Thorns follows the same Druid-aware missing-buff reminder and active-buff formatting as Mark of the Wild. Unending Breath appears at the right end only while active. Visible buffs pack left to right. |
+| Consumes row | Well Fed, with native countdowns and a reminder when confirmed missing. The row has its own position, icon size, visibility, and color settings. |
+| Buff row | Demon Armor / Demon Skin, Fortitude, Mark or Gift of the Wild, Intellect, Spirit, Kings, Salvation, Thorns, Demonic Sacrifice, Soul Link, and Unending Breath. Active buffs show colored icons with native countdowns when available; a setting reverses active and missing colors. Soul Link reminds when known, a demon is present, and its buff is confirmed missing. Thorns follows the same Druid-aware missing-buff reminder and active-buff formatting as Mark of the Wild. Unending Breath appears at the right end only while active. Visible buffs pack left to right. |
 | Proc row | Power Infusion and Nightfall appear only while active, with a pulsing glow and countdown. |
 | Soul Shards | A separate icon near the Player Frame shows your shard count. It flashes red at or below the low warning threshold (default 4), or yellow at or above the high threshold (default 18) or when shards occupy regular bags alongside an equipped Soul Bag. Each click destroys one shard from a regular bag, stopping when those bags are clear or your configured minimum remains. The default minimum is 8. Shards cannot be destroyed in combat. |
 | Nameplates | A copper tick marks 20% health on attackable enemies' health bars. |
@@ -40,7 +41,10 @@ On Tracked Auras, the Target DoT color toggle reverses the main row's active
 and missing colors. The default is colored when active and grey when missing.
 The Buffs page has its own color toggle. Missing-buff reminders still pulse red.
 General has separate out-of-combat visibility switches for Target DoTs, Utility,
-Buffs, Procs, and Soul Shards. Hidden rows appear in combat and Edit Mode.
+Consumes, Buffs, Procs, and Soul Shards. Hidden rows appear in combat and Edit Mode.
+The Sharing page exports or imports selected profile sections as a copyable code.
+Import previews the selected sections and asks for confirmation. The About page
+can reset addon settings to defaults after confirmation.
 
 ### Known Forever beta issue: Soul Link below level 30
 

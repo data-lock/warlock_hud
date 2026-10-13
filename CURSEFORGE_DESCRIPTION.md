@@ -31,12 +31,12 @@ Shared icon slots keep related abilities together instead of filling your screen
 
 Icons react to target availability and range, with configurable coloring for active and inactive effects.
 
-### Buffs & Procs
+### Consumes, Buffs & Procs
 
 Keep track of your personal buffs, group buffs, and important procs:
 
 *   Demon Armor / Demon Skin
-*   Well Fed
+*   Well Fed in its own movable Consumes row, with an independent icon size and visibility setting
 *   Power Word: Fortitude, Mark/Gift of the Wild, and other group buffs
 *   Thorns and Unending Breath
 *   Nightfall / Shadow Trance
@@ -46,6 +46,8 @@ Keep track of your personal buffs, group buffs, and important procs:
 Missing-buff reminders flash when the addon can confirm a buff is absent. Active procs appear with countdowns and a flashing glow.
 
 The HUD avoids treating protected or unreadable combat information as proof that a buff is missing.
+
+Share selected profile settings with a copyable code. Preview and choose which sections to import before confirming. A separate reset button restores addon defaults after confirmation.
 
 ### Utility & Combat Awareness
 
