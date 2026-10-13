@@ -13,7 +13,7 @@ lua.execute("""
 MAIN_KEYS = {'corruption'}
 COOLDOWN_KEYS = {'healthstone'}
 BUFF_KEYS = {'fort', 'motw', 'armor', 'breath'}
-consumeState = { keys = {'wellfed'} }
+consumeState = { keys = {'wellfed', 'flask', 'spelldamage', 'shadow', 'fire', 'wizardoil', 'manaregen'} }
 PROC_KEYS = {'nightfall'}
 DOT_DEFAULT_SLOTS = {}
 SPELLS = {}
@@ -29,8 +29,12 @@ local old = {
     buffX = 0.21, buffY = 0.67,
 }
 local migrated = NormalizeProfileForTest(old)
-assert(migrated.consumesSchemaVersion == 1)
+assert(migrated.consumesSchemaVersion == 2)
 assert(migrated.enabled.wellfed == false and migrated.enabled.fort == false)
+for _, key in ipairs(consumeState.keys) do
+    if key ~= 'wellfed' then assert(migrated.enabled[key] == false) end
+end
+assert(migrated.consumeReminders.wellfed == true)
 assert(migrated.consumeSize == 38 and migrated.colorActiveConsumes == false)
 assert(migrated.showOutOfCombat.consumes == false)
 assert(migrated.consumeOrder[1] == 'wellfed')
@@ -39,6 +43,7 @@ assert(migrated.buffOrder[#migrated.buffOrder] == 'breath')
 for _, key in ipairs(migrated.buffOrder) do assert(key ~= 'wellfed') end
 assert(migrated.buffX == 0.21 and migrated.buffY == 0.67)
 migrated.consumeSize = 42
+migrated.enabled.flask = true
 migrated.colorActiveConsumes = true
 migrated.showOutOfCombat.consumes = true
 migrated.buffSize = 24
@@ -46,7 +51,9 @@ NormalizeProfileForTest(migrated)
 assert(migrated.consumeSize == 42 and migrated.colorActiveConsumes == true)
 assert(migrated.showOutOfCombat.consumes == true)
 assert(migrated.enabled.wellfed == false)
+assert(migrated.enabled.flask == true)
 local fresh = NormalizeProfileForTest({})
 assert(fresh.consumeOrder[1] == 'wellfed' and fresh.consumeSize == 24)
+assert(fresh.consumeReminders.wellfed == true and fresh.enabled.wizardoil == false)
 """)
 print("Consumes migration smoke tests OK")

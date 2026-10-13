@@ -479,6 +479,12 @@ function WarlockHudOpenDebugTrace()
     OpenTradeWindow()
 end
 
+function WarlockHudTraceHUD(details)
+    tradeLines[#tradeLines + 1] = date("%H:%M:%S") .. " HUD " .. details
+    if #tradeLines > 200 then table.remove(tradeLines, 1) end
+    RefreshTradeWindow()
+end
+
 function WarlockHudToggleTradeDebug()
     tradeDebug = not tradeDebug
     OpenTradeWindow()
