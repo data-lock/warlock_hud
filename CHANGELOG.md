@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.40.0-review.6
+
+- Clear a fixed row's name, marker, and highlight when its nameplate token is
+  absent or the unit is confirmed dead. Update on health and flag changes.
+- Remove the "nameplateN (waiting)" labels from empty slots.
+
 ## v0.40.0-review.5
 
 - Highlight nameplate rows only when group threat confirms engagement or a

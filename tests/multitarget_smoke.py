@@ -7,6 +7,7 @@ lua = LuaRuntime(unpack_returned_tuples=True)
 lua.execute(r'''
 frames = {}
 plates = {}
+dead = {}
 dots = {}
 auraChecks = 0
 combat = false
@@ -33,6 +34,7 @@ C_UnitAuras = { GetAuraDataBySpellID = function(unit, id)
     if dots[unit] == id then return {} end
 end }
 UnitExists = function(unit) return unit == 'player' or plates[unit] ~= nil end
+UnitIsDeadOrGhost = function(unit) return dead[unit] == true end
 UnitName = function(unit) return plates[unit] end
 UnitIsUnit = function(unit) return unit == 'nameplate2' end
 UnitThreatSituation = function(member, unit)
@@ -92,7 +94,7 @@ eventFrame.scripts.OnEvent(nil, 'PLAYER_LOGIN')
 local root = frames.WarlockHudMultiTargetWindow
 assert(root and root.shown == true)
 local status = root.children[3]
-assert(status.text:find('Waiting for enemy nameplates', 1, true))
+assert(status.text == 'No visible live targets')
 local move = frames.WarlockHudMultiTargetMove
 move.scripts.OnDragStart()
 move.scripts.OnDragStop()
@@ -151,13 +153,19 @@ assert(status.text == 'Relevant: 2 / 4 visible (other rows dimmed)')
 assert(second.attributes.type1 == 'target')
 plates.nameplate2 = nil
 eventFrame.scripts.OnEvent(nil, 'NAME_PLATE_UNIT_REMOVED', 'nameplate2')
-assert(name.text == 'nameplate2 (waiting)')
+assert(name.text == '')
 assert(status.text == 'Relevant: 1 / 3 visible (other rows dimmed)')
 assert(second.attributes.unit == 'nameplate2')
 plates.nameplate2 = 'Second Mob'
 eventFrame.scripts.OnEvent(nil, 'NAME_PLATE_UNIT_ADDED', 'nameplate2')
 assert(name.text == 'Second Mob')
 assert(second.attributes.unit == 'nameplate2')
+dead.nameplate2 = true
+eventFrame.scripts.OnEvent(nil, 'UNIT_HEALTH', 'nameplate2')
+assert(name.text == '' and status.text == 'Relevant: 1 / 3 visible (other rows dimmed)')
+dead.nameplate2 = false
+eventFrame.scripts.OnEvent(nil, 'UNIT_FLAGS', 'nameplate2')
+assert(name.text == 'Second Mob')
 combat = true
 local previousChecks = auraChecks
 eventFrame.scripts.OnEvent(nil, 'UNIT_AURA', 'nameplate4')

@@ -56,12 +56,13 @@ local function Position()
 end
 
 local function ClearIdentity(row)
+    row.present = false
     row.relevant = false
-    row.name:SetText(row.unit .. " (waiting)")
+    row.name:SetText("")
     row.name:SetTextColor(0.45, 0.45, 0.45)
     row.marker:Hide()
     row.engaged:SetText("")
-    row.target:SetColorTexture(0.08, 0.08, 0.08, 0.5)
+    row.target:SetColorTexture(0.08, 0.08, 0.08, 0)
 end
 
 local function GroupThreat(unit)
@@ -119,6 +120,11 @@ local function UpdateIdentity(row)
     local unit = row.unit
     local existsOK, exists = pcall(UnitExists, unit)
     if not existsOK or not Plain(exists) or not exists then return end
+    if UnitIsDeadOrGhost then
+        local deadOK, dead = pcall(UnitIsDeadOrGhost, unit)
+        if deadOK and Plain(dead) and dead then return end
+    end
+    row.present = true
     local threat, dot = GroupThreat(unit), OwnDot(unit)
     if threat == true or dot == true then
         row.relevant = true
@@ -163,14 +169,13 @@ local function UpdateStatus()
     if not status then return end
     local count, relevant = 0, 0
     for _, row in ipairs(rows) do
-        local ok, exists = pcall(UnitExists, row.unit)
-        if ok and Plain(exists) and exists then
+        if row.present then
             count = count + 1
             if row.relevant == true then relevant = relevant + 1 end
         end
     end
     if count == 0 then
-        status:SetText("Waiting for enemy nameplates. Toggle them with V.")
+        status:SetText("No visible live targets")
     else
         status:SetText("Relevant: " .. relevant .. " / " .. count
             .. " visible (other rows dimmed)")
@@ -252,7 +257,7 @@ local function Build()
     title:SetText("Multi-Target DoTs")
     status = root:CreateFontString(nil, "ARTWORK", "GameFontDisableSmall")
     status:SetPoint("TOPLEFT", root, "TOPLEFT", 10, -30)
-    status:SetText("Waiting for enemy nameplates. Toggle them with V.")
+    status:SetText("No visible live targets")
     mover = CreateFrame("Button", "WarlockHudMultiTargetMove", root)
     mover:SetSize(width - 35, 28)
     mover:SetPoint("TOPLEFT", root, "TOPLEFT")
@@ -402,7 +407,7 @@ for _, event in ipairs({ "PLAYER_LOGIN", "PLAYER_REGEN_ENABLED",
     "NAME_PLATE_UNIT_ADDED", "NAME_PLATE_UNIT_REMOVED",
     "PLAYER_TARGET_CHANGED", "RAID_TARGET_UPDATE", "GROUP_ROSTER_UPDATE",
     "UNIT_THREAT_LIST_UPDATE", "UNIT_THREAT_SITUATION_UPDATE",
-    "UNIT_AURA" }) do
+    "UNIT_AURA", "UNIT_HEALTH", "UNIT_FLAGS" }) do
     events:RegisterEvent(event)
 end
 events:SetScript("OnEvent", function(_, event, unit)
@@ -432,8 +437,10 @@ events:SetScript("OnEvent", function(_, event, unit)
         UpdateStatus()
     elseif event == "PLAYER_TARGET_CHANGED" or event == "RAID_TARGET_UPDATE"
         or event == "GROUP_ROSTER_UPDATE" or event == "UNIT_THREAT_LIST_UPDATE"
-        or event == "UNIT_THREAT_SITUATION_UPDATE" or event == "UNIT_AURA" then
-        if event == "UNIT_AURA" and (not Plain(unit) or type(unit) ~= "string"
+        or event == "UNIT_THREAT_SITUATION_UPDATE" or event == "UNIT_AURA"
+        or event == "UNIT_HEALTH" or event == "UNIT_FLAGS" then
+        if (event == "UNIT_AURA" or event == "UNIT_HEALTH"
+            or event == "UNIT_FLAGS") and (not Plain(unit) or type(unit) ~= "string"
             or not unit:match("^nameplate%d+$")) then return end
         if Plain(unit) and type(unit) == "string"
             and unit:match("^nameplate%d+$") then
