@@ -547,7 +547,7 @@ Text(multiDotPanel, "Outside combat: drag the title to move or the lower-right c
     20, -235, "GameFontHighlightSmall")
 Text(multiDotPanel, "A nameplate token can be reused; its old label is cleared on removal.",
     20, -267, "GameFontHighlightSmall")
-Text(multiDotPanel, "Native aura slots: Corruption, Immolate, Siphon Life, and Banes.",
+Text(multiDotPanel, "Native aura slots mirror the six Target DoTs categories.",
     20, -292, "GameFontHighlightSmall")
 Text(multiDotPanel, "Each live row shows a native health bar and Name (current/max) percent%.",
     20, -317, "GameFontHighlightSmall")

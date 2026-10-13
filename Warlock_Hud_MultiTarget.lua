@@ -9,13 +9,10 @@ local built, pending, auraWarning, failed = false, false, false, false
 local ROWS = 8
 local ICON_SIZE = 24
 local BASE_WIDTH, BASE_HEIGHT = 430, 316
-local SPELLS = {
-    { "Corruption", { 172, 6222, 6223, 7648, 11671, 11672, 25311 } },
-    { "Immolate", { 348, 707, 1094, 2941, 11665, 11667, 11668, 25309 } },
-    { "Siphon Life", { 18265, 18879, 18880, 18881 } },
-    { "Banes", { 980, 1014, 6217, 11711, 11712, 11713, 603,
-        1225228, 1243339 } },
-}
+local SPELLS = api.Spells
+local DOT_KEYS = api.MainKeys
+local DOT_SLOTS = #DOT_KEYS
+local ICON_CROP = (1 - 1 / 1.3) / 2
 local RAID_ICONS = "Interface\\TargetingFrame\\UI-RaidTargetingIcons"
 local function ClampScale(value)
     return math.max(0.7, math.min(1.6, tonumber(value) or 1))
@@ -138,12 +135,12 @@ local function OwnDot(unit)
         or (C_Secrets and C_Secrets.ShouldAurasBeSecret
             and C_Secrets.ShouldAurasBeSecret()) then return nil end
     for _, spell in ipairs(SPELLS) do
-        for _, id in ipairs(spell[2]) do
+        if spell.group ~= 2 then for _, id in ipairs(spell.ids) do
             local ok, aura = pcall(C_UnitAuras.GetAuraDataBySpellID,
                 unit, id, "HARMFUL|PLAYER")
             if not ok or (issecretvalue and issecretvalue(aura)) then return nil end
             if aura then return true end
-        end
+        end end
     end
     return false
 end
@@ -188,8 +185,7 @@ local function UpdateIdentity(row)
         end
     end
     local targetOK, selected = pcall(UnitIsUnit, unit, "target")
-    if row.relevant == true and targetOK and Plain(selected)
-        and selected == true then
+    if targetOK and Plain(selected) and selected == true then
         row.target:SetColorTexture(1, 0.7, 0.1, 1)
     end
 end
@@ -211,24 +207,61 @@ local function UpdateStatus()
     end
 end
 
-local function ApplyLayout(width, height)
-    root:SetSize(width, height)
-    if mover then mover:SetWidth(width - 35) end
-    local displayWidth = width - 126
+local function CompactRows(width, height)
+    local displayWidth = width - (DOT_SLOTS * (ICON_SIZE + 3) + 18)
     local step = (height - 84) / (ROWS - 1)
-    for i, row in ipairs(rows) do
+    local present = 0
+    for _, row in ipairs(rows) do
+        if row.present then present = present + 1 end
+    end
+    local activePosition, emptyPosition = 0, present
+    for _, row in ipairs(rows) do
+        local position
+        if row.present then
+            activePosition = activePosition + 1
+            position = activePosition
+        else
+            emptyPosition = emptyPosition + 1
+            position = emptyPosition
+        end
         row.display:SetWidth(displayWidth)
         row.display:ClearAllPoints()
         row.display:SetPoint("TOPLEFT", root, "TOPLEFT", 7,
-            -50 - (i - 1) * step)
+            -50 - (position - 1) * step)
         row.name:SetWidth(math.max(65, displayWidth - 28))
+    end
+end
+
+local function ApplyLayout(width, height)
+    root:SetSize(width, height)
+    if mover then mover:SetWidth(width - 35) end
+    CompactRows(width, height)
+end
+
+local function ReflowRows()
+    if not Safe() then pending = true; return end
+    local width, height = root:GetSize()
+    CompactRows(width, height)
+end
+
+local function CastTexture(spell)
+    if not C_Spell or not C_Spell.GetSpellTexture then return nil end
+    local identifiers = { spell.name }
+    for _, id in ipairs(spell.ids) do identifiers[#identifiers + 1] = id end
+    for _, identifier in ipairs(identifiers) do
+        local ok, texture = pcall(C_Spell.GetSpellTexture, identifier)
+        if ok and Plain(texture) and texture and texture ~= 134400
+            and (type(texture) ~= "string"
+                or not texture:lower():find("questionmark", 1, true)) then
+            return texture
+        end
     end
 end
 
 local function CreateAuraSlot(row, spell, index, size)
     local idSet = {}
-    for _, id in ipairs(spell[2]) do idSet[id] = true end
-    row.auras:AddAuraSlot(spell[1], "HARMFUL|PLAYER", {
+    for _, id in ipairs(spell.ids) do idSet[id] = true end
+    row.auras:AddAuraSlot(spell.name, "HARMFUL|PLAYER", {
         candidateFilters = { includeSpellIDs = idSet },
         initializeFrame = function(button)
             button:SetSize(size, size)
@@ -236,14 +269,17 @@ local function CreateAuraSlot(row, spell, index, size)
             button:SetPoint("LEFT", row.display, "RIGHT", 8 + (index - 1) * (size + 3), 0)
             local icon = button:CreateTexture(nil, "ARTWORK")
             icon:SetAllPoints(button)
+            icon:SetTexCoord(ICON_CROP, 1 - ICON_CROP, ICON_CROP, 1 - ICON_CROP)
+            icon:SetDesaturated(Profile().colorActiveDoTs == false)
             button:SetIcon(icon)
-            if index < 4 and C_Spell and C_Spell.GetSpellTexture then
-                local ok, texture = pcall(C_Spell.GetSpellTexture, spell[2][1])
-                if ok and Plain(texture) and texture and texture ~= 134400 then
-                    local castIcon = button:CreateTexture(nil, "OVERLAY")
-                    castIcon:SetAllPoints(button)
-                    castIcon:SetTexture(texture)
-                end
+            local texture = CastTexture(spell)
+            if texture then
+                local castIcon = button:CreateTexture(nil, "OVERLAY")
+                castIcon:SetAllPoints(button)
+                castIcon:SetTexture(texture)
+                castIcon:SetTexCoord(ICON_CROP, 1 - ICON_CROP,
+                    ICON_CROP, 1 - ICON_CROP)
+                castIcon:SetDesaturated(Profile().colorActiveDoTs == false)
             end
             local cooldown = CreateFrame("Cooldown", nil, button,
                 "CooldownFrameTemplate")
@@ -352,7 +388,7 @@ local function Build()
     for i = 1, ROWS do
         local unit = "nameplate" .. i
         local display = CreateFrame("Frame", nil, root)
-        display:SetSize(width - 126, size + 5)
+        display:SetSize(width - (DOT_SLOTS * (size + 3) + 18), size + 5)
         display:SetPoint("TOPLEFT", root, "TOPLEFT", 7,
             -50 - (i - 1) * ((height - 84) / (ROWS - 1)))
         local highlight = display:CreateTexture(nil, "BACKGROUND")
@@ -374,17 +410,45 @@ local function Build()
         healthBar:SetValue(0)
         local name = display:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
         name:SetPoint("LEFT", display, "LEFT", 24, 0)
-        name:SetWidth(math.max(65, width - 154))
+        name:SetWidth(math.max(65, width - (DOT_SLOTS * (size + 3) + 46)))
         name:SetJustifyH("LEFT")
         local auras = CreateFrame("AuraContainer", nil, display,
             "CustomAuraContainerTemplate")
-        auras:SetSize(4 * (size + 3), size)
+        auras:SetSize(DOT_SLOTS * (size + 3), size)
         auras:SetPoint("LEFT", display, "RIGHT", 7, 0)
         local row = { unit = unit, display = display, name = name,
             healthBar = healthBar,
             marker = marker, target = highlight, auras = auras }
         rows[i] = row
-        for slot, spell in ipairs(SPELLS) do CreateAuraSlot(row, spell, slot, size) end
+        for slot, key in ipairs(DOT_KEYS) do
+            local preview = api.GetDotDefaultSpell(key)
+            if not preview then
+                for _, spell in ipairs(SPELLS) do
+                    if spell.group ~= 2 and DOT_KEYS[spell.slot] == key
+                        and (not p.enabled or p.enabled[spell.name] ~= false) then
+                        preview = spell
+                        break
+                    end
+                end
+            end
+            if preview and (not p.enabled or p.enabled[key] ~= false) then
+                local idle = display:CreateTexture(nil, "ARTWORK")
+                idle:SetSize(size, size)
+                idle:SetPoint("LEFT", display, "RIGHT",
+                    8 + (slot - 1) * (size + 3), 0)
+                idle:SetTexture(CastTexture(preview))
+                idle:SetTexCoord(ICON_CROP, 1 - ICON_CROP,
+                    ICON_CROP, 1 - ICON_CROP)
+                idle:SetDesaturated(p.colorActiveDoTs ~= false)
+            end
+        end
+        for _, spell in ipairs(SPELLS) do
+            if spell.group ~= 2
+                and (not p.enabled or p.enabled[DOT_KEYS[spell.slot]] ~= false)
+                and (not p.enabled or p.enabled[spell.name] ~= false) then
+                CreateAuraSlot(row, spell, spell.slot, size)
+            end
+        end
         auras:SetUnit(unit)
         auras:Show()
         auras:UpdateAllAuras()
@@ -470,6 +534,7 @@ events:SetScript("OnEvent", function(_, event, unit)
             end
         end
         UpdateStatus()
+        ReflowRows()
     elseif event == "PLAYER_TARGET_CHANGED" or event == "RAID_TARGET_UPDATE"
         or event == "GROUP_ROSTER_UPDATE" or event == "UNIT_THREAT_LIST_UPDATE"
         or event == "UNIT_THREAT_SITUATION_UPDATE" or event == "UNIT_AURA"
@@ -488,5 +553,8 @@ events:SetScript("OnEvent", function(_, event, unit)
             for _, row in ipairs(rows) do UpdateIdentity(row) end
         end
         UpdateStatus()
+        if event == "UNIT_FLAGS" or event == "UNIT_HEALTH" then
+            ReflowRows()
+        end
     end
 end)

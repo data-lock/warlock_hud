@@ -19,6 +19,16 @@ profile = { multiDotEnabled = true, multiDotSize = 24 }
 cursorX, cursorY = 500, 500
 GetCursorPosition = function() return cursorX, cursorY end
 WarlockHudAPI = {
+    MainKeys = {'corruption', 'bane', 'curse', 'drain', 'immolate', 'siphonlife'},
+    Spells = {
+        {name='Corruption', slot=1, ids={172}},
+        {name='Bane of Agony', slot=2, ids={980}},
+        {name='Curse of Weakness', slot=3, ids={702}},
+        {name='Drain Life', slot=4, ids={689}},
+        {name='Immolate', slot=5, ids={348}},
+        {name='Siphon Life', slot=6, ids={18265}},
+    },
+    GetDotDefaultSpell = function() return nil end,
     GetProfile = function() return profile end,
     InitializeProfiles = function() end,
     IsAddonEnabled = function() return true end,
@@ -47,7 +57,8 @@ end }
 UnitExists = function(unit) return unit == 'player' or plates[unit] ~= nil end
 UnitIsDeadOrGhost = function(unit) return dead[unit] == true end
 UnitName = function(unit) return plates[unit] end
-UnitIsUnit = function(unit) return unit == 'nameplate2' end
+targetUnit = 'nameplate2'
+UnitIsUnit = function(unit) return unit == targetUnit end
 UnitThreatSituation = function(member, unit)
     if member == 'player' and unit == 'nameplate5' then return 'SECRET' end
     if member == 'player' and unit == 'nameplate2' then return 0 end
@@ -73,6 +84,8 @@ function methods:SetMinMaxValues(minimum, maximumValue)
 end
 function methods:SetValue(value) self.value = value end
 function methods:SetWidth(w) self.width = w end
+function methods:ClearAllPoints() self.point = nil end
+function methods:SetPoint(...) self.point = {...} end
 function methods:GetSize() return self.width, self.height end
 function methods:GetEffectiveScale() return 1 end
 function methods:SetScale(value) self.scale = value end
@@ -139,10 +152,13 @@ for i = 1, 8 do
     assert(frames['WarlockHudMultiTarget' .. i] == nil)
     local display = root.children[7 + (i - 1)]
     assert(display.kind == 'Frame' and display.parent == root)
-    local container = display.children[#display.children]
-    assert(container.kind == 'AuraContainer' and #container.slots == 4)
+    local container
+    for _, child in ipairs(display.children) do
+        if child.kind == 'AuraContainer' then container = child end
+    end
+    assert(container and #container.slots == 6)
     assert(container.slots[1][1] == 'Corruption')
-    assert(container.slots[4][1] == 'Banes')
+    assert(container.slots[4][1] == 'Drain Life')
     for _, aura in ipairs(container.children) do
         assert(aura.cooldown and aura.cooldown.kind == 'Cooldown')
     end
@@ -151,6 +167,8 @@ plates.nameplate2 = 'First Mob'
 eventFrame.scripts.OnEvent(nil, 'NAME_PLATE_UNIT_ADDED', 'nameplate2')
 assert(status.text == 'Relevant: 1 / 1 visible (other rows dimmed)')
 local display = root.children[7 + (2 - 1)]
+assert(display.point[5] == -50)
+assert(display.children[1].color[1] == 1) -- target even before combat
 local bar = display.children[3]
 local name = display.children[4]
 assert(name.text == 'First Mob (80/100) 80%')
@@ -166,11 +184,18 @@ plates.nameplate3 = 'Dotted Mob'
 dots.nameplate3 = 172
 eventFrame.scripts.OnEvent(nil, 'NAME_PLATE_UNIT_ADDED', 'nameplate3')
 local dottedDisplay = root.children[7 + (3 - 1)]
+local rowStep = (root.height - 84) / 7
+assert(dottedDisplay.point[5] == -50 - rowStep)
 assert(dottedDisplay.children[4].text == 'Dotted Mob (80/100) 80%')
 plates.nameplate4 = 'Idle Mob'
 eventFrame.scripts.OnEvent(nil, 'NAME_PLATE_UNIT_ADDED', 'nameplate4')
 local idleDisplay = root.children[7 + (4 - 1)]
 assert(idleDisplay.children[4].textColor[1] == 0.45)
+targetUnit = 'nameplate4'
+eventFrame.scripts.OnEvent(nil, 'PLAYER_TARGET_CHANGED')
+assert(idleDisplay.children[1].color[1] == 1)
+targetUnit = 'nameplate2'
+eventFrame.scripts.OnEvent(nil, 'PLAYER_TARGET_CHANGED')
 assert(status.text == 'Relevant: 2 / 3 visible (other rows dimmed)')
 plates.nameplate5 = 'Unreadable Mob'
 eventFrame.scripts.OnEvent(nil, 'NAME_PLATE_UNIT_ADDED', 'nameplate5')
@@ -182,6 +207,7 @@ eventFrame.scripts.OnEvent(nil, 'NAME_PLATE_UNIT_REMOVED', 'nameplate2')
 assert(name.text == '')
 assert(bar.value == 0)
 assert(status.text == 'Relevant: 1 / 3 visible (other rows dimmed)')
+assert(dottedDisplay.point[5] == -50)
 plates.nameplate2 = 'Second Mob'
 eventFrame.scripts.OnEvent(nil, 'NAME_PLATE_UNIT_ADDED', 'nameplate2')
 assert(name.text == 'Second Mob (45/150) 30%')
@@ -192,6 +218,12 @@ dead.nameplate2 = false
 eventFrame.scripts.OnEvent(nil, 'UNIT_FLAGS', 'nameplate2')
 assert(name.text == 'Second Mob (45/150) 30%')
 combat = true
+local dottedPosition = dottedDisplay.point[5]
+plates.nameplate2 = nil
+eventFrame.scripts.OnEvent(nil, 'NAME_PLATE_UNIT_REMOVED', 'nameplate2')
+assert(name.text == '' and dottedDisplay.point[5] == dottedPosition)
+plates.nameplate2 = 'Second Mob'
+eventFrame.scripts.OnEvent(nil, 'NAME_PLATE_UNIT_ADDED', 'nameplate2')
 health.nameplate2 = 'SECRET'
 eventFrame.scripts.OnEvent(nil, 'UNIT_HEALTH', 'nameplate2')
 assert(name.text == 'Second Mob')
@@ -217,7 +249,9 @@ assert(profile.multiDotEnabled == false)
 deferred = LuaRuntime(unpack_returned_tuples=True)
 deferred.execute(r'''
 WarlockHudAPI = { GetProfile = function() return { multiDotEnabled = true } end,
-    InitializeProfiles = function() end, IsAddonEnabled = function() return true end }
+    InitializeProfiles = function() end, IsAddonEnabled = function() return true end,
+    MainKeys = {'corruption', 'bane', 'curse', 'drain', 'immolate', 'siphonlife'},
+    Spells = {}, GetDotDefaultSpell = function() return nil end }
 combat = true
 InCombatLockdown = function() return combat end
 C_Secrets = { ShouldAurasBeSecret = function() return false end }
