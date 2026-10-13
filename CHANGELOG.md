@@ -1,5 +1,12 @@
 # Changelog
 
+## v0.40.0-review.7
+
+- Make each fixed nameplate row's name area an explicit left-click secure
+  target button, independent of the click-on-key-down setting.
+- Show a hover highlight when the secure button is active. `/whud debug`
+  reports each live row's secure click visibility in the trace window.
+
 ## v0.40.0-review.6
 
 - Clear a fixed row's name, marker, and highlight when its nameplate token is

@@ -331,9 +331,14 @@ local function Build()
         button:SetSize(width - 126, size + 5)
         button:SetAllPoints(display)
         button:SetFrameLevel(display:GetFrameLevel() + 2)
-        button:RegisterForClicks("AnyUp")
+        button:EnableMouse(true)
+        button:RegisterForClicks("LeftButtonUp")
         button:SetAttribute("type1", "target")
         button:SetAttribute("unit", unit)
+        button:SetAttribute("useOnKeyDown", false)
+        local hover = button:CreateTexture(nil, "HIGHLIGHT")
+        hover:SetAllPoints(button)
+        hover:SetColorTexture(0.25, 0.55, 1, 0.25)
         -- Secure macro conditions handle combat visibility; addon Lua never
         -- calls Show/Hide on a protected row for a nameplate event.
         RegisterStateDriver(button, "visibility",
@@ -399,6 +404,19 @@ end
 
 WarlockHudMultiTarget = {
     Refresh = GuardedRefresh,
+    Debug = function()
+        local output = WarlockHudTraceHUD or print
+        output("Multi-Target: " .. (built and "built" or "not built")
+            .. "; combat: " .. tostring(InCombatLockdown()))
+        for _, row in ipairs(rows) do
+            if row.present then
+                local ok, shown = pcall(row.button.IsShown, row.button)
+                local visible = ok and Plain(shown) and tostring(shown) or "unknown"
+                output(row.unit .. ": secure click shown=" .. visible
+                    .. "; relevant=" .. tostring(row.relevant))
+            end
+        end
+    end,
 }
 
 local events = CreateFrame("Frame")

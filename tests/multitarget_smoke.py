@@ -10,6 +10,8 @@ plates = {}
 dead = {}
 dots = {}
 auraChecks = 0
+trace = {}
+WarlockHudTraceHUD = function(message) trace[#trace + 1] = message end
 combat = false
 profile = { multiDotEnabled = true, multiDotSize = 24 }
 cursorX, cursorY = 500, 500
@@ -66,6 +68,9 @@ function methods:Hide() self.shown = false end
 function methods:SetDurationCooldown(value) self.cooldown = value end
 function methods:SetScript(key, value) self.scripts[key] = value end
 function methods:HookScript(key, value) self.scripts[key] = value end
+function methods:RegisterForClicks(...) self.clicks = {...} end
+function methods:EnableMouse(value) self.mouse = value end
+function methods:IsShown() return self.shown end
 function methods:CreateTexture() return CreateFrame('Texture', nil, self) end
 function methods:CreateFontString() return CreateFrame('FontString', nil, self) end
 function methods:AddAuraSlot(key, filter, options)
@@ -116,6 +121,8 @@ for i = 1, 8 do
     local row = frames['WarlockHudMultiTarget' .. i]
     assert(row.attributes.type1 == 'target')
     assert(row.attributes.unit == 'nameplate' .. i)
+    assert(row.attributes.useOnKeyDown == false)
+    assert(row.clicks[1] == 'LeftButtonUp' and row.mouse == true)
     assert(row.driver[2]:find('nameplate' .. i, 1, true))
     assert(row.parent == root)
     local display = row.parent.children[7 + (i - 1) * 2]
@@ -135,6 +142,9 @@ local display = second.parent.children[7 + (2 - 1) * 2]
 local name = display.children[3]
 assert(name.text == 'First Mob')
 assert(second.attributes.unit == 'nameplate2')
+second.shown = true
+WarlockHudMultiTarget.Debug()
+assert(trace[#trace]:find('nameplate2: secure click shown=true', 1, true))
 plates.nameplate3 = 'Dotted Mob'
 dots.nameplate3 = 172
 eventFrame.scripts.OnEvent(nil, 'NAME_PLATE_UNIT_ADDED', 'nameplate3')

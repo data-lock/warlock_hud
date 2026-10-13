@@ -2530,6 +2530,9 @@ SLASH_WARLOCKHUD2 = "/whub"
 local function DebugState()
     local db = WarlockHudDB
     local output = WarlockHudTraceHUD or Report
+    if WarlockHudMultiTarget and WarlockHudMultiTarget.Debug then
+        WarlockHudMultiTarget.Debug()
+    end
     local auraSecret = C_Secrets and C_Secrets.ShouldAurasBeSecret
         and C_Secrets.ShouldAurasBeSecret()
     output("HUD: " .. (container and "built" or "not built")
