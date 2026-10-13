@@ -261,7 +261,10 @@ UIParent.width, UIParent.height = 1000, 800
 function CreateFrame(_, name)
     local item = region()
     if name then ui[name] = item end
-    if name == "WarlockHudAssignmentsWindow" then item.TitleText = region() end
+    if name == "WarlockHudAssignmentsWindow" then
+        item.TitleText = region()
+        item.CloseButton = region()
+    end
     return item
 end
 function UIDropDownMenu_SetWidth() end
@@ -273,29 +276,29 @@ C_Spell.GetSpellTexture = function(id) return id and "icon:" .. id end
 
 WarlockHudOpenAssignments()
 local window = ui.WarlockHudAssignmentsWindow
-assert(window and profile.assignmentWindowCompact and window.width == 465
+assert(window and profile.assignmentWindowCompact and window.width == 517
     and window.height == 135 + 3 * 38,
     "a saved personal assignment should open in compact mode")
 window.toggle:OnClick()
-assert(window.width == 815 and window.height == 420,
+assert(window.width == 995 and window.height == 420,
     "expanding should open the full window at its minimum size")
-window:SetSize(860, 500)
+window:SetSize(1080, 500)
 window.resizeGrip:OnMouseUp()
-assert(profile.assignmentWindowWidth == 860 and profile.assignmentWindowHeight == 500,
+assert(profile.assignmentWindowWidth == 1080 and profile.assignmentWindowHeight == 500,
     "resized full dimensions should save")
 window:Hide()
 WarlockHudOpenAssignments()
-assert(profile.assignmentWindowCompact and window.width == 465,
+assert(profile.assignmentWindowCompact and window.width == 517,
     "reopening with a personal assignment should return to compact mode")
 window.toggle:OnClick()
 window.toggle:OnClick()
-assert(profile.assignmentWindowCompact and window.width == 465
+assert(profile.assignmentWindowCompact and window.width == 517
     and window.height == 135 + 3 * 38,
     "compact window should fit three Warlocks")
 assert(window.resizeGrip.shown == false and window.compactHeaders[1].shown,
     "compact view should show headers and hide the resize grip")
 window.toggle:OnClick()
-assert(not profile.assignmentWindowCompact and window.width == 860
+assert(not profile.assignmentWindowCompact and window.width == 1080
     and window.height == 500,
     "expanding should restore full dimensions")
 window.toggle:OnClick()
@@ -323,7 +326,7 @@ assert(WarlockHudAssignmentSpell("curse") == nil
     and WarlockHudAssignmentSpell("bane") == nil
     and not next(WarlockHudDB.assignmentCache.entries),
     "Clear Assignments should remove local choices and their cache")
-assert(#sent == beforeClear + 6
+assert(#sent == beforeClear + 8
     and sent[#sent][2] == "V1|SET|Player-2|soulstone|NONE|Player-1",
     "Clear Assignments should sync None for all categories of each Warlock")
 
