@@ -55,6 +55,9 @@ end
 local function ClearIdentity(row)
     row.present = false
     row.relevant = false
+    -- Alpha also hides native aura children without changing protected
+    -- visibility or anchors during combat.
+    row.display:SetAlpha(0)
     row.name:SetText("")
     if row.healthBar then
         pcall(row.healthBar.SetMinMaxValues, row.healthBar, 0, 1)
@@ -156,6 +159,7 @@ local function UpdateIdentity(row)
         if deadOK and Plain(dead) and dead then return end
     end
     row.present = true
+    row.display:SetAlpha(1)
     local threat, dot = GroupThreat(unit), OwnDot(unit)
     if threat == true or dot == true then
         row.relevant = true
@@ -258,6 +262,41 @@ local function CastTexture(spell)
     end
 end
 
+local function DotOrder(profile)
+    local ordered, seen = {}, {}
+    if type(profile.mainOrder) == "table" then
+        for _, key in ipairs(profile.mainOrder) do
+            for _, valid in ipairs(DOT_KEYS) do
+                if key == valid and not seen[key] then
+                    ordered[#ordered + 1], seen[key] = key, true
+                    break
+                end
+            end
+        end
+    end
+    for _, key in ipairs(DOT_KEYS) do
+        if not seen[key] then ordered[#ordered + 1] = key end
+    end
+    local positions = {}
+    for index, key in ipairs(ordered) do positions[key] = index end
+    return positions
+end
+
+local function PlaceDot(icon, display, index, size)
+    icon:ClearAllPoints()
+    icon:SetPoint("LEFT", display, "RIGHT",
+        8 + (index - 1) * (size + 3), 0)
+end
+
+local function ApplyDotOrder(profile)
+    local positions = DotOrder(profile)
+    for _, row in ipairs(rows) do
+        for _, entry in ipairs(row.dotVisuals) do
+            PlaceDot(entry.icon, row.display, positions[entry.key], ICON_SIZE)
+        end
+    end
+end
+
 local function CreateAuraSlot(row, spell, index, size)
     local idSet = {}
     for _, id in ipairs(spell.ids) do idSet[id] = true end
@@ -265,8 +304,9 @@ local function CreateAuraSlot(row, spell, index, size)
         candidateFilters = { includeSpellIDs = idSet },
         initializeFrame = function(button)
             button:SetSize(size, size)
-            button:ClearAllPoints()
-            button:SetPoint("LEFT", row.display, "RIGHT", 8 + (index - 1) * (size + 3), 0)
+            PlaceDot(button, row.display, index, size)
+            row.dotVisuals[#row.dotVisuals + 1] = {
+                icon = button, key = DOT_KEYS[spell.slot] }
             local icon = button:CreateTexture(nil, "ARTWORK")
             icon:SetAllPoints(button)
             icon:SetTexCoord(ICON_CROP, 1 - ICON_CROP, ICON_CROP, 1 - ICON_CROP)
@@ -418,8 +458,10 @@ local function Build()
         auras:SetPoint("LEFT", display, "RIGHT", 7, 0)
         local row = { unit = unit, display = display, name = name,
             healthBar = healthBar,
-            marker = marker, target = highlight, auras = auras }
+            marker = marker, target = highlight, auras = auras,
+            dotVisuals = {} }
         rows[i] = row
+        local positions = DotOrder(p)
         for slot, key in ipairs(DOT_KEYS) do
             local preview = api.GetDotDefaultSpell(key)
             if not preview then
@@ -434,8 +476,8 @@ local function Build()
             if preview and (not p.enabled or p.enabled[key] ~= false) then
                 local idle = display:CreateTexture(nil, "ARTWORK")
                 idle:SetSize(size, size)
-                idle:SetPoint("LEFT", display, "RIGHT",
-                    8 + (slot - 1) * (size + 3), 0)
+                PlaceDot(idle, display, positions[key], size)
+                row.dotVisuals[#row.dotVisuals + 1] = { icon = idle, key = key }
                 idle:SetTexture(CastTexture(preview))
                 idle:SetTexCoord(ICON_CROP, 1 - ICON_CROP,
                     ICON_CROP, 1 - ICON_CROP)
@@ -446,7 +488,7 @@ local function Build()
             if spell.group ~= 2
                 and (not p.enabled or p.enabled[DOT_KEYS[spell.slot]] ~= false)
                 and (not p.enabled or p.enabled[spell.name] ~= false) then
-                CreateAuraSlot(row, spell, spell.slot, size)
+                CreateAuraSlot(row, spell, positions[DOT_KEYS[spell.slot]], size)
             end
         end
         auras:SetUnit(unit)
@@ -470,6 +512,7 @@ local function Refresh()
     local width = ClampWidth(p.multiDotWidth or BASE_WIDTH * ClampScale(p.multiDotScale))
     local height = ClampHeight(p.multiDotHeight or BASE_HEIGHT * ClampScale(p.multiDotScale))
     ApplyLayout(width, height)
+    ApplyDotOrder(p)
     Position()
     root:SetShown(p.multiDotEnabled and api.IsAddonEnabled())
     pending = false

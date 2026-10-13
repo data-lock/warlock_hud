@@ -15,7 +15,8 @@ auraChecks = 0
 trace = {}
 WarlockHudTraceHUD = function(message) trace[#trace + 1] = message end
 combat = false
-profile = { multiDotEnabled = true, multiDotSize = 24 }
+profile = { multiDotEnabled = true, multiDotSize = 24,
+    mainOrder = {'immolate', 'corruption', 'bane', 'curse', 'drain', 'siphonlife'} }
 cursorX, cursorY = 500, 500
 GetCursorPosition = function() return cursorX, cursorY end
 WarlockHudAPI = {
@@ -84,6 +85,7 @@ function methods:SetMinMaxValues(minimum, maximumValue)
 end
 function methods:SetValue(value) self.value = value end
 function methods:SetWidth(w) self.width = w end
+function methods:SetAlpha(value) self.alpha = value end
 function methods:ClearAllPoints() self.point = nil end
 function methods:SetPoint(...) self.point = {...} end
 function methods:GetSize() return self.width, self.height end
@@ -152,6 +154,7 @@ for i = 1, 8 do
     assert(frames['WarlockHudMultiTarget' .. i] == nil)
     local display = root.children[7 + (i - 1)]
     assert(display.kind == 'Frame' and display.parent == root)
+    assert(display.alpha == 0)
     local container
     for _, child in ipairs(display.children) do
         if child.kind == 'AuraContainer' then container = child end
@@ -163,11 +166,21 @@ for i = 1, 8 do
         assert(aura.cooldown and aura.cooldown.kind == 'Cooldown')
     end
 end
+local firstDisplay = root.children[7]
+local firstContainer
+for _, child in ipairs(firstDisplay.children) do
+    if child.kind == 'AuraContainer' then firstContainer = child end
+end
+assert(firstContainer.children[1].point[4] == 8 + 27) -- Corruption follows Immolate
+profile.mainOrder = {'corruption', 'immolate', 'bane', 'curse', 'drain', 'siphonlife'}
+assert(WarlockHudMultiTarget.Refresh() == true)
+assert(firstContainer.children[1].point[4] == 8)
 plates.nameplate2 = 'First Mob'
 eventFrame.scripts.OnEvent(nil, 'NAME_PLATE_UNIT_ADDED', 'nameplate2')
 assert(status.text == 'Relevant: 1 / 1 visible (other rows dimmed)')
 local display = root.children[7 + (2 - 1)]
 assert(display.point[5] == -50)
+assert(display.alpha == 1)
 assert(display.children[1].color[1] == 1) -- target even before combat
 local bar = display.children[3]
 local name = display.children[4]
@@ -205,6 +218,7 @@ assert(status.text == 'Relevant: 2 / 4 visible (other rows dimmed)')
 plates.nameplate2 = nil
 eventFrame.scripts.OnEvent(nil, 'NAME_PLATE_UNIT_REMOVED', 'nameplate2')
 assert(name.text == '')
+assert(display.alpha == 0)
 assert(bar.value == 0)
 assert(status.text == 'Relevant: 1 / 3 visible (other rows dimmed)')
 assert(dottedDisplay.point[5] == -50)
