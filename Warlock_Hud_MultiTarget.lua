@@ -1,5 +1,5 @@
--- Eight fixed nameplate-token rows. Protected frames and aura slots are built
--- only outside combat. A row is never rebound to a different token.
+-- Eight fixed nameplate-token display rows. Aura slots are built only outside
+-- combat. Nameplate unit tokens cannot be used as secure click targets.
 local api = WarlockHudAPI
 local rows = {}
 local root
@@ -254,7 +254,7 @@ local function Build()
     bg:SetColorTexture(0.05, 0.04, 0.07, 0.78)
     local title = root:CreateFontString(nil, "ARTWORK", "GameFontNormal")
     title:SetPoint("TOPLEFT", root, "TOPLEFT", 9, -8)
-    title:SetText("Multi-Target DoTs")
+    title:SetText("Multi-Target DoTs (view only)")
     status = root:CreateFontString(nil, "ARTWORK", "GameFontDisableSmall")
     status:SetPoint("TOPLEFT", root, "TOPLEFT", 10, -30)
     status:SetText("No visible live targets")
@@ -326,23 +326,6 @@ local function Build()
         display:SetSize(width - 126, size + 5)
         display:SetPoint("TOPLEFT", root, "TOPLEFT", 7,
             -50 - (i - 1) * ((height - 84) / (ROWS - 1)))
-        local button = CreateFrame("Button", "WarlockHudMultiTarget" .. i,
-            root, "SecureActionButtonTemplate")
-        button:SetSize(width - 126, size + 5)
-        button:SetAllPoints(display)
-        button:SetFrameLevel(display:GetFrameLevel() + 2)
-        button:EnableMouse(true)
-        button:RegisterForClicks("LeftButtonUp")
-        button:SetAttribute("type1", "target")
-        button:SetAttribute("unit", unit)
-        button:SetAttribute("useOnKeyDown", false)
-        local hover = button:CreateTexture(nil, "HIGHLIGHT")
-        hover:SetAllPoints(button)
-        hover:SetColorTexture(0.25, 0.55, 1, 0.25)
-        -- Secure macro conditions handle combat visibility; addon Lua never
-        -- calls Show/Hide on a protected row for a nameplate event.
-        RegisterStateDriver(button, "visibility",
-            "[@" .. unit .. ",exists,harm,nodead] show; hide")
         local highlight = display:CreateTexture(nil, "BACKGROUND")
         highlight:SetAllPoints(display)
         highlight:SetColorTexture(0.25, 0.25, 0.25, 0.8)
@@ -361,7 +344,7 @@ local function Build()
             "CustomAuraContainerTemplate")
         auras:SetSize(4 * (size + 3), size)
         auras:SetPoint("LEFT", display, "RIGHT", 7, 0)
-        local row = { unit = unit, button = button, display = display, name = name,
+        local row = { unit = unit, display = display, name = name,
             marker = marker, engaged = engaged, target = highlight, auras = auras }
         rows[i] = row
         for slot, spell in ipairs(SPELLS) do CreateAuraSlot(row, spell, slot, size) end
@@ -407,13 +390,10 @@ WarlockHudMultiTarget = {
     Debug = function()
         local output = WarlockHudTraceHUD or print
         output("Multi-Target: " .. (built and "built" or "not built")
-            .. "; combat: " .. tostring(InCombatLockdown()))
+            .. "; read-only; combat: " .. tostring(InCombatLockdown()))
         for _, row in ipairs(rows) do
             if row.present then
-                local ok, shown = pcall(row.button.IsShown, row.button)
-                local visible = ok and Plain(shown) and tostring(shown) or "unknown"
-                output(row.unit .. ": secure click shown=" .. visible
-                    .. "; relevant=" .. tostring(row.relevant))
+                output(row.unit .. ": relevant=" .. tostring(row.relevant))
             end
         end
     end,

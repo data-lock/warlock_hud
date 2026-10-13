@@ -1,5 +1,12 @@
 # Changelog
 
+## v0.40.0-review.8
+
+- Remove the nonworking secure nameplate target buttons and hover cue after
+  in-game testing confirmed that clicking does not select their units.
+- Mark the Multi-Target DoTs window as view-only. Target enemies through the
+  native world nameplates or Tab; the native aura display remains available.
+
 ## v0.40.0-review.7
 
 - Make each fixed nameplate row's name area an explicit left-click secure

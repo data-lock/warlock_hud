@@ -522,11 +522,11 @@ end
 local layout = Panel("Warlock HUD - Rows & Layout")
 local general = Panel("Warlock HUD - General", false)
 local multiDotPanel = Panel("Warlock HUD - Multi-Target DoTs", false)
-Text(multiDotPanel, "Eight fixed nameplate rows. Each row always clicks its own unit token.",
+Text(multiDotPanel, "Eight fixed nameplate display rows. Target through the world nameplates or Tab.",
     20, -54, "GameFontHighlight")
-Text(multiDotPanel, "Relevant rows are bright; unrelated or unreadable rows are dimmed. Fixed combat click targets remain.",
+Text(multiDotPanel, "Relevant rows are bright; unrelated or unreadable rows are dimmed. This window is view-only.",
     20, -81, "GameFontHighlightSmall")
-Text(multiDotPanel, "Combat targeting and native aura behavior need verification on this Forever build.",
+Text(multiDotPanel, "Nameplate tokens cannot be targeted from custom buttons; native aura behavior still needs verification.",
     20, -106, "GameFontHighlightSmall")
 Check(multiDotPanel, 20, -145, "Enable multi-target DoT window",
     function() return Profile().multiDotEnabled == true end,

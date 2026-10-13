@@ -98,6 +98,7 @@ lua.execute(r'''
 eventFrame.scripts.OnEvent(nil, 'PLAYER_LOGIN')
 local root = frames.WarlockHudMultiTargetWindow
 assert(root and root.shown == true)
+assert(root.children[2].text == 'Multi-Target DoTs (view only)')
 local status = root.children[3]
 assert(status.text == 'No visible live targets')
 local move = frames.WarlockHudMultiTargetMove
@@ -118,14 +119,9 @@ local close = frames.WarlockHudMultiTargetClose
 assert(close.frameRefs.window == root)
 assert(close.attributes._onclick:find(':Hide()', 1, true))
 for i = 1, 8 do
-    local row = frames['WarlockHudMultiTarget' .. i]
-    assert(row.attributes.type1 == 'target')
-    assert(row.attributes.unit == 'nameplate' .. i)
-    assert(row.attributes.useOnKeyDown == false)
-    assert(row.clicks[1] == 'LeftButtonUp' and row.mouse == true)
-    assert(row.driver[2]:find('nameplate' .. i, 1, true))
-    assert(row.parent == root)
-    local display = row.parent.children[7 + (i - 1) * 2]
+    assert(frames['WarlockHudMultiTarget' .. i] == nil)
+    local display = root.children[7 + (i - 1)]
+    assert(display.kind == 'Frame' and display.parent == root)
     local container = display.children[#display.children]
     assert(container.kind == 'AuraContainer' and #container.slots == 4)
     assert(container.slots[1][1] == 'Corruption')
@@ -137,39 +133,33 @@ end
 plates.nameplate2 = 'First Mob'
 eventFrame.scripts.OnEvent(nil, 'NAME_PLATE_UNIT_ADDED', 'nameplate2')
 assert(status.text == 'Relevant: 1 / 1 visible (other rows dimmed)')
-local second = frames.WarlockHudMultiTarget2
-local display = second.parent.children[7 + (2 - 1) * 2]
+local display = root.children[7 + (2 - 1)]
 local name = display.children[3]
 assert(name.text == 'First Mob')
-assert(second.attributes.unit == 'nameplate2')
-second.shown = true
 WarlockHudMultiTarget.Debug()
-assert(trace[#trace]:find('nameplate2: secure click shown=true', 1, true))
+assert(trace[#trace]:find('nameplate2: relevant=true', 1, true))
 plates.nameplate3 = 'Dotted Mob'
 dots.nameplate3 = 172
 eventFrame.scripts.OnEvent(nil, 'NAME_PLATE_UNIT_ADDED', 'nameplate3')
-local dottedDisplay = root.children[7 + (3 - 1) * 2]
+local dottedDisplay = root.children[7 + (3 - 1)]
 assert(dottedDisplay.children[4].text == 'DoT')
 plates.nameplate4 = 'Idle Mob'
 eventFrame.scripts.OnEvent(nil, 'NAME_PLATE_UNIT_ADDED', 'nameplate4')
-local idleDisplay = root.children[7 + (4 - 1) * 2]
+local idleDisplay = root.children[7 + (4 - 1)]
 assert(idleDisplay.children[3].textColor[1] == 0.45)
 assert(status.text == 'Relevant: 2 / 3 visible (other rows dimmed)')
 plates.nameplate5 = 'Unreadable Mob'
 eventFrame.scripts.OnEvent(nil, 'NAME_PLATE_UNIT_ADDED', 'nameplate5')
-local unknownDisplay = root.children[7 + (5 - 1) * 2]
+local unknownDisplay = root.children[7 + (5 - 1)]
 assert(unknownDisplay.children[4].text == '?')
 assert(status.text == 'Relevant: 2 / 4 visible (other rows dimmed)')
-assert(second.attributes.type1 == 'target')
 plates.nameplate2 = nil
 eventFrame.scripts.OnEvent(nil, 'NAME_PLATE_UNIT_REMOVED', 'nameplate2')
 assert(name.text == '')
 assert(status.text == 'Relevant: 1 / 3 visible (other rows dimmed)')
-assert(second.attributes.unit == 'nameplate2')
 plates.nameplate2 = 'Second Mob'
 eventFrame.scripts.OnEvent(nil, 'NAME_PLATE_UNIT_ADDED', 'nameplate2')
 assert(name.text == 'Second Mob')
-assert(second.attributes.unit == 'nameplate2')
 dead.nameplate2 = true
 eventFrame.scripts.OnEvent(nil, 'UNIT_HEALTH', 'nameplate2')
 assert(name.text == '' and status.text == 'Relevant: 1 / 3 visible (other rows dimmed)')
