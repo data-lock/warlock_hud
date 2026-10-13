@@ -3,6 +3,7 @@
 local api = WarlockHudAPI
 local rows = {}
 local root
+local status
 local built, pending, auraWarning, failed = false, false, false, false
 local ROWS = 8
 local ICON_SIZE = 24
@@ -45,7 +46,7 @@ local function Position()
 end
 
 local function ClearIdentity(row)
-    row.name:SetText("")
+    row.name:SetText(row.unit .. " (waiting)")
     row.marker:Hide()
     row.engaged:SetText("")
     row.target:SetColorTexture(0.25, 0.25, 0.25, 0.8)
@@ -103,6 +104,20 @@ local function UpdateIdentity(row)
     end
 end
 
+local function UpdateStatus()
+    if not status then return end
+    local count = 0
+    for _, row in ipairs(rows) do
+        local ok, exists = pcall(UnitExists, row.unit)
+        if ok and Plain(exists) and exists then count = count + 1 end
+    end
+    if count == 0 then
+        status:SetText("Waiting for enemy nameplates. Toggle them with V.")
+    else
+        status:SetText("Visible nameplate tokens: " .. count .. " / " .. ROWS)
+    end
+end
+
 local function CreateAuraSlot(row, spell, index, size)
     local idSet = {}
     for _, id in ipairs(spell[2]) do idSet[id] = true end
@@ -111,7 +126,7 @@ local function CreateAuraSlot(row, spell, index, size)
         initializeFrame = function(button)
             button:SetSize(size, size)
             button:ClearAllPoints()
-            button:SetPoint("LEFT", row.button, "RIGHT", 8 + (index - 1) * (size + 3), 0)
+            button:SetPoint("LEFT", row.display, "RIGHT", 8 + (index - 1) * (size + 3), 0)
             local icon = button:CreateTexture(nil, "ARTWORK")
             icon:SetAllPoints(button)
             button:SetIcon(icon)
@@ -149,7 +164,7 @@ local function Build()
 
     local size = ICON_SIZE
     local width = 190 + 4 * (size + 3)
-    local height = ROWS * (size + 9) + 32
+    local height = ROWS * (size + 9) + 52
     root = CreateFrame("Frame", "WarlockHudMultiTargetWindow", UIParent)
     root:SetSize(width, height)
     root:SetFrameStrata("MEDIUM")
@@ -163,6 +178,9 @@ local function Build()
     local title = root:CreateFontString(nil, "ARTWORK", "GameFontNormal")
     title:SetPoint("TOPLEFT", root, "TOPLEFT", 9, -8)
     title:SetText("Multi-Target DoTs")
+    status = root:CreateFontString(nil, "ARTWORK", "GameFontDisableSmall")
+    status:SetPoint("TOPLEFT", root, "TOPLEFT", 10, -30)
+    status:SetText("Waiting for enemy nameplates. Toggle them with V.")
     local mover = CreateFrame("Button", "WarlockHudMultiTargetMove", root)
     mover:SetSize(width - 35, 28)
     mover:SetPoint("TOPLEFT", root, "TOPLEFT")
@@ -170,10 +188,10 @@ local function Build()
     mover:EnableMouse(true)
     mover:RegisterForDrag("LeftButton")
     mover:SetScript("OnDragStart", function()
-        if Safe() then root:StartMoving() end
+        if not InCombatLockdown() then root:StartMoving() end
     end)
     mover:SetScript("OnDragStop", function()
-        if not Safe() then return end
+        if InCombatLockdown() then return end
         root:StopMovingOrSizing()
         local x, y = root:GetCenter()
         if Plain(x) and Plain(y) then
@@ -183,18 +201,18 @@ local function Build()
         end
     end)
     local close = CreateFrame("Button", "WarlockHudMultiTargetClose", root,
-        "UIPanelCloseButton")
+        "SecureHandlerClickTemplate")
     close:SetSize(27, 27)
     close:SetPoint("TOPRIGHT", root, "TOPRIGHT", -3, -2)
     close:SetFrameLevel(root:GetFrameLevel() + 5)
-    close:SetScript("OnClick", function()
+    close:RegisterForClicks("AnyUp")
+    close:SetFrameRef("window", root)
+    close:SetAttribute("_onclick", 'self:GetFrameRef("window"):Hide()')
+    local closeText = close:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
+    closeText:SetAllPoints(close)
+    closeText:SetText("X")
+    close:HookScript("OnClick", function()
         Profile().multiDotEnabled = false
-        if Safe() then
-            WarlockHudMultiTarget.Refresh()
-        else
-            pending = true
-            print("Warlock HUD: Multi-Target window will close after combat.")
-        end
     end)
     local resize = CreateFrame("Button", "WarlockHudMultiTargetResize", root)
     resize:SetSize(19, 19)
@@ -207,14 +225,14 @@ local function Build()
     grip:SetTexture("Interface\\ChatFrame\\UI-ChatIM-SizeGrabber-Up")
     local resizing, startCursor, startScale = false, nil, nil
     resize:SetScript("OnDragStart", function()
-        if not Safe() then return end
+        if InCombatLockdown() then return end
         resizing = true
         startCursor = GetCursorPosition()
         startScale = ClampScale(Profile().multiDotScale)
     end)
     resize:SetScript("OnUpdate", function()
         if not resizing then return end
-        if not Safe() then resizing = false; return end
+        if InCombatLockdown() then resizing = false; return end
         local cursor = GetCursorPosition()
         if not Plain(cursor) then return end
         local parentScale = UIParent:GetEffectiveScale()
@@ -226,10 +244,15 @@ local function Build()
     resize:SetScript("OnDragStop", function() resizing = false end)
     for i = 1, ROWS do
         local unit = "nameplate" .. i
+        local display = CreateFrame("Frame", nil, root)
+        display:SetSize(184, size + 5)
+        display:SetPoint("TOPLEFT", root, "TOPLEFT", 7,
+            -50 - (i - 1) * (size + 9))
         local button = CreateFrame("Button", "WarlockHudMultiTarget" .. i,
             root, "SecureActionButtonTemplate")
         button:SetSize(184, size + 5)
-        button:SetPoint("TOPLEFT", root, "TOPLEFT", 7, -30 - (i - 1) * (size + 9))
+        button:SetAllPoints(display)
+        button:SetFrameLevel(display:GetFrameLevel() + 2)
         button:RegisterForClicks("AnyUp")
         button:SetAttribute("type1", "target")
         button:SetAttribute("unit", unit)
@@ -237,25 +260,25 @@ local function Build()
         -- calls Show/Hide on a protected row for a nameplate event.
         RegisterStateDriver(button, "visibility",
             "[@" .. unit .. ",exists,harm,nodead] show; hide")
-        local highlight = button:CreateTexture(nil, "BACKGROUND")
-        highlight:SetAllPoints(button)
+        local highlight = display:CreateTexture(nil, "BACKGROUND")
+        highlight:SetAllPoints(display)
         highlight:SetColorTexture(0.25, 0.25, 0.25, 0.8)
-        local marker = button:CreateTexture(nil, "ARTWORK")
+        local marker = display:CreateTexture(nil, "ARTWORK")
         marker:SetSize(17, 17)
-        marker:SetPoint("LEFT", button, "LEFT", 3, 0)
+        marker:SetPoint("LEFT", display, "LEFT", 3, 0)
         marker:SetTexture(RAID_ICONS)
         marker:Hide()
-        local name = button:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-        name:SetPoint("LEFT", button, "LEFT", 24, 0)
+        local name = display:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+        name:SetPoint("LEFT", display, "LEFT", 24, 0)
         name:SetWidth(120)
         name:SetJustifyH("LEFT")
-        local engaged = button:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
-        engaged:SetPoint("RIGHT", button, "RIGHT", -3, 0)
-        local auras = CreateFrame("AuraContainer", nil, button,
+        local engaged = display:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+        engaged:SetPoint("RIGHT", display, "RIGHT", -3, 0)
+        local auras = CreateFrame("AuraContainer", nil, display,
             "CustomAuraContainerTemplate")
         auras:SetSize(4 * (size + 3), size)
-        auras:SetPoint("LEFT", button, "RIGHT", 7, 0)
-        local row = { unit = unit, button = button, name = name,
+        auras:SetPoint("LEFT", display, "RIGHT", 7, 0)
+        local row = { unit = unit, button = button, display = display, name = name,
             marker = marker, engaged = engaged, target = highlight, auras = auras }
         rows[i] = row
         for slot, spell in ipairs(SPELLS) do CreateAuraSlot(row, spell, slot, size) end
@@ -265,6 +288,7 @@ local function Build()
         ClearIdentity(row)
         UpdateIdentity(row)
     end
+    UpdateStatus()
     built, pending = true, false
     root:SetShown(p.multiDotEnabled)
     return true
@@ -328,6 +352,7 @@ events:SetScript("OnEvent", function(_, event, unit)
                 break
             end
         end
+        UpdateStatus()
     elseif event == "PLAYER_TARGET_CHANGED" or event == "RAID_TARGET_UPDATE"
         or event == "GROUP_ROSTER_UPDATE" or event == "UNIT_THREAT_LIST_UPDATE"
         or event == "UNIT_THREAT_SITUATION_UPDATE" then

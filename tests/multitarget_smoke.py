@@ -46,8 +46,12 @@ function methods:SetScale(value) self.scale = value end
 function methods:GetFrameLevel() return 1 end
 function methods:GetCenter() return 600, 400 end
 function methods:SetAttribute(key, value) self.attributes[key] = value end
+function methods:SetFrameRef(key, value) self.frameRefs = rawget(self, 'frameRefs') or {}; self.frameRefs[key] = value end
+function methods:GetFrameRef(key) return self.frameRefs[key] end
+function methods:Hide() self.shown = false end
 function methods:SetDurationCooldown(value) self.cooldown = value end
 function methods:SetScript(key, value) self.scripts[key] = value end
+function methods:HookScript(key, value) self.scripts[key] = value end
 function methods:CreateTexture() return CreateFrame('Texture', nil, self) end
 function methods:CreateFontString() return CreateFrame('FontString', nil, self) end
 function methods:AddAuraSlot(key, filter, options)
@@ -75,6 +79,8 @@ lua.execute(r'''
 eventFrame.scripts.OnEvent(nil, 'PLAYER_LOGIN')
 local root = frames.WarlockHudMultiTargetWindow
 assert(root and root.shown == true)
+local status = root.children[3]
+assert(status.text:find('Waiting for enemy nameplates', 1, true))
 local move = frames.WarlockHudMultiTargetMove
 move.scripts.OnDragStart()
 move.scripts.OnDragStop()
@@ -86,13 +92,16 @@ resize.scripts.OnUpdate()
 resize.scripts.OnDragStop()
 assert(root.scale > 1 and profile.multiDotScale == root.scale)
 local close = frames.WarlockHudMultiTargetClose
+assert(close.frameRefs.window == root)
+assert(close.attributes._onclick:find(':Hide()', 1, true))
 for i = 1, 8 do
     local row = frames['WarlockHudMultiTarget' .. i]
     assert(row.attributes.type1 == 'target')
     assert(row.attributes.unit == 'nameplate' .. i)
     assert(row.driver[2]:find('nameplate' .. i, 1, true))
     assert(row.parent == root)
-    local container = row.children[#row.children]
+    local display = row.parent.children[7 + (i - 1) * 2]
+    local container = display.children[#display.children]
     assert(container.kind == 'AuraContainer' and #container.slots == 4)
     assert(container.slots[1][1] == 'Corruption')
     assert(container.slots[4][1] == 'Banes')
@@ -102,30 +111,36 @@ for i = 1, 8 do
 end
 plates.nameplate2 = 'First Mob'
 eventFrame.scripts.OnEvent(nil, 'NAME_PLATE_UNIT_ADDED', 'nameplate2')
+assert(status.text == 'Visible nameplate tokens: 1 / 8')
 local second = frames.WarlockHudMultiTarget2
-local name = second.children[3]
+local display = second.parent.children[7 + (2 - 1) * 2]
+local name = display.children[3]
 assert(name.text == 'First Mob')
 assert(second.attributes.unit == 'nameplate2')
 assert(second.attributes.type1 == 'target')
+plates.nameplate2 = nil
 eventFrame.scripts.OnEvent(nil, 'NAME_PLATE_UNIT_REMOVED', 'nameplate2')
-assert(name.text == '')
+assert(name.text == 'nameplate2 (waiting)')
+assert(status.text:find('Waiting for enemy nameplates', 1, true))
 assert(second.attributes.unit == 'nameplate2')
 plates.nameplate2 = 'Second Mob'
 eventFrame.scripts.OnEvent(nil, 'NAME_PLATE_UNIT_ADDED', 'nameplate2')
 assert(name.text == 'Second Mob')
 assert(second.attributes.unit == 'nameplate2')
 combat = true
+loadstring('return function(self) ' .. close.attributes._onclick .. ' end')()(close)
+assert(root.shown == false)
 close.scripts.OnClick()
 assert(profile.multiDotEnabled == false)
 assert(WarlockHudMultiTarget.Refresh() == false)
-assert(root.shown == true)
+assert(root.shown == false)
 combat = false
 eventFrame.scripts.OnEvent(nil, 'PLAYER_REGEN_ENABLED')
 assert(root.shown == false)
 profile.multiDotEnabled = true
 assert(WarlockHudMultiTarget.Refresh() == true)
 close.scripts.OnClick()
-assert(profile.multiDotEnabled == false and root.shown == false)
+assert(profile.multiDotEnabled == false)
 ''')
 
 deferred = LuaRuntime(unpack_returned_tuples=True)

@@ -1,5 +1,14 @@
 # Changelog
 
+## v0.40.0-review.3
+
+- Keep the eight token labels visible while their secure target buttons are
+  hidden. Show a waiting message when no enemy nameplate tokens are available.
+- Place native aura containers beside the secure click targets so a hidden
+  target button cannot blank the entire row.
+- Use a secure X action to close the protected window during combat. Moving
+  and resizing still require leaving combat.
+
 ## v0.40.0-review.2
 
 - Drag the Multi-Target window title to move it and its lower-right grip to
