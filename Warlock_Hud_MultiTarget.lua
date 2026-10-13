@@ -8,7 +8,7 @@ local mover
 local built, pending, auraWarning, failed = false, false, false, false
 local ROWS = 8
 local ICON_SIZE = 24
-local BASE_WIDTH, BASE_HEIGHT = 310, 316
+local BASE_WIDTH, BASE_HEIGHT = 430, 316
 local SPELLS = {
     { "Corruption", { 172, 6222, 6223, 7648, 11671, 11672, 25311 } },
     { "Immolate", { 348, 707, 1094, 2941, 11665, 11667, 11668, 25309 } },
@@ -22,7 +22,7 @@ local function ClampScale(value)
 end
 
 local function ClampWidth(value)
-    return math.max(260, math.min(600, tonumber(value) or BASE_WIDTH))
+    return math.max(260, math.min(700, tonumber(value) or BASE_WIDTH))
 end
 
 local function ClampHeight(value)
@@ -59,10 +59,44 @@ local function ClearIdentity(row)
     row.present = false
     row.relevant = false
     row.name:SetText("")
+    if row.healthBar then
+        pcall(row.healthBar.SetMinMaxValues, row.healthBar, 0, 1)
+        pcall(row.healthBar.SetValue, row.healthBar, 0)
+    end
     row.name:SetTextColor(0.45, 0.45, 0.45)
     row.marker:Hide()
-    row.engaged:SetText("")
     row.target:SetColorTexture(0.08, 0.08, 0.08, 0)
+end
+
+local function UpdateHealth(row, name)
+    if not UnitHealth or not UnitHealthMax or not UnitHealthPercent
+        or not CurveConstants or not CurveConstants.ScaleTo100 then
+        row.name:SetText(name)
+        return
+    end
+    local healthOK, health = pcall(UnitHealth, row.unit, true)
+    local maxOK, maximum = pcall(UnitHealthMax, row.unit)
+    local percentOK, percent = pcall(UnitHealthPercent, row.unit, true,
+        CurveConstants.ScaleTo100)
+    if not healthOK or not maxOK or not percentOK then
+        row.name:SetText(name)
+        return
+    end
+    local function Numeric(value)
+        return (issecretvalue and issecretvalue(value))
+            or type(value) == "number"
+    end
+    if not Numeric(health) or not Numeric(maximum) or not Numeric(percent) then
+        row.name:SetText(name)
+        return
+    end
+    -- These values may be secret. Native widgets accept them directly; Lua
+    -- never compares, divides, concatenates, or formats them.
+    pcall(row.healthBar.SetMinMaxValues, row.healthBar, 0, maximum)
+    pcall(row.healthBar.SetValue, row.healthBar, health)
+    local formatted = pcall(row.name.SetFormattedText, row.name,
+        "%s (%.0f/%.0f) %.0f%%", name, health, maximum, percent)
+    if not formatted then row.name:SetText(name) end
 end
 
 local function GroupThreat(unit)
@@ -136,17 +170,12 @@ local function UpdateIdentity(row)
     if row.relevant == true then
         row.name:SetTextColor(1, 1, 1)
         row.target:SetColorTexture(0.25, 0.25, 0.25, 0.8)
-        row.engaged:SetText(threat and "Group" or "DoT")
     elseif row.relevant == nil then
         row.name:SetTextColor(0.5, 0.5, 0.5)
         row.target:SetColorTexture(0.1, 0.1, 0.1, 0.55)
-        row.engaged:SetText("?")
     end
     local ok, name = pcall(UnitName, unit)
-    if ok then
-        -- FontString:SetText accepts secret strings; never inspect the name.
-        row.name:SetText(name)
-    end
+    if ok then UpdateHealth(row, name) end
     if GetRaidTargetIndex then
         local markerOK, index = pcall(GetRaidTargetIndex, unit)
         if markerOK and Plain(index) and type(index) == "number"
@@ -192,7 +221,7 @@ local function ApplyLayout(width, height)
         row.display:ClearAllPoints()
         row.display:SetPoint("TOPLEFT", root, "TOPLEFT", 7,
             -50 - (i - 1) * step)
-        row.name:SetWidth(math.max(65, displayWidth - 64))
+        row.name:SetWidth(math.max(65, displayWidth - 28))
     end
 end
 
@@ -334,18 +363,26 @@ local function Build()
         marker:SetPoint("LEFT", display, "LEFT", 3, 0)
         marker:SetTexture(RAID_ICONS)
         marker:Hide()
+        local healthBar = CreateFrame("StatusBar", nil, display)
+        healthBar:SetPoint("LEFT", display, "LEFT", 22, 0)
+        healthBar:SetPoint("RIGHT", display, "RIGHT", -3, 0)
+        healthBar:SetHeight(19)
+        healthBar:SetFrameLevel(display:GetFrameLevel())
+        healthBar:SetStatusBarTexture("Interface\\TargetingFrame\\UI-StatusBar")
+        healthBar:SetStatusBarColor(0.35, 0.07, 0.07, 0.75)
+        healthBar:SetMinMaxValues(0, 1)
+        healthBar:SetValue(0)
         local name = display:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
         name:SetPoint("LEFT", display, "LEFT", 24, 0)
-        name:SetWidth(math.max(65, width - 190))
+        name:SetWidth(math.max(65, width - 154))
         name:SetJustifyH("LEFT")
-        local engaged = display:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
-        engaged:SetPoint("RIGHT", display, "RIGHT", -3, 0)
         local auras = CreateFrame("AuraContainer", nil, display,
             "CustomAuraContainerTemplate")
         auras:SetSize(4 * (size + 3), size)
         auras:SetPoint("LEFT", display, "RIGHT", 7, 0)
         local row = { unit = unit, display = display, name = name,
-            marker = marker, engaged = engaged, target = highlight, auras = auras }
+            healthBar = healthBar,
+            marker = marker, target = highlight, auras = auras }
         rows[i] = row
         for slot, spell in ipairs(SPELLS) do CreateAuraSlot(row, spell, slot, size) end
         auras:SetUnit(unit)
@@ -405,7 +442,7 @@ for _, event in ipairs({ "PLAYER_LOGIN", "PLAYER_REGEN_ENABLED",
     "NAME_PLATE_UNIT_ADDED", "NAME_PLATE_UNIT_REMOVED",
     "PLAYER_TARGET_CHANGED", "RAID_TARGET_UPDATE", "GROUP_ROSTER_UPDATE",
     "UNIT_THREAT_LIST_UPDATE", "UNIT_THREAT_SITUATION_UPDATE",
-    "UNIT_AURA", "UNIT_HEALTH", "UNIT_FLAGS" }) do
+    "UNIT_AURA", "UNIT_HEALTH", "UNIT_MAXHEALTH", "UNIT_FLAGS" }) do
     events:RegisterEvent(event)
 end
 events:SetScript("OnEvent", function(_, event, unit)
@@ -436,9 +473,11 @@ events:SetScript("OnEvent", function(_, event, unit)
     elseif event == "PLAYER_TARGET_CHANGED" or event == "RAID_TARGET_UPDATE"
         or event == "GROUP_ROSTER_UPDATE" or event == "UNIT_THREAT_LIST_UPDATE"
         or event == "UNIT_THREAT_SITUATION_UPDATE" or event == "UNIT_AURA"
-        or event == "UNIT_HEALTH" or event == "UNIT_FLAGS" then
+        or event == "UNIT_HEALTH" or event == "UNIT_MAXHEALTH"
+        or event == "UNIT_FLAGS" then
         if (event == "UNIT_AURA" or event == "UNIT_HEALTH"
-            or event == "UNIT_FLAGS") and (not Plain(unit) or type(unit) ~= "string"
+            or event == "UNIT_MAXHEALTH" or event == "UNIT_FLAGS")
+            and (not Plain(unit) or type(unit) ~= "string"
             or not unit:match("^nameplate%d+$")) then return end
         if Plain(unit) and type(unit) == "string"
             and unit:match("^nameplate%d+$") then

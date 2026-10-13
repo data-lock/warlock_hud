@@ -268,8 +268,13 @@ local function NormalizeProfile(p)
     p.buffSize = math.max(16, math.min(64, tonumber(p.buffSize) or 24))
     p.multiDotEnabled = p.multiDotEnabled == true
     p.multiDotScale = math.max(0.7, math.min(1.6, tonumber(p.multiDotScale) or 1))
-    p.multiDotWidth = math.max(260, math.min(600,
-        tonumber(p.multiDotWidth) or 310 * p.multiDotScale))
+    if not p.multiDotHealthLayoutVersion then
+        p.multiDotWidth = math.max(430,
+            tonumber(p.multiDotWidth) or 310 * p.multiDotScale)
+        p.multiDotHealthLayoutVersion = 1
+    end
+    p.multiDotWidth = math.max(260, math.min(700,
+        tonumber(p.multiDotWidth) or 430))
     p.multiDotHeight = math.max(287, math.min(640,
         tonumber(p.multiDotHeight) or 316 * p.multiDotScale))
     if (tonumber(p.consumesSchemaVersion) or 0) < 1 then

@@ -540,7 +540,7 @@ Button(multiDotPanel, "Reset position", 20, -195, 130, function()
 end)
 Button(multiDotPanel, "Reset size", 163, -195, 110, function()
     Profile().multiDotScale = 1
-    Profile().multiDotWidth, Profile().multiDotHeight = 310, 316
+    Profile().multiDotWidth, Profile().multiDotHeight = 430, 316
     if WarlockHudMultiTarget then WarlockHudMultiTarget.Refresh() end
 end)
 Text(multiDotPanel, "Outside combat: drag the title to move or the lower-right corner to resize width and height. X closes in combat too.",
@@ -549,6 +549,8 @@ Text(multiDotPanel, "A nameplate token can be reused; its old label is cleared o
     20, -267, "GameFontHighlightSmall")
 Text(multiDotPanel, "Native aura slots: Corruption, Immolate, Siphon Life, and Banes.",
     20, -292, "GameFontHighlightSmall")
+Text(multiDotPanel, "Each live row shows a native health bar and Name (current/max) percent%.",
+    20, -317, "GameFontHighlightSmall")
 Text(general, "Enabled by default for Warlocks. Other classes can turn it on here.",
     20, -50, "GameFontHighlightSmall")
 Check(general, 20, -85, "Enable Warlock HUD on this character",

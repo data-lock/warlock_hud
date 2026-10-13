@@ -1,5 +1,12 @@
 # Changelog
 
+## v0.40.0-review.9
+
+- Add a health bar to each live Multi-Target row and show
+  `Target Name (current/max) percent%` in its label.
+- Pass potentially protected health values directly to native status bar and
+  font string APIs. Expand older narrow window layouts once to fit the text.
+
 ## v0.40.0-review.8
 
 - Remove the nonworking secure nameplate target buttons and hover cue after

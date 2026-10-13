@@ -8,6 +8,8 @@ lua.execute(r'''
 frames = {}
 plates = {}
 dead = {}
+health = {}
+maximum = {}
 dots = {}
 auraChecks = 0
 trace = {}
@@ -30,6 +32,13 @@ issecretvalue = function(value) return value == 'SECRET' end
 C_AddOns = { IsAddOnLoaded = function() return true end,
     LoadAddOn = function() return true end }
 C_Spell = { GetSpellTexture = function() return 123 end }
+CurveConstants = { ScaleTo100 = {} }
+UnitHealth = function(unit) return health[unit] or 80 end
+UnitHealthMax = function(unit) return maximum[unit] or 100 end
+UnitHealthPercent = function(unit, predicted, curve)
+    assert(curve == CurveConstants.ScaleTo100)
+    return (health[unit] or 80) / (maximum[unit] or 100) * 100
+end
 C_UnitAuras = { GetAuraDataBySpellID = function(unit, id)
     auraChecks = auraChecks + 1
     if unit == 'nameplate5' and id == 172 then return 'SECRET' end
@@ -51,10 +60,18 @@ setmetatable(methods, { __index = function()
     return function() end
 end })
 function methods:SetText(value) self.text = value end
+function methods:SetFormattedText(pattern, ...)
+    self.text = string.format(pattern, ...)
+end
 function methods:SetTextColor(...) self.textColor = {...} end
 function methods:SetShown(value) self.shown = value end
 function methods:SetColorTexture(...) self.color = {...} end
 function methods:SetSize(w, h) self.width, self.height = w, h end
+function methods:SetHeight(h) self.height = h end
+function methods:SetMinMaxValues(minimum, maximumValue)
+    self.minimum, self.maximum = minimum, maximumValue
+end
+function methods:SetValue(value) self.value = value end
 function methods:SetWidth(w) self.width = w end
 function methods:GetSize() return self.width, self.height end
 function methods:GetEffectiveScale() return 1 end
@@ -109,11 +126,11 @@ local resize = frames.WarlockHudMultiTargetResize
 resize.scripts.OnDragStart()
 cursorX, cursorY = 550, 500
 resize.scripts.OnUpdate()
-assert(root.width > 310 and root.height == 316)
+assert(root.width > 430 and root.height == 316)
 cursorY = 460
 resize.scripts.OnUpdate()
 resize.scripts.OnDragStop()
-assert(root.width > 310 and root.height > 316)
+assert(root.width > 430 and root.height > 316)
 assert(profile.multiDotWidth == root.width and profile.multiDotHeight == root.height)
 local close = frames.WarlockHudMultiTargetClose
 assert(close.frameRefs.window == root)
@@ -134,39 +151,51 @@ plates.nameplate2 = 'First Mob'
 eventFrame.scripts.OnEvent(nil, 'NAME_PLATE_UNIT_ADDED', 'nameplate2')
 assert(status.text == 'Relevant: 1 / 1 visible (other rows dimmed)')
 local display = root.children[7 + (2 - 1)]
-local name = display.children[3]
-assert(name.text == 'First Mob')
+local bar = display.children[3]
+local name = display.children[4]
+assert(name.text == 'First Mob (80/100) 80%')
+assert(bar.kind == 'StatusBar' and bar.value == 80 and bar.maximum == 100)
+health.nameplate2 = 45
+maximum.nameplate2 = 150
+eventFrame.scripts.OnEvent(nil, 'UNIT_HEALTH', 'nameplate2')
+assert(name.text == 'First Mob (45/150) 30%')
+assert(bar.value == 45 and bar.maximum == 150)
 WarlockHudMultiTarget.Debug()
 assert(trace[#trace]:find('nameplate2: relevant=true', 1, true))
 plates.nameplate3 = 'Dotted Mob'
 dots.nameplate3 = 172
 eventFrame.scripts.OnEvent(nil, 'NAME_PLATE_UNIT_ADDED', 'nameplate3')
 local dottedDisplay = root.children[7 + (3 - 1)]
-assert(dottedDisplay.children[4].text == 'DoT')
+assert(dottedDisplay.children[4].text == 'Dotted Mob (80/100) 80%')
 plates.nameplate4 = 'Idle Mob'
 eventFrame.scripts.OnEvent(nil, 'NAME_PLATE_UNIT_ADDED', 'nameplate4')
 local idleDisplay = root.children[7 + (4 - 1)]
-assert(idleDisplay.children[3].textColor[1] == 0.45)
+assert(idleDisplay.children[4].textColor[1] == 0.45)
 assert(status.text == 'Relevant: 2 / 3 visible (other rows dimmed)')
 plates.nameplate5 = 'Unreadable Mob'
 eventFrame.scripts.OnEvent(nil, 'NAME_PLATE_UNIT_ADDED', 'nameplate5')
 local unknownDisplay = root.children[7 + (5 - 1)]
-assert(unknownDisplay.children[4].text == '?')
+assert(unknownDisplay.children[4].text == 'Unreadable Mob (80/100) 80%')
 assert(status.text == 'Relevant: 2 / 4 visible (other rows dimmed)')
 plates.nameplate2 = nil
 eventFrame.scripts.OnEvent(nil, 'NAME_PLATE_UNIT_REMOVED', 'nameplate2')
 assert(name.text == '')
+assert(bar.value == 0)
 assert(status.text == 'Relevant: 1 / 3 visible (other rows dimmed)')
 plates.nameplate2 = 'Second Mob'
 eventFrame.scripts.OnEvent(nil, 'NAME_PLATE_UNIT_ADDED', 'nameplate2')
-assert(name.text == 'Second Mob')
+assert(name.text == 'Second Mob (45/150) 30%')
 dead.nameplate2 = true
 eventFrame.scripts.OnEvent(nil, 'UNIT_HEALTH', 'nameplate2')
 assert(name.text == '' and status.text == 'Relevant: 1 / 3 visible (other rows dimmed)')
 dead.nameplate2 = false
 eventFrame.scripts.OnEvent(nil, 'UNIT_FLAGS', 'nameplate2')
-assert(name.text == 'Second Mob')
+assert(name.text == 'Second Mob (45/150) 30%')
 combat = true
+health.nameplate2 = 'SECRET'
+eventFrame.scripts.OnEvent(nil, 'UNIT_HEALTH', 'nameplate2')
+assert(name.text == 'Second Mob')
+health.nameplate2 = 45
 local previousChecks = auraChecks
 eventFrame.scripts.OnEvent(nil, 'UNIT_AURA', 'nameplate4')
 assert(auraChecks == previousChecks)
