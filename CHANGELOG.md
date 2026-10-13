@@ -1,5 +1,13 @@
 # Changelog
 
+## v0.40.0-review.5
+
+- Highlight nameplate rows only when group threat confirms engagement or a
+  tracked player DoT is safely verified. Dim unrelated and unknown rows while
+  retaining their fixed secure click targets.
+- Check DoT presence only while aura access is unrestricted. Native aura
+  widgets continue rendering effects in combat.
+
 ## v0.40.0-review.4
 
 - Resize the Multi-Target window's width and height independently with the

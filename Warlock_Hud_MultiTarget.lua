@@ -56,10 +56,61 @@ local function Position()
 end
 
 local function ClearIdentity(row)
+    row.relevant = false
     row.name:SetText(row.unit .. " (waiting)")
+    row.name:SetTextColor(0.45, 0.45, 0.45)
     row.marker:Hide()
     row.engaged:SetText("")
-    row.target:SetColorTexture(0.25, 0.25, 0.25, 0.8)
+    row.target:SetColorTexture(0.08, 0.08, 0.08, 0.5)
+end
+
+local function GroupThreat(unit)
+    if not UnitThreatSituation then return nil end
+    local unknown = false
+    local members = { "player", "pet" }
+    if IsInRaid and IsInRaid() then
+        for i = 1, 40 do
+            members[#members + 1] = "raid" .. i
+            members[#members + 1] = "raidpet" .. i
+        end
+    elseif IsInGroup and IsInGroup() then
+        for i = 1, 4 do
+            members[#members + 1] = "party" .. i
+            members[#members + 1] = "partypet" .. i
+        end
+    end
+    for _, member in ipairs(members) do
+        local existsOK, memberExists = pcall(UnitExists, member)
+        if not existsOK or not Plain(memberExists) then
+            unknown = true
+        elseif memberExists then
+            local threatOK, status = pcall(UnitThreatSituation, member, unit)
+            if not threatOK or (issecretvalue and issecretvalue(status)) then
+                unknown = true
+            elseif type(status) == "number" then
+                return true
+            end
+        end
+    end
+    return unknown and nil or false
+end
+
+local function OwnDot(unit)
+    -- Native slots render combat auras. Lua only checks presence while the
+    -- aura APIs are unrestricted, never their protected duration fields.
+    if InCombatLockdown() or not C_UnitAuras
+        or not C_UnitAuras.GetAuraDataBySpellID
+        or (C_Secrets and C_Secrets.ShouldAurasBeSecret
+            and C_Secrets.ShouldAurasBeSecret()) then return nil end
+    for _, spell in ipairs(SPELLS) do
+        for _, id in ipairs(spell[2]) do
+            local ok, aura = pcall(C_UnitAuras.GetAuraDataBySpellID,
+                unit, id, "HARMFUL|PLAYER")
+            if not ok or (issecretvalue and issecretvalue(aura)) then return nil end
+            if aura then return true end
+        end
+    end
+    return false
 end
 
 local function UpdateIdentity(row)
@@ -68,6 +119,23 @@ local function UpdateIdentity(row)
     local unit = row.unit
     local existsOK, exists = pcall(UnitExists, unit)
     if not existsOK or not Plain(exists) or not exists then return end
+    local threat, dot = GroupThreat(unit), OwnDot(unit)
+    if threat == true or dot == true then
+        row.relevant = true
+    elseif threat == false and dot == false then
+        row.relevant = false
+    else
+        row.relevant = nil
+    end
+    if row.relevant == true then
+        row.name:SetTextColor(1, 1, 1)
+        row.target:SetColorTexture(0.25, 0.25, 0.25, 0.8)
+        row.engaged:SetText(threat and "Group" or "DoT")
+    elseif row.relevant == nil then
+        row.name:SetTextColor(0.5, 0.5, 0.5)
+        row.target:SetColorTexture(0.1, 0.1, 0.1, 0.55)
+        row.engaged:SetText("?")
+    end
     local ok, name = pcall(UnitName, unit)
     if ok then
         -- FontString:SetText accepts secret strings; never inspect the name.
@@ -85,46 +153,27 @@ local function UpdateIdentity(row)
         end
     end
     local targetOK, selected = pcall(UnitIsUnit, unit, "target")
-    if targetOK and Plain(selected) and selected == true then
+    if row.relevant == true and targetOK and Plain(selected)
+        and selected == true then
         row.target:SetColorTexture(1, 0.7, 0.1, 1)
-    end
-    if UnitThreatSituation then
-        local members = { "player", "pet" }
-        if IsInRaid and IsInRaid() then
-            for i = 1, 40 do
-                members[#members + 1] = "raid" .. i
-                members[#members + 1] = "raidpet" .. i
-            end
-        elseif IsInGroup and IsInGroup() then
-            for i = 1, 4 do
-                members[#members + 1] = "party" .. i
-                members[#members + 1] = "partypet" .. i
-            end
-        end
-        for _, member in ipairs(members) do
-            local existsOK, memberExists = pcall(UnitExists, member)
-            if existsOK and Plain(memberExists) and memberExists then
-                local threatOK, status = pcall(UnitThreatSituation, member, unit)
-                if threatOK and Plain(status) and type(status) == "number" then
-                    row.engaged:SetText("Group")
-                    break
-                end
-            end
-        end
     end
 end
 
 local function UpdateStatus()
     if not status then return end
-    local count = 0
+    local count, relevant = 0, 0
     for _, row in ipairs(rows) do
         local ok, exists = pcall(UnitExists, row.unit)
-        if ok and Plain(exists) and exists then count = count + 1 end
+        if ok and Plain(exists) and exists then
+            count = count + 1
+            if row.relevant == true then relevant = relevant + 1 end
+        end
     end
     if count == 0 then
         status:SetText("Waiting for enemy nameplates. Toggle them with V.")
     else
-        status:SetText("Visible nameplate tokens: " .. count .. " / " .. ROWS)
+        status:SetText("Relevant: " .. relevant .. " / " .. count
+            .. " visible (other rows dimmed)")
     end
 end
 
@@ -352,7 +401,8 @@ for _, event in ipairs({ "PLAYER_LOGIN", "PLAYER_REGEN_ENABLED",
     "ACTIVE_TALENT_GROUP_CHANGED",
     "NAME_PLATE_UNIT_ADDED", "NAME_PLATE_UNIT_REMOVED",
     "PLAYER_TARGET_CHANGED", "RAID_TARGET_UPDATE", "GROUP_ROSTER_UPDATE",
-    "UNIT_THREAT_LIST_UPDATE", "UNIT_THREAT_SITUATION_UPDATE" }) do
+    "UNIT_THREAT_LIST_UPDATE", "UNIT_THREAT_SITUATION_UPDATE",
+    "UNIT_AURA" }) do
     events:RegisterEvent(event)
 end
 events:SetScript("OnEvent", function(_, event, unit)
@@ -382,7 +432,9 @@ events:SetScript("OnEvent", function(_, event, unit)
         UpdateStatus()
     elseif event == "PLAYER_TARGET_CHANGED" or event == "RAID_TARGET_UPDATE"
         or event == "GROUP_ROSTER_UPDATE" or event == "UNIT_THREAT_LIST_UPDATE"
-        or event == "UNIT_THREAT_SITUATION_UPDATE" then
+        or event == "UNIT_THREAT_SITUATION_UPDATE" or event == "UNIT_AURA" then
+        if event == "UNIT_AURA" and (not Plain(unit) or type(unit) ~= "string"
+            or not unit:match("^nameplate%d+$")) then return end
         if Plain(unit) and type(unit) == "string"
             and unit:match("^nameplate%d+$") then
             for _, row in ipairs(rows) do
@@ -391,5 +443,6 @@ events:SetScript("OnEvent", function(_, event, unit)
         else
             for _, row in ipairs(rows) do UpdateIdentity(row) end
         end
+        UpdateStatus()
     end
 end)

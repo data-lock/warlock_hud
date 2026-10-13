@@ -524,7 +524,7 @@ local general = Panel("Warlock HUD - General", false)
 local multiDotPanel = Panel("Warlock HUD - Multi-Target DoTs", false)
 Text(multiDotPanel, "Eight fixed nameplate rows. Each row always clicks its own unit token.",
     20, -54, "GameFontHighlight")
-Text(multiDotPanel, "Visible hostile nameplates are shown in token order. Group threat is marked when confirmed.",
+Text(multiDotPanel, "Relevant rows are bright; unrelated or unreadable rows are dimmed. Fixed combat click targets remain.",
     20, -81, "GameFontHighlightSmall")
 Text(multiDotPanel, "Combat targeting and native aura behavior need verification on this Forever build.",
     20, -106, "GameFontHighlightSmall")

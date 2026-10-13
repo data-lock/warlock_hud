@@ -7,6 +7,8 @@ lua = LuaRuntime(unpack_returned_tuples=True)
 lua.execute(r'''
 frames = {}
 plates = {}
+dots = {}
+auraChecks = 0
 combat = false
 profile = { multiDotEnabled = true, multiDotSize = 24 }
 cursorX, cursorY = 500, 500
@@ -25,10 +27,16 @@ issecretvalue = function(value) return value == 'SECRET' end
 C_AddOns = { IsAddOnLoaded = function() return true end,
     LoadAddOn = function() return true end }
 C_Spell = { GetSpellTexture = function() return 123 end }
-UnitExists = function(unit) return plates[unit] ~= nil end
+C_UnitAuras = { GetAuraDataBySpellID = function(unit, id)
+    auraChecks = auraChecks + 1
+    if unit == 'nameplate5' and id == 172 then return 'SECRET' end
+    if dots[unit] == id then return {} end
+end }
+UnitExists = function(unit) return unit == 'player' or plates[unit] ~= nil end
 UnitName = function(unit) return plates[unit] end
 UnitIsUnit = function(unit) return unit == 'nameplate2' end
 UnitThreatSituation = function(member, unit)
+    if member == 'player' and unit == 'nameplate5' then return 'SECRET' end
     if member == 'player' and unit == 'nameplate2' then return 0 end
 end
 GetRaidTargetIndex = function() return nil end
@@ -39,6 +47,7 @@ setmetatable(methods, { __index = function()
     return function() end
 end })
 function methods:SetText(value) self.text = value end
+function methods:SetTextColor(...) self.textColor = {...} end
 function methods:SetShown(value) self.shown = value end
 function methods:SetColorTexture(...) self.color = {...} end
 function methods:SetSize(w, h) self.width, self.height = w, h end
@@ -118,23 +127,41 @@ for i = 1, 8 do
 end
 plates.nameplate2 = 'First Mob'
 eventFrame.scripts.OnEvent(nil, 'NAME_PLATE_UNIT_ADDED', 'nameplate2')
-assert(status.text == 'Visible nameplate tokens: 1 / 8')
+assert(status.text == 'Relevant: 1 / 1 visible (other rows dimmed)')
 local second = frames.WarlockHudMultiTarget2
 local display = second.parent.children[7 + (2 - 1) * 2]
 local name = display.children[3]
 assert(name.text == 'First Mob')
 assert(second.attributes.unit == 'nameplate2')
+plates.nameplate3 = 'Dotted Mob'
+dots.nameplate3 = 172
+eventFrame.scripts.OnEvent(nil, 'NAME_PLATE_UNIT_ADDED', 'nameplate3')
+local dottedDisplay = root.children[7 + (3 - 1) * 2]
+assert(dottedDisplay.children[4].text == 'DoT')
+plates.nameplate4 = 'Idle Mob'
+eventFrame.scripts.OnEvent(nil, 'NAME_PLATE_UNIT_ADDED', 'nameplate4')
+local idleDisplay = root.children[7 + (4 - 1) * 2]
+assert(idleDisplay.children[3].textColor[1] == 0.45)
+assert(status.text == 'Relevant: 2 / 3 visible (other rows dimmed)')
+plates.nameplate5 = 'Unreadable Mob'
+eventFrame.scripts.OnEvent(nil, 'NAME_PLATE_UNIT_ADDED', 'nameplate5')
+local unknownDisplay = root.children[7 + (5 - 1) * 2]
+assert(unknownDisplay.children[4].text == '?')
+assert(status.text == 'Relevant: 2 / 4 visible (other rows dimmed)')
 assert(second.attributes.type1 == 'target')
 plates.nameplate2 = nil
 eventFrame.scripts.OnEvent(nil, 'NAME_PLATE_UNIT_REMOVED', 'nameplate2')
 assert(name.text == 'nameplate2 (waiting)')
-assert(status.text:find('Waiting for enemy nameplates', 1, true))
+assert(status.text == 'Relevant: 1 / 3 visible (other rows dimmed)')
 assert(second.attributes.unit == 'nameplate2')
 plates.nameplate2 = 'Second Mob'
 eventFrame.scripts.OnEvent(nil, 'NAME_PLATE_UNIT_ADDED', 'nameplate2')
 assert(name.text == 'Second Mob')
 assert(second.attributes.unit == 'nameplate2')
 combat = true
+local previousChecks = auraChecks
+eventFrame.scripts.OnEvent(nil, 'UNIT_AURA', 'nameplate4')
+assert(auraChecks == previousChecks)
 loadstring('return function(self) ' .. close.attributes._onclick .. ' end')()(close)
 assert(root.shown == false)
 close.scripts.OnClick()

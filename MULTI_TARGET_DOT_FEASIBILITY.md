@@ -19,6 +19,12 @@ window plus Blizzard's own nameplates or the existing Target DoTs row for
 target selection. Do not call `TargetUnit`, run a targeting macro, or change a
 secure button's unit attribute from an insecure combat callback.
 
+The review window now brightens only rows with readable group threat or a
+verified player DoT. It dims other fixed-token rows because addon Lua cannot
+hide or reorder their secure click buttons in combat. DoT presence checks run
+only when aura access is unrestricted; during secret aura states, an unreadable
+DoT is unknown and cannot by itself brighten a row.
+
 ## Findings and limits
 
 | Question | Finding | Confidence |
