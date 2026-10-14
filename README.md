@@ -25,7 +25,7 @@ so you can see the full layout before choosing what to track. Open it from
 | Display | What it tracks |
 | --- | --- |
 | Main row | Corruption, Immolate, Siphon Life, Banes, Curses, and Drain spells. Banes, Curses, and Drains each share an icon slot. Active target effects show a countdown, including milliseconds. |
-| Multi-Target DoTs (opt-in review) | Eight fixed, view-only nameplate rows with native slots for your Corruption, Immolate, Siphon Life, and Banes. Each live row shows a health bar and `Name (current/max) percent%`. Target through the world nameplates or Tab. Group-threat or safely verified player-DoT rows are bright; unrelated and unreadable live rows are dimmed. Empty and confirmed-dead slots have no name label. Outside combat, drag the title to move or the lower-right grip to resize width and height independently. X closes the window during combat too. The window is disabled by default while native aura behavior is verified in Forever. |
+| Multi-Target DoTs (optional) | Up to 16 view-only rows drawn from prebuilt nameplate, player-target, party-target, and raid-target tokens with native slots for your Corruption, Immolate, Siphon Life, and Banes. Mobs with confirmed group threat, a target in your group, a party/raid target, or a safely verified player DoT appear; matching tokens are deduplicated by identity. Each shown row has the mob's target portrait, any assigned raid marker, a separate name and health bar with current/max and percent, a 20% health tick when the execute marker is enabled, and a slim gold accent when selected. Target through the world nameplates or Tab. The window is disabled by default; use `/whud mtd` to open or close it outside combat. Outside combat, drag the title to move the window or the lower-right grip to resize it while keeping the top-left corner fixed. Shorter windows keep fixed row spacing and show a scroll bar when needed. Toggling, moving, and resizing are unavailable during combat. Settings can hide it outside combat and adjust transparency. |
 | Cooldown row | Healthstone, Soulstone, Fear, Conflagrate when learned, available racial abilities, and an optional flashing Sense Demons reminder when no demon or active Demonic Sacrifice is confirmed. Conflagrate shows its cooldown and pulses while your Immolate is active on the current target. |
 | Consumes row | Well Fed plus optional Flask of Supreme Power, Arcane Elixir family, Shadow Power, Greater Firepower, Mageblood family, and Wizard Oil family trackers. Aura effects use native countdowns; Wizard Oil reads temporary weapon-enchant state without a HUD countdown. Each category has its own tracking and missing-reminder choice. The row has its own position, icon size, visibility, and color settings. |
 | Buff row | Demon Armor / Demon Skin, Fortitude, Mark or Gift of the Wild, Intellect, Spirit, Kings, Salvation, Thorns, Demonic Sacrifice, Soul Link, and Unending Breath. Active buffs show colored icons with native countdowns when available; a setting reverses active and missing colors. Soul Link reminds when known, a demon is present, and its buff is confirmed missing. Thorns follows the same Druid-aware missing-buff reminder and active-buff formatting as Mark of the Wild. Unending Breath appears at the right end only while active. Visible buffs pack left to right. |
@@ -46,6 +46,16 @@ Consumes, Buffs, Procs, and Soul Shards. Hidden rows appear in combat and Edit M
 The Sharing page exports or imports selected profile sections as a copyable code.
 Import previews the selected sections and asks for confirmation. The About page
 can reset addon settings to defaults after confirmation.
+
+### Multi-Target tracker limitations
+
+- The window cannot be toggled, moved, or resized during combat. Its native DoT
+  aura widgets make the window protected; the Forever client confirmed this in
+  the copyable trace. Open it with `/whud mtd` and set its position and size
+  before a pull.
+- The window is view-only. Select enemies with world nameplates or Tab.
+- It shows at most 16 mobs that the client exposes through nameplates or
+  player, party, and raid target tokens. An unexposed mob cannot be listed.
 
 ### Known Forever beta issue: Soul Link below level 30
 

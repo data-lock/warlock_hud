@@ -1,15 +1,20 @@
 # Multi-target DoT window: secure targeting feasibility
 
-Research status: 13 October 2026. The fixed-token display architecture is
-implemented as an opt-in 0.40.0 review build. Combat targeting was tested in
-game and did not work through the custom nameplate buttons.
+Research status: 14 October 2026. The fixed-token display architecture is
+implemented as an opt-in 0.40.0 review build. The custom nameplate buttons
+did not select mobs in game, but their secure visibility driver may have hidden
+them, so that click test alone does not establish whether the action fired.
+With a visible `nameplate1` row, the user also tested `/target nameplate1`
+directly in the Forever client; it did not select the mob.
 
 ## Decision
 
-**The custom combat click requirement failed.** The normal secure-button API
-supports `type="target"` and a `unit` attribute, but `nameplateN` tokens cannot
-be targeted by `/target nameplate1` or used as action targets. The in-game
-secure-button probe did not select the named mob. The window is now view-only;
+**The custom combat click requirement is unsupported.** The normal
+secure-button API supports `type="target"` and a `unit` attribute, but the
+documented `nameplateN` restriction excludes `/target nameplate1` and action
+targets. The earlier in-game button test did not isolate click delivery from
+its visibility driver; the direct command test confirms the token cannot be
+targeted this way in this client. The window is now view-only;
 use Blizzard's world nameplates or Tab for target selection. Do not call
 `TargetUnit`, use `/tar` by name, or change a secure button's unit attribute
 from an insecure combat callback. Name search is ambiguous when enemies share
@@ -25,7 +30,8 @@ DoT is unknown and cannot by itself brighten a row.
 | Question | Finding | Confidence |
 | --- | --- | --- |
 | Discover visible units | `NAME_PLATE_UNIT_ADDED/REMOVED` provide `nameplateN`; `C_NamePlate.GetNamePlates()` exposes visible plates. Nameplates outside the player's visible set cannot be listed reliably. | Documented |
-| Secure combat click | `SecureActionButtonTemplate` supports `type="target"` with `unit`, but nameplate tokens are excluded as action targets. The Forever click test failed. | Rejected |
+| Secure combat click | `SecureActionButtonTemplate` supports `type="target"` with `unit`, but nameplate tokens are documented as excluded action targets. The Forever button test was inconclusive because its visibility driver may have hidden the button. A direct `/target nameplate1` test with a visible row failed. | Documented restriction and direct client test |
+| Combat movement and resizing | The current window contains Blizzard-native aura widgets and reports as protected in combat (`HUD Multi-Target: combat resize blocked by window` in the copyable trace). The client does not move or resize it during combat. Position and size must be set before combat; the preconfigured secure X can still close it. | Direct Forever client test |
 | Token or GUID | The documented secure target action takes a **unit token**, not a GUID. A GUID is unsuitable as a secure action unit attribute. | Documented |
 | Preconfiguration | Create all protected buttons and set their fixed unit attributes before combat. Do not reparent, reposition, resize, show/hide, or set protected attributes in combat from addon Lua. Whether these fixed buttons continue resolving `nameplateN` correctly is unverified. | Partly documented; needs client test |
 | Token reuse | Blizzard's nameplate driver sets a token on add and clears it on removal. A token denotes the *current* occupant, not an enemy identity. A row whose old name remains visible may target a different enemy after reuse. | Documented mechanism; consequence is an inference |

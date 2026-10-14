@@ -339,6 +339,7 @@ end
 local tradeLines = {}
 local tradeWindow, tradeText, tradeScroll, tradeStatus
 local tradeToggle, soulstoneToggle, summonToggle, assignmentToggle, channelToggle
+local unitProbeToggle
 
 local function RefreshTradeWindow()
     if not tradeWindow then return end
@@ -361,6 +362,11 @@ local function RefreshTradeWindow()
     end
     if channelToggle then
         channelToggle:SetText("Channel: " .. (channelDebug and "On" or "Off"))
+    end
+    if unitProbeToggle then
+        local running = WarlockHudMultiTarget and WarlockHudMultiTarget.ProbeRunning
+            and WarlockHudMultiTarget.ProbeRunning()
+        unitProbeToggle:SetText("Unit Probe: " .. (running and "On" or "Off"))
     end
     tradeText:SetText(table.concat(tradeLines, "\n"))
     tradeText:SetHeight(math.max(330, #tradeLines * 16 + 20))
@@ -468,6 +474,15 @@ local function OpenTradeWindow()
             if channelDebug and WarlockHudChannelTickTraceState then
                 WarlockHudChannelTickTraceState()
             end
+        end)
+        unitProbeToggle = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate")
+        unitProbeToggle:SetSize(125, 24)
+        unitProbeToggle:SetPoint("LEFT", channelToggle, "RIGHT", 8, 0)
+        unitProbeToggle:SetScript("OnClick", function()
+            if WarlockHudMultiTarget and WarlockHudMultiTarget.Probe then
+                WarlockHudMultiTarget.Probe("toggle")
+            end
+            RefreshTradeWindow()
         end)
         tradeWindow, tradeText, tradeScroll = frame, edit, scroll
     end

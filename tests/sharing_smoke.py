@@ -7,7 +7,9 @@ from lupa import LuaRuntime
 lua = LuaRuntime(unpack_returned_tuples=True)
 lua.execute("""
 local db = { activeProfile = 'Default', profiles = {
-    Default = { mainSize = 48, multiDotEnabled = true, multiDotScale = 1.25,
+    Default = { mainSize = 48, multiDotEnabled = true,
+        multiDotHideOutOfCombat = true, multiDotAlpha = 0.65,
+        multiDotScale = 1.25,
         multiDotWidth = 370, multiDotHeight = 410,
         multiDotX = 0.55, multiDotY = 0.48, consumesSchemaVersion = 2,
         consumeSize = 35, consumeOrder = {'wellfed', 'flask'},
@@ -50,6 +52,8 @@ assert(parsed, err)
 assert(parsed.version and parsed.available.bars and parsed.available.shards)
 assert(parsed.profiles.Default.bars.consumeSize == 35)
 assert(parsed.profiles.Default.bars.multiDotEnabled == true)
+assert(parsed.profiles.Default.bars.multiDotHideOutOfCombat == true)
+assert(parsed.profiles.Default.bars.multiDotAlpha == 0.65)
 assert(parsed.profiles.Default.bars.multiDotScale == 1.25)
 assert(parsed.profiles.Default.bars.multiDotWidth == 370)
 assert(parsed.profiles.Default.bars.multiDotHeight == 410)

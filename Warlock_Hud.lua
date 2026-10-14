@@ -267,6 +267,8 @@ local function NormalizeProfile(p)
     p.shardSize = math.max(16, math.min(64, tonumber(p.shardSize) or 32))
     p.buffSize = math.max(16, math.min(64, tonumber(p.buffSize) or 24))
     p.multiDotEnabled = p.multiDotEnabled == true
+    p.multiDotHideOutOfCombat = p.multiDotHideOutOfCombat == true
+    p.multiDotAlpha = math.max(0.3, math.min(1, tonumber(p.multiDotAlpha) or 1))
     p.multiDotScale = math.max(0.7, math.min(1.6, tonumber(p.multiDotScale) or 1))
     if not p.multiDotHealthLayoutVersion then
         p.multiDotWidth = math.max(430,
@@ -275,8 +277,8 @@ local function NormalizeProfile(p)
     end
     p.multiDotWidth = math.max(260, math.min(700,
         tonumber(p.multiDotWidth) or 430))
-    p.multiDotHeight = math.max(287, math.min(640,
-        tonumber(p.multiDotHeight) or 316 * p.multiDotScale))
+    p.multiDotHeight = math.max(150, math.min(800,
+        tonumber(p.multiDotHeight) or 548 * p.multiDotScale))
     if (tonumber(p.consumesSchemaVersion) or 0) < 1 then
         -- Well Fed keeps its existing enabled flag. Copy row preferences once;
         -- subsequent loads must not follow later Buffs changes.
@@ -2679,6 +2681,21 @@ SlashCmdList.WARLOCKHUD = function(message)
     end
     if message == "trace" and WarlockHudOpenDebugTrace then
         WarlockHudOpenDebugTrace()
+        return
+    end
+    if message == "targets" and WarlockHudMultiTarget
+        and WarlockHudMultiTarget.PrintTargets then
+        WarlockHudMultiTarget.PrintTargets()
+        return
+    end
+    if message == "mtd" and WarlockHudMultiTarget
+        and WarlockHudMultiTarget.Toggle then
+        WarlockHudMultiTarget.Toggle()
+        return
+    end
+    if (message == "unitprobe" or message == "unitprobe off")
+        and WarlockHudMultiTarget and WarlockHudMultiTarget.Probe then
+        WarlockHudMultiTarget.Probe(message == "unitprobe off" and "off" or "on")
         return
     end
     if message == "tradedebug" and WarlockHudToggleTradeDebug then

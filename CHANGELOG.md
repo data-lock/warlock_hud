@@ -1,5 +1,183 @@
 # Changelog
 
+## v0.40.0
+
+- Add the opt-in Multi-Target DoT tracker with up to 16 view-only enemy rows,
+  Blizzard-native DoT countdowns, health bars, portraits, raid markers, and a
+  20% health indicator. Include enemies exposed through nameplates and player,
+  party, or raid target tokens when combat or player-DoT evidence is available.
+- Keep the tracker off by default. Open it with `/whud mtd` outside combat;
+  configure its size, position, transparency, and optional combat-only display
+  in settings. Short windows scroll. Toggling and adjustments require leaving
+  combat; target enemies through the game world or Tab.
+
+## v0.40.0-review.41
+
+- Keep the Multi-Target window disabled for new profiles and explain that
+  `/whud mtd` opens it outside combat. Limit command and X toggling to outside
+  combat, alongside window movement and resizing.
+
+## v0.40.0-review.40
+
+- Extend the Multi-Target row viewport to within seven pixels of the window
+  bottom, removing the unused black strip below the list.
+
+## v0.40.0-review.39
+
+- Reduce the Multi-Target window's minimum height to 150 pixels, enough for
+  two target rows; additional targets remain accessible through scrolling.
+
+## v0.40.0-review.38
+
+- Confirm from the in-game trace that the Multi-Target window is protected in
+  combat. Keep moving and resizing outside combat, and remove the ineffective
+  combat drag paths. The shorter window and scroll bar remain available.
+
+## v0.40.0-review.37
+
+- Let the Multi-Target title drag move the window during combat when its
+  frame permits repositioning, saving the new position immediately.
+- Keep vertical resizing available even when a protected DoT row prevents
+  width changes. Report the blocked frame in the copyable trace.
+
+## v0.40.0-review.36
+
+- Move the hide-outside-combat state driver from the resizable window to a
+  separate secure controller, so the driver does not protect window geometry.
+- Identify the blocking frame in the copyable trace if combat resizing is
+  still rejected by the client.
+
+## v0.40.0-review.35
+
+- Let the Multi-Target window shrink vertically while rows keep their fixed
+  spacing. Show a scroll bar only when the visible mobs exceed the window.
+- Use a visibility state driver for the hide-outside-combat option so the
+  window appears when combat starts without an insecure show call.
+
+## v0.40.0-review.34
+
+- Prebuild 16 nameplate rows and allow up to 16 distinct visible mobs, while
+  retaining group-target sources and the existing DoT filters.
+- Anchor the Multi-Target window at its top-left corner and allow resizing
+  during combat when the client permits changes to the prebuilt frames.
+- Add `/whud mtd`, a hide-outside-combat setting, and a transparency slider.
+
+## v0.40.0-review.33
+
+- Widen the selected-target accent and move portraits right for clearer
+  spacing. Keep name, health bar, and 20% marker aligned with the portrait.
+
+## v0.40.0-review.32
+
+- Add the nameplate-style 20% copper tick to Multi-Target health bars. It
+  follows the existing execute-marker setting and stays aligned when resized.
+
+## v0.40.0-review.31
+
+- Give Multi-Target rows a dark surface, a slim gold selected-target accent,
+  and separate white name and health labels above a dark-backed health bar.
+- Dim inactive DoT icons and improve native countdown contrast and spacing.
+  Keep the existing target detection, native aura slots, and view-only controls.
+
+## v0.40.0-review.30
+
+- Prebuild native aura rows for the player's target, `party1target` through
+  `party4target`, and `raid1target` through `raid40target`. Group-targeted mobs
+  can now appear without a nameplate. Deduplicate matching units by GUID or
+  `UnitIsUnit` and keep the visible window capped at eight rows. Refresh native
+  auras when a target token changes occupants.
+
+## v0.40.0-review.29
+
+- Add threat, mob-target, group-target, combat, and row-visibility signals to
+  nameplate entries in the copyable Unit Probe trace.
+
+## v0.40.0-review.28
+
+- Include a visible mob when a party or raid member (or the player's pet)
+  targets it. Refresh all rows when a group member's `UNIT_TARGET` changes.
+
+## v0.40.0-review.27
+
+- Pass a restricted raid-marker index directly to Blizzard's native
+  `SetRaidTargetIconTexture` renderer when Lua cannot read the index. Keep
+  arithmetic and comparisons away from the restricted value, and report the
+  render path in `/whud targets`.
+
+## v0.40.0-review.26
+
+- Include the current target's GUID and marker result, plus each displayed
+  row's GUID and direct marker result, in `/whud targets` trace output.
+
+## v0.40.0-review.25
+
+- Try a mob's readable GUID for its raid marker when unit-token lookups do
+  not yield an index. Report the GUID source in `/whud targets` trace output.
+
+## v0.40.0-review.24
+
+- Include a visible mob when its unit target is the player, pet, or a group
+  member. Refresh on `UNIT_TARGET` so adds can appear before threat or a DoT
+  becomes readable.
+
+## v0.40.0-review.23
+
+- Resolve Multi-Target raid markers through a matching target, focus, pet
+  target, or group target when the nameplate token does not yield the marker.
+  Include the marker source in `/whud targets` trace output.
+
+## v0.40.0-review.22
+
+- Move the Unit Probe toggle from the Multi-Target window into the copyable
+  debug trace window. Keep its label in sync with `/whud unitprobe`.
+
+## v0.40.0-review.21
+
+- Add a Probe on/off button to the Multi-Target window. It opens the copyable
+  trace window and controls the same unit probe as `/whud unitprobe`.
+
+## v0.40.0-review.20
+
+- Add `/whud unitprobe` to log hostile target, focus, pet/group target,
+  boss, and nameplate token changes to the copyable trace window during a pull.
+  Use `/whud unitprobe off` to stop sampling.
+
+## v0.40.0-review.19
+
+- Send `/whud targets` output to the copyable trace window and open it
+  automatically. Keep multi-target debug output in that window.
+
+## v0.40.0-review.18
+
+- Add `/whud targets` to print each visible multi-target row's nameplate token
+  and readable mob name in chat. Include the same mapping in `/whud debug`.
+
+## v0.40.0-review.17
+
+- Compact surviving Multi-Target rows when a mob dies or its nameplate is
+  removed, including during combat when the existing display parent can be
+  moved safely. Defer geometry if the client marks a row protected.
+
+## v0.40.0-review.16
+
+- Keep each mob portrait in place across routine health, target, threat, and
+  marker updates so it does not flash. Reanchor rows only when their compact
+  position changes, including after a confirmed death.
+- Retain previously confirmed DoT rows during restricted combat reads, then
+  recheck them when combat ends.
+- Refresh an existing portrait when the client reports new portrait imagery.
+
+## v0.40.0-review.15
+
+- Add each shown mob's 2D target portrait beside its health bar and place its
+  raid marker over the portrait. Clear both when a nameplate token is reused.
+
+## v0.40.0-review.14
+
+- Show Multi-Target rows only when group threat confirms engagement or a
+  tracked player DoT is safely readable. Hide unrelated and unknown rows and
+  recheck them when combat ends.
+
 ## v0.40.0-review.9
 
 - Add a health bar to each live Multi-Target row and show
