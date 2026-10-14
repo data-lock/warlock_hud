@@ -52,6 +52,7 @@ assert(parsed, err)
 assert(parsed.version and parsed.available.bars and parsed.available.shards)
 assert(parsed.profiles.Default.bars.consumeSize == 35)
 assert(parsed.profiles.Default.bars.multiDotEnabled == true)
+assert(parsed.profiles.Default.bars.multiDotDemonicBrand == true)
 assert(parsed.profiles.Default.bars.multiDotHideOutOfCombat == true)
 assert(parsed.profiles.Default.bars.multiDotAlpha == 0.65)
 assert(parsed.profiles.Default.bars.multiDotScale == 1.25)
@@ -68,11 +69,13 @@ assert(parsed.profiles.Default.bars.colorActiveConsumes == false)
 assert(parsed.profiles.Default.bars.consumesEnabled == nil)
 local db = WarlockHudAPI.GetDB()
 db.profiles.Default.mainSize = 72
+db.profiles.Default.multiDotDemonicBrand = false
 db.profiles.Default.x = 0.8
 db.profiles.Default.enabled.notifySummon = nil
 local count, result = WarlockHudSharing.Import(parsed, { bars=true, notifications=true }, false)
 assert(count == 1, result)
 assert(db.profiles.Default.mainSize == 48 and db.profiles.Default.x == 0.8)
+assert(db.profiles.Default.multiDotDemonicBrand == true)
 assert(db.profiles.Default.enabled.notifySummon == false)
 assert(db.profiles.Default.enabled.soulshards == false)
 assert(db.profiles.Default.shardLayoutAdjusted == true)

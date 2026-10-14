@@ -9,6 +9,7 @@ local scrollFrame, scrollContent, scrollBar
 local visibilityController
 local visibilityDriver = false
 local built, pending, auraWarning, failed = false, false, false, false
+local builtBrand, buildCount = false, 0
 local ROWS = 16
 local SOURCE_UNITS = {}
 for i = 1, ROWS do SOURCE_UNITS[#SOURCE_UNITS + 1] = "nameplate" .. i end
@@ -22,7 +23,7 @@ local BASE_WIDTH, BASE_HEIGHT = 430, 548
 local COUNTDOWN_FONT = "WarlockHudMultiDotCountdownFont"
 local countdownFontReady = false
 local SPELLS = api.Spells
-local DOT_KEYS = api.MainKeys
+local DOT_KEYS = { unpack(api.MainKeys, 1, 6) }
 local DOT_SLOTS = #DOT_KEYS
 local ICON_CROP = (1 - 1 / 1.3) / 2
 local RAID_ICONS = "Interface\\TargetingFrame\\UI-RaidTargetingIcons"
@@ -610,28 +611,73 @@ local function CreateAuraSlot(row, spell, index, size)
             cooldown:SetAllPoints(button)
             cooldown:SetDrawBling(false)
             cooldown:SetDrawEdge(false)
-            cooldown:SetCountdownMillisecondsThreshold(0)
+            cooldown:SetCountdownMillisecondsThreshold(spell.talentEffect and 10 or 0)
             if cooldown.SetCountdownAbbrevThreshold then
                 cooldown:SetCountdownAbbrevThreshold(60)
             end
             if countdownFontReady and cooldown.SetCountdownFont then
                 cooldown:SetCountdownFont(COUNTDOWN_FONT)
             end
+            if spell.talentEffect and cooldown.GetCountdownFontString then
+                local countdownText = cooldown:GetCountdownFontString()
+                if countdownText then
+                    countdownText:ClearAllPoints()
+                    countdownText:SetSize(size, size)
+                    countdownText:SetJustifyH("CENTER")
+                    countdownText:SetJustifyV("MIDDLE")
+                    countdownText:SetPoint("CENTER", button, "CENTER", 3, 0)
+                end
+            end
             if cooldown.SetSwipeColor then
                 cooldown:SetSwipeColor(0, 0, 0, 0.58)
             end
             cooldown:SetReverse(true)
             button:SetDurationCooldown(cooldown)
+            if spell.talentEffect and button.SetApplicationCount then
+                local count = button:CreateFontString(nil, "OVERLAY", "NumberFontNormal")
+                count:SetFont(STANDARD_TEXT_FONT or "Fonts\\FRIZQT__.TTF", 8, "OUTLINE")
+                count:SetSize(10, 9)
+                count:SetJustifyH("LEFT")
+                count:SetPoint("TOPLEFT", button, "TOPLEFT", 1, 0)
+                button:SetApplicationCount(count, {})
+            end
             -- Blizzard owns the aura button and its cooldown. No script
             -- handlers or insecure combat visibility changes are attached.
         end,
     })
 end
 
+local function WantsBrand(p)
+    return p.multiDotDemonicBrand ~= false and WarlockHudRowVisibility
+        and WarlockHudRowVisibility.KnowsDemonicBrand
+        and WarlockHudRowVisibility.KnowsDemonicBrand() == true
+end
+
+local function RetireWindow()
+    if visibilityDriver and UnregisterStateDriver then
+        UnregisterStateDriver(visibilityController, "mtdvisibility")
+    end
+    visibilityDriver = false
+    for _, row in ipairs(rows) do
+        row.auras:SetEnabled(false)
+        row.auras:Hide()
+    end
+    root:Hide()
+    rows, root, visibilityController = {}, nil, nil
+    built = false
+end
+
 local function Build()
     if built or not Safe() then pending = true; return false end
     local p = Profile()
     if not p or not api.IsAddonEnabled() then return false end
+    builtBrand = WantsBrand(p)
+    if builtBrand then
+        DOT_KEYS[7] = "demonicbrand"
+    else
+        DOT_KEYS[7] = nil
+    end
+    DOT_SLOTS = #DOT_KEYS
     if not C_AddOns or not C_AddOns.LoadAddOn then return false end
     if not C_AddOns.IsAddOnLoaded("Blizzard_AuraContainer") then
         local loaded = C_AddOns.LoadAddOn("Blizzard_AuraContainer")
@@ -650,7 +696,11 @@ local function Build()
     local size = ICON_SIZE
     local width = ClampWidth(p.multiDotWidth or BASE_WIDTH * ClampScale(p.multiDotScale))
     local height = ClampHeight(p.multiDotHeight or BASE_HEIGHT * ClampScale(p.multiDotScale))
-    root = CreateFrame("Frame", "WarlockHudMultiTargetWindow", UIParent)
+    buildCount = buildCount + 1
+    local function FrameName(name)
+        return buildCount == 1 and name or nil
+    end
+    root = CreateFrame("Frame", FrameName("WarlockHudMultiTargetWindow"), UIParent)
     root:SetSize(width, height)
     root:SetFrameStrata("MEDIUM")
     root:SetMovable(true)
@@ -676,7 +726,7 @@ local function Build()
     status:SetText("No engaged or dotted targets")
     status:SetShadowColor(0, 0, 0, 1)
     status:SetShadowOffset(1, -1)
-    mover = CreateFrame("Button", "WarlockHudMultiTargetMove", root)
+    mover = CreateFrame("Button", FrameName("WarlockHudMultiTargetMove"), root)
     mover:SetSize(width - 35, 28)
     mover:SetPoint("TOPLEFT", root, "TOPLEFT")
     mover:SetFrameLevel(root:GetFrameLevel() + 1)
@@ -696,7 +746,7 @@ local function Build()
             Position()
         end
     end)
-    local close = CreateFrame("Button", "WarlockHudMultiTargetClose", root)
+    local close = CreateFrame("Button", FrameName("WarlockHudMultiTargetClose"), root)
     close:SetSize(27, 27)
     close:SetPoint("TOPRIGHT", root, "TOPRIGHT", -3, -2)
     close:SetFrameLevel(root:GetFrameLevel() + 5)
@@ -708,7 +758,7 @@ local function Build()
         Profile().multiDotEnabled = false
         ApplyAppearance()
     end)
-    local resize = CreateFrame("Button", "WarlockHudMultiTargetResize", root)
+    local resize = CreateFrame("Button", FrameName("WarlockHudMultiTargetResize"), root)
     resize:SetSize(19, 19)
     resize:SetPoint("BOTTOMRIGHT", root, "BOTTOMRIGHT", -2, 2)
     resize:SetFrameLevel(root:GetFrameLevel() + 5)
@@ -744,14 +794,14 @@ local function Build()
         current.multiDotWidth, current.multiDotHeight = newWidth, newHeight
     end)
     resize:SetScript("OnDragStop", function() resizing = false end)
-    scrollFrame = CreateFrame("ScrollFrame", "WarlockHudMultiTargetScroll", root)
+    scrollFrame = CreateFrame("ScrollFrame", FrameName("WarlockHudMultiTargetScroll"), root)
     scrollFrame:SetPoint("TOPLEFT", root, "TOPLEFT", 7, -50)
     scrollFrame:SetSize(width - 27, height - 57)
     scrollContent = CreateFrame("Frame", nil, scrollFrame)
     scrollContent:SetSize(width - 27, ROWS * ROW_HEIGHT)
     scrollFrame:SetScrollChild(scrollContent)
     scrollFrame:EnableMouseWheel(true)
-    scrollBar = CreateFrame("Slider", "WarlockHudMultiTargetScrollBar", root,
+    scrollBar = CreateFrame("Slider", FrameName("WarlockHudMultiTargetScrollBar"), root,
         "UIPanelScrollBarTemplate")
     scrollBar:SetPoint("TOPRIGHT", root, "TOPRIGHT", -1, -50)
     scrollBar:SetHeight(height - 57)
@@ -857,7 +907,7 @@ local function Build()
             end
         end
         for _, spell in ipairs(SPELLS) do
-            if spell.group ~= 2
+            if spell.group ~= 2 and DOT_KEYS[spell.slot]
                 and (not p.enabled or p.enabled[DOT_KEYS[spell.slot]] ~= false)
                 and (not p.enabled or p.enabled[spell.name] ~= false) then
                 CreateAuraSlot(row, spell, positions[DOT_KEYS[spell.slot]], size)
@@ -880,8 +930,9 @@ end
 local function Refresh()
     local p = Profile()
     if not p then return false end
-    if not built then return Build() end
     if not Safe() then pending = true; return false end
+    if built and WantsBrand(p) ~= builtBrand then RetireWindow() end
+    if not built then return Build() end
     local width = ClampWidth(p.multiDotWidth or BASE_WIDTH * ClampScale(p.multiDotScale))
     local height = ClampHeight(p.multiDotHeight or BASE_HEIGHT * ClampScale(p.multiDotScale))
     ApplyLayout(width, height)
@@ -1072,7 +1123,7 @@ WarlockHudMultiTarget = {
 local events = CreateFrame("Frame")
 for _, event in ipairs({ "PLAYER_LOGIN", "PLAYER_REGEN_ENABLED",
     "PLAYER_REGEN_DISABLED",
-    "ACTIVE_TALENT_GROUP_CHANGED",
+    "ACTIVE_TALENT_GROUP_CHANGED", "PLAYER_TALENT_UPDATE", "SPELLS_CHANGED",
     "NAME_PLATE_UNIT_ADDED", "NAME_PLATE_UNIT_REMOVED",
     "UNIT_PORTRAIT_UPDATE", "PORTRAITS_UPDATED",
     "PLAYER_TARGET_CHANGED", "RAID_TARGET_UPDATE", "GROUP_ROSTER_UPDATE",
@@ -1083,7 +1134,8 @@ for _, event in ipairs({ "PLAYER_LOGIN", "PLAYER_REGEN_ENABLED",
 end
 events:SetScript("OnEvent", function(_, event, unit)
     if event == "PLAYER_LOGIN" or event == "PLAYER_REGEN_ENABLED"
-        or event == "ACTIVE_TALENT_GROUP_CHANGED" then
+        or event == "ACTIVE_TALENT_GROUP_CHANGED"
+        or event == "PLAYER_TALENT_UPDATE" or event == "SPELLS_CHANGED" then
         if pending or event ~= "PLAYER_REGEN_ENABLED" then GuardedRefresh() end
     end
     if not built then return end

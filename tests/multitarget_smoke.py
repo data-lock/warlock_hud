@@ -23,10 +23,12 @@ combat = false
 profile = { multiDotEnabled = true, multiDotSize = 24,
     enabled = { executeMarker = true },
     mainOrder = {'immolate', 'corruption', 'bane', 'curse', 'drain', 'siphonlife'} }
+brandKnown = false
+WarlockHudRowVisibility = { KnowsDemonicBrand = function() return brandKnown end }
 cursorX, cursorY = 500, 500
 GetCursorPosition = function() return cursorX, cursorY end
 WarlockHudAPI = {
-    MainKeys = {'corruption', 'bane', 'curse', 'drain', 'immolate', 'siphonlife'},
+    MainKeys = {'corruption', 'bane', 'curse', 'drain', 'immolate', 'siphonlife', 'demonicbrand'},
     Spells = {
         {name='Corruption', slot=1, ids={172}},
         {name='Bane of Agony', slot=2, ids={980}},
@@ -34,6 +36,7 @@ WarlockHudAPI = {
         {name='Drain Life', slot=4, ids={689}},
         {name='Immolate', slot=5, ids={348}},
         {name='Siphon Life', slot=6, ids={18265}},
+        {name='Demonic Brand', slot=7, ids={1293696}, talentEffect=true},
     },
     GetDotDefaultSpell = function() return nil end,
     GetProfile = function() return profile end,
@@ -517,6 +520,11 @@ eventFrame.scripts.OnEvent(nil, 'PLAYER_REGEN_ENABLED')
 assert(root.shown == false)
 close.scripts.OnClick()
 assert(profile.multiDotEnabled == false)
+profile.multiDotEnabled = true
+profile.multiDotHideOutOfCombat = false
+brandKnown = true
+assert(WarlockHudMultiTarget.Refresh() == true)
+assert(root.shown == false) -- retired window and its native slots are hidden
 ''')
 
 deferred = LuaRuntime(unpack_returned_tuples=True)

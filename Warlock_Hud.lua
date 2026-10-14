@@ -15,6 +15,9 @@ local SPELLS = {
     { name = "Drain Life", slot = 4, ids = { 689, 699, 709, 7651, 11699, 11700 } },
     { name = "Drain Mana", slot = 4, ids = { 5138, 6226, 11703, 11704 } },
     { name = "Siphon Life", slot = 6, ids = { 18265, 18879, 18880, 18881 } },
+    -- Brand is a target effect, not periodic damage. The aura ID is distinct
+    -- from the talent spell and the pet's consumption effect.
+    { name = "Demonic Brand", slot = 7, ids = { 1293696 }, talentEffect = true },
     { name = "Fear", group = 2, slot = 3, ids = { 5782, 6213, 6215 } },
 }
 local ICON_SIZE = 48
@@ -64,7 +67,7 @@ local function IsSoulShardBag(bag)
         or type(family) ~= "number" then return nil end
     return math.floor(family / 4) % 2 == 1
 end
-local MAIN_KEYS = { "corruption", "bane", "curse", "drain", "immolate", "siphonlife" }
+local MAIN_KEYS = { "corruption", "bane", "curse", "drain", "immolate", "siphonlife", "demonicbrand" }
 local DEFAULT_SUMMON_KEYWORDS = "123, sum, summ"
 local DOT_DEFAULT_SLOTS = { bane = 2, curse = 3, drain = 4 }
 local COOLDOWN_KEYS = { "healthstone", "soulstone", "fear", "conflagrate", "racial1", "racial2", "demon" }
@@ -520,6 +523,24 @@ local function KnownSpell(spell)
     return not checked
 end
 
+local function KnowsDemonicBrand()
+    -- Passive talents may not be reported as known spellbook spells. Prefer
+    -- the active talent group's learned rank when the talent API is present.
+    if GetNumTalents and GetTalentInfo then
+        local ok, count = pcall(GetNumTalents, 2)
+        if ok and type(count) == "number" then
+            for index = 1, count do
+                local found, name, _, _, _, rank = pcall(GetTalentInfo, 2, index)
+                if found and name == "Demonic Brand" then
+                    return type(rank) == "number" and rank > 0
+                end
+            end
+        end
+    end
+    return KnownSpellID(1293695) == true
+end
+WarlockHudRowVisibility.KnowsDemonicBrand = KnowsDemonicBrand
+
 function WarlockHudRowVisibility.ConflagrateSpellID()
     local spellID = C_Spell and C_Spell.GetSpellIDForSpellIdentifier
         and C_Spell.GetSpellIDForSpellIdentifier("Conflagrate")
@@ -560,7 +581,9 @@ local function VisibleOrder(order)
     local visible = {}
     for _, key in ipairs(order) do
         local hasSpell = true
-        if key == "fear" or key == "corruption" or key == "bane"
+        if key == "demonicbrand" then
+            hasSpell = KnowsDemonicBrand() and Enabled("Demonic Brand")
+        elseif key == "fear" or key == "corruption" or key == "bane"
             or key == "curse" or key == "drain" or key == "immolate"
             or key == "siphonlife" then
             hasSpell = false
@@ -1867,13 +1890,15 @@ local function Build()
         end
         local currentSpellID = C_Spell and C_Spell.GetSpellIDForSpellIdentifier
             and C_Spell.GetSpellIDForSpellIdentifier(spell.name)
-        if currentSpellID then
+        if currentSpellID and not spell.talentEffect then
             includeSpellIDs[currentSpellID] = true
         end
         local groupKey = spell.group == 2 and "fear" or MAIN_KEYS[spell.slot]
         local x = spell.group == 2 and CooldownX(groupKey)
             or Position(mainOrder, groupKey, ICON_SIZE)
-        if x and Enabled(spell.name) and KnownSpell(spell) and next(includeSpellIDs) then
+        if x and Enabled(spell.name)
+            and (spell.talentEffect and KnowsDemonicBrand() or KnownSpell(spell))
+            and next(includeSpellIDs) then
             local anchor = spell.group == 2 and rowFrames.cooldownAnchor or rowFrames.hudAnchor
             local iconSize = spell.group == 2 and COOLDOWN_ICON_SIZE or ICON_SIZE
             if not baseCreated[groupKey] then
@@ -1958,6 +1983,13 @@ local function Build()
                         cooldown:SetReverse(true)
                     end
                     button:SetDurationCooldown(cooldown)
+                    if spell.talentEffect and button.SetApplicationCount then
+                        -- Blizzard writes application counts directly to this
+                        -- FontString, including while aura data is secret.
+                        local count = button:CreateFontString(nil, "OVERLAY", "NumberFontNormal")
+                        count:SetPoint("BOTTOMRIGHT", button, "BOTTOMRIGHT", -2, 2)
+                        button:SetApplicationCount(count, {})
+                    end
                 end,
             })
         end

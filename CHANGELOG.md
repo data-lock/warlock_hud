@@ -1,5 +1,23 @@
 # Changelog
 
+## v0.41.0
+
+- Add Demonic Brand as a tracked target effect when the talent is learned.
+  The Target DoTs row and Multi-Target tracker use Blizzard-native aura
+  countdowns and application-count text; the count was observed in game.
+- Add independent visibility choices for the main row and Multi-Target
+  tracker. Profile sharing preserves the Multi-Target choice, including its
+  enabled default.
+- Keep each tracked enemy's Brand count and countdown separate. This was
+  checked with two enemies in game.
+- Refresh the Multi-Target native slots after a safe talent, spellbook, spec,
+  or setting change. The setting toggle was checked in game; respec remains
+  untested.
+- Brand's debuff ID comes from beta client data and still needs confirmation
+  against the running client's aura ID. Same-target two-Warlock filtering and
+  reused-nameplate combat behavior remain untested in game.
+- Thanks to **stevegeoffmcgeofforington** for recommending Demonic Brand tracking.
+
 ## v0.40.0
 
 - Add the opt-in Multi-Target DoT tracker with up to 16 view-only enemy rows,

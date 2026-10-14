@@ -9,7 +9,7 @@ local NUMERIC_DEFAULTS = {
 
 local LABELS = {
     corruption = "Corruption", bane = "Banes", curse = "Curses", drain = "Drains",
-    immolate = "Immolate", siphonlife = "Siphon Life",
+    immolate = "Immolate", siphonlife = "Siphon Life", demonicbrand = "Demonic Brand",
     healthstone = "Healthstone", soulstone = "Soulstone", fear = "Fear",
     conflagrate = "Conflagrate",
     demon = "Missing Demon Reminder", sacrifice = "Demonic Sacrifice",
@@ -36,6 +36,7 @@ local ICON_HELP = {
     curse = "Curses share one Target DoTs icon slot. Choose its idle image on Tracked Auras.",
     drain = "Drains share one Target DoTs icon slot. Choose its idle image on Tracked Auras.",
     siphonlife = "Siphon Life appears when talented and tracks its target DoT.",
+    demonicbrand = "Tracks the Demonic Brand target effect when talented. Blizzard renders its duration; remaining attack counts need in-game verification.",
     healthstone = "Shows your Healthstone and its item cooldown.",
     soulstone = "Shows your Soulstone and its item cooldown.",
     fear = "Shows Fear in the Utility row when available.",
@@ -237,7 +238,8 @@ local function IconForKey(key)
     end
     local spellIDs = {
         corruption = 6222, bane = 1014, drain = 1120, immolate = 348,
-        siphonlife = 18265, fear = 5782, conflagrate = 1293817,
+        siphonlife = 18265, demonicbrand = 1293696,
+        fear = 5782, conflagrate = 1293817,
         armor = 706, wellfed = 19705, flask = 17628,
         spelldamage = 16889, shadow = 11474, fire = 26276,
         manaregen = 24363,
@@ -264,7 +266,7 @@ local function IconForKey(key)
     if key == "curse" then
         return "Interface\\Icons\\Spell_Shadow_CurseOfMannoroth"
     end
-    return C_Spell and C_Spell.GetSpellTexture(spellIDs[key])
+    return spellIDs[key] and C_Spell and C_Spell.GetSpellTexture(spellIDs[key])
 end
 
 local iconDemo
@@ -543,6 +545,13 @@ Check(multiDotPanel, 20, -181, "Hide outside combat",
         if WarlockHudMultiTarget then WarlockHudMultiTarget.UpdateAppearance() end
     end,
     "Show the window only during combat while it is enabled. Saved immediately.", false)
+Check(multiDotPanel, 345, -145, "Show Demonic Brand",
+    function() return Profile().multiDotDemonicBrand ~= false end,
+    function(value)
+        Profile().multiDotDemonicBrand = value and nil or false
+        if WarlockHudMultiTarget then WarlockHudMultiTarget.Refresh() end
+    end,
+    "Saves now. Native aura slots refresh when combat and aura protection allow it.", false)
 Button(multiDotPanel, "Reset position", 20, -229, 130, function()
     if InCombatLockdown() then return end
     Profile().multiDotX, Profile().multiDotY = nil, nil
@@ -582,7 +591,7 @@ Text(multiDotPanel, "Toggle and adjust outside combat. Drag the title to move or
     20, -318, "GameFontHighlightSmall")
 Text(multiDotPanel, "A nameplate token can be reused; its old label is cleared on removal.",
     20, -349, "GameFontHighlightSmall")
-Text(multiDotPanel, "Native aura slots mirror the six Target DoTs categories.",
+Text(multiDotPanel, "Native aura slots show your tracked effects, including Brand when talented.",
     20, -374, "GameFontHighlightSmall")
 Text(multiDotPanel, "Each row shows a portrait, name, health bar, and 20% health mark.",
     20, -399, "GameFontHighlightSmall")
@@ -756,11 +765,11 @@ Text(spells, "Choose which auras can appear. Banes, Curses, and Drains each shar
 Text(spells, "Default image changes the idle icon only.",
     20, -69, "GameFontHighlightSmall")
 local spellGroups = {
-    { title = "Core DoTs", x = 20, y = -90,
+    { title = "Core DoTs and effects", x = 20, y = -90,
         contains = function(spell)
-            return spell.slot == 1 or spell.slot == 5 or spell.slot == 6
+            return spell.slot == 1 or spell.slot == 5 or spell.slot == 6 or spell.slot == 7
         end },
-    { title = "Banes", x = 20, y = -225, defaultKey = "bane", menuX = 115,
+    { title = "Banes", x = 20, y = -245, defaultKey = "bane", menuX = 115,
         contains = function(spell) return spell.slot == 2 end },
     { title = "Drains", x = 20, y = -370, defaultKey = "drain", menuX = 115,
         contains = function(spell) return spell.slot == 4 end },
@@ -778,6 +787,8 @@ local function SpellHelp(spell)
         return "Curses share one Target DoTs icon slot. Enable this aura to make it eligible."
     elseif spell.slot == 4 then
         return "Drains share one Target DoTs icon slot. Enable this aura to make it eligible."
+    elseif spell.talentEffect then
+        return "Tracks Demonic Brand when talented. Blizzard renders its duration; remaining attack counts need in-game verification."
     end
     return "Shows this aura on Target DoTs when active."
 end
