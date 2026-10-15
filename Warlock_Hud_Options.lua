@@ -661,65 +661,19 @@ ResetPageButton(layout, "Rows & Layout", function()
     MarkChanged()
 end)
 
-local consumeLayout = Panel("Warlock HUD - Consumes")
-Text(consumeLayout, "Move this row in Edit Mode. Drag icons to reorder them; use the checks to show or hide them.",
-    20, -50, "GameFontHighlightSmall")
-Check(consumeLayout, 20, -80, "Enable Consumes row",
-    function() return Profile().consumesEnabled ~= false end,
-    function(value)
-        Profile().consumesEnabled = value
-        if api.RefreshRowVisibility then api.RefreshRowVisibility() end
-    end, "The row stays movable in Edit Mode when disabled.", false)
-Text(consumeLayout, "Icon size", 20, -125, "GameFontNormal")
-SizeSlider(consumeLayout, "Consume icon size", "consumeSize", 16, 64, 20, -150)
-OrderSection(consumeLayout, "Tracked consumables", "consumeOrder", api.ConsumeKeys,
-    -205, nil, function()
-        local defaults = DefaultProfile()
-        ResetRowValues("consumeSize", "consumeOrder", api.ConsumeKeys, defaults)
-        for _, key in ipairs(api.ConsumeKeys) do
-            Profile().enabled[key] = defaults.enabled[key]
-        end
-        Profile().consumeReminders = defaults.consumeReminders
-        Profile().colorActiveConsumes = nil
-        MarkChanged()
-    end)
-Text(consumeLayout, "Checked icons are tracked. Only checked reminders flash when confirmed missing.",
-    20, -325, "GameFontHighlightSmall")
-Check(consumeLayout, 20, -345, "Color when active; grey when missing",
-    function() return Profile().colorActiveConsumes ~= false end,
-    function(value)
-        if value then Profile().colorActiveConsumes = nil
-        else Profile().colorActiveConsumes = false end
-    end, "On (default): color when active, grey when missing. Off reverses the colors.")
-Text(consumeLayout, "Remind when missing", 20, -380, "GameFontNormal")
-for index, option in ipairs({
-    { "wellfed", "Well Fed" }, { "flask", "Flask" },
-    { "spelldamage", "Spell Damage" }, { "shadow", "Shadow Damage" },
-    { "fire", "Fire Damage" }, { "wizardoil", "Wizard Oil" },
-    { "manaregen", "Mana Regeneration" },
-}) do
-    local key, label = option[1], option[2]
-    Check(consumeLayout, 20 + ((index - 1) % 2) * 340,
-        -399 - math.floor((index - 1) / 2) * 27, label,
-        function() return Profile().consumeReminders[key] == true end,
-        function(value)
-            Profile().consumeReminders[key] = value
-            if api.RefreshConsumableGlows then api.RefreshConsumableGlows() end
-        end, "Only flashes when this tracker is enabled and the effect is confirmed missing.",
-        false)
-end
-ResetPageButton(consumeLayout, "Consumes", function()
-    local defaults = DefaultProfile()
-    ResetRowValues("consumeSize", "consumeOrder", api.ConsumeKeys, defaults)
-    for _, key in ipairs(api.ConsumeKeys) do
-        Profile().enabled[key] = defaults.enabled[key]
-    end
-    Profile().consumeReminders = defaults.consumeReminders
-    Profile().consumesEnabled = nil
-    Profile().showOutOfCombat.consumes = nil
-    Profile().colorActiveConsumes = nil
-    MarkChanged()
-end)
+local consumeLayout = WarlockHudOptionsRows.BuildConsumes({
+    api = api,
+    Panel = Panel,
+    Text = Text,
+    Check = Check,
+    SizeSlider = SizeSlider,
+    OrderSection = OrderSection,
+    ResetRowValues = ResetRowValues,
+    ResetPageButton = ResetPageButton,
+    DefaultProfile = DefaultProfile,
+    Profile = Profile,
+    MarkChanged = MarkChanged,
+})
 
 local buffLayout = WarlockHudOptionsRows.BuildBuffs({
     api = api,
