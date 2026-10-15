@@ -29,6 +29,7 @@ jobs:
           uv run --with lupa python tests/consumables_smoke.py
           uv run --with lupa python tests/multitarget_smoke.py
           uv run --with lupa python tests/debug_smoke.py
+          uv run --with lupa python tests/shards_smoke.py
           uv run python tests/package_smoke.py
       - name: Run assignment smoke test with Lua 5.1
         run: |
