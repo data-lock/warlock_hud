@@ -206,6 +206,7 @@ end
 lua.execute(Path("Warlock_Hud_MultiTargetIdentity.lua").read_text(encoding="utf-8"))
 lua.execute(Path("Warlock_Hud_MultiTargetLayout.lua").read_text(encoding="utf-8"))
 lua.execute(Path("Warlock_Hud_MultiTargetAuras.lua").read_text(encoding="utf-8"))
+lua.execute(Path("Warlock_Hud_MultiTargetProbe.lua").read_text(encoding="utf-8"))
 lua.execute(Path("Warlock_Hud_MultiTarget.lua").read_text(encoding="utf-8"))
 lua.execute(r'''
 eventFrame.scripts.OnEvent(nil, 'PLAYER_LOGIN')
@@ -343,6 +344,11 @@ WarlockHudMultiTarget.PrintTargets()
 assert(traceOpened and trace[#trace]:find('Multi-Target: nameplate2 = First Mob; GUID=', 1, true))
 assert(trace[#trace]:find('; direct marker=', 1, true))
 assert(#chat == 0)
+WarlockHudMultiTarget.Probe('on')
+assert(WarlockHudMultiTarget.ProbeRunning() == true)
+assert(trace[#trace]:find('hostile tokens currently resolved', 1, true))
+WarlockHudMultiTarget.Probe('off')
+assert(WarlockHudMultiTarget.ProbeRunning() == false)
 plates.nameplate3 = 'Dotted Mob'
 dots.nameplate3 = 172
 eventFrame.scripts.OnEvent(nil, 'NAME_PLATE_UNIT_ADDED', 'nameplate3')
@@ -663,6 +669,7 @@ end
 deferred.execute(Path("Warlock_Hud_MultiTargetIdentity.lua").read_text(encoding="utf-8"))
 deferred.execute(Path("Warlock_Hud_MultiTargetLayout.lua").read_text(encoding="utf-8"))
 deferred.execute(Path("Warlock_Hud_MultiTargetAuras.lua").read_text(encoding="utf-8"))
+deferred.execute(Path("Warlock_Hud_MultiTargetProbe.lua").read_text(encoding="utf-8"))
 deferred.execute(Path("Warlock_Hud_MultiTarget.lua").read_text(encoding="utf-8"))
 deferred.execute("assert(WarlockHudMultiTarget.Refresh() == false)")
 print("Multi-target fixed-token smoke tests OK")
