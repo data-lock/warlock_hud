@@ -159,6 +159,9 @@ function methods:AddAuraSlot(key, filter, options)
     local aura = CreateFrame('AuraButton', nil, self)
     options.initializeFrame(aura)
 end
+function methods:UpdateAllAuras()
+    self.auraRefreshes = (rawget(self, 'auraRefreshes') or 0) + 1
+end
 function CreateFrame(kind, name, parent)
     local frame = setmetatable({kind=kind, parent=parent, attributes={},
         scripts={}, slots={}, children={}}, {__index=methods})
@@ -179,6 +182,7 @@ UnregisterStateDriver = function(button, state)
     if state == 'mtdvisibility' then button.driver = nil end
 end
 ''')
+lua.execute(Path("Warlock_Hud_MultiTargetIdentity.lua").read_text(encoding="utf-8"))
 lua.execute(Path("Warlock_Hud_MultiTarget.lua").read_text(encoding="utf-8"))
 lua.execute(r'''
 eventFrame.scripts.OnEvent(nil, 'PLAYER_LOGIN')
@@ -404,7 +408,14 @@ local unknownDisplay = Display(5)
 assert(unknownDisplay.alpha == 0 and unknownDisplay.children[5].text == '')
 assert(status.text == '2 engaged or dotted targets')
 plates.nameplate2 = nil
+local reusedContainer
+for _, child in ipairs(display.children[6].children) do
+    if child.kind == 'AuraContainer' then reusedContainer = child end
+end
+assert(reusedContainer)
+local refreshesBeforeReuse = rawget(reusedContainer, 'auraRefreshes') or 0
 eventFrame.scripts.OnEvent(nil, 'NAME_PLATE_UNIT_REMOVED', 'nameplate2')
+assert((rawget(reusedContainer, 'auraRefreshes') or 0) == refreshesBeforeReuse + 1)
 assert(name.text == '')
 assert(display.alpha == 0)
 assert(rawget(portrait, 'portraitUnit') == nil and marker.shown == false)
@@ -415,6 +426,7 @@ assert(dottedDisplay.point[5] == 0)
 plates.nameplate2 = 'Second Mob'
 raidMarkers.nameplate2 = nil
 eventFrame.scripts.OnEvent(nil, 'NAME_PLATE_UNIT_ADDED', 'nameplate2')
+assert((rawget(reusedContainer, 'auraRefreshes') or 0) == refreshesBeforeReuse + 2)
 assert(name.text == 'Second Mob' and healthText.text == '45 / 150  30%')
 assert(portrait.portraitUnit == 'nameplate2' and marker.shown == false)
 assert(portraitCalls > firstPortraitCalls)
@@ -540,6 +552,7 @@ CreateFrame = function()
     return { RegisterEvent = function() end, SetScript = function(self, _, fn) self.event = fn end }
 end
 ''')
+deferred.execute(Path("Warlock_Hud_MultiTargetIdentity.lua").read_text(encoding="utf-8"))
 deferred.execute(Path("Warlock_Hud_MultiTarget.lua").read_text(encoding="utf-8"))
 deferred.execute("assert(WarlockHudMultiTarget.Refresh() == false)")
 print("Multi-target fixed-token smoke tests OK")
