@@ -6,7 +6,6 @@ local alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789
 local sections = {
     bars = { mainSize="number", cooldownSize="number", dotTimerMilliseconds="boolean",
         multiDotEnabled="boolean",
-        multiDotDemonicBrand="boolean",
         multiDotHideOutOfCombat="boolean", multiDotAlpha="number",
         multiDotScale="number", multiDotWidth="number", multiDotHeight="number",
         consumesSchemaVersion="number",
@@ -151,8 +150,6 @@ local function ExportValue(profile, section, key)
         return flags
     elseif key == "shardVisible" then
         return profile.enabled.soulshards ~= false
-    elseif key == "multiDotDemonicBrand" then
-        return profile.multiDotDemonicBrand ~= false
     elseif key == "enabled" then
         local flags = {}
         for name, value in pairs(profile.enabled or {}) do

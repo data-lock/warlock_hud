@@ -36,7 +36,7 @@ Icons react to target availability and range, with configurable coloring for act
 
 Track your DoTs on up to 16 enemies in a compact, scrollable window. Each row shows a portrait, name, health bar, raid marker where available, a 20% health mark, and Blizzard-native DoT icons with countdowns. The tracker can find enemies through visible nameplates and player, party, or raid target tokens when it can confirm combat involvement or one of your DoTs.
 
-When talented, Demonic Brand can also appear on each tracked enemy with its own native countdown and application count. Its tracker visibility is separate from the main HUD setting and is saved per profile.
+When talented and enabled in Target DoTs settings, Demonic Brand can also appear on each tracked enemy with its own native countdown and application count.
 
 The window is **off by default**. Outside combat, type **`/whud mtd`** to open or close it. You can move and resize it, set its transparency, or choose to hide it outside combat. **Toggling and adjustments are available only outside combat.** The list is view-only; select enemies with world nameplates or Tab. Mobs the client does not expose through these unit tokens cannot appear.
 

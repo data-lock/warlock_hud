@@ -446,15 +446,13 @@ local function Build()
             if not preview then
                 for _, spell in ipairs(SPELLS) do
                     if spell.group ~= 2 and SLOT_KEYS[spell.slot] == key
-                        and (key == "demonicbrand" or not p.enabled
-                            or p.enabled[spell.name] ~= false) then
+                        and (not p.enabled or p.enabled[spell.name] ~= false) then
                         preview = spell
                         break
                     end
                 end
             end
-            if preview and (key == "demonicbrand" or not p.enabled
-                or p.enabled[key] ~= false) then
+            if preview and (not p.enabled or p.enabled[key] ~= false) then
                 local idle = iconHolder:CreateTexture(nil, "ARTWORK")
                 idle:SetSize(size, size)
                 PlaceDot(idle, display, positions[key], size)
@@ -468,8 +466,7 @@ local function Build()
         end
         for _, spell in ipairs(SPELLS) do
             if spell.group ~= 2 and active[SLOT_KEYS[spell.slot]]
-                and (SLOT_KEYS[spell.slot] == "demonicbrand" or not p.enabled
-                    or p.enabled[spell.name] ~= false) then
+                and (not p.enabled or p.enabled[spell.name] ~= false) then
                 CreateAuraSlot(row, spell, positions[SLOT_KEYS[spell.slot]], size)
             end
         end

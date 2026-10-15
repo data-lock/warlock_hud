@@ -27,13 +27,6 @@ function WarlockHudOptionsMultiTarget.Build(context)
             if WarlockHudMultiTarget then WarlockHudMultiTarget.UpdateAppearance() end
         end,
         "Show the window only during combat while it is enabled. Saved immediately.", false)
-    Check(multiDotPanel, 345, -145, "Show Demonic Brand",
-        function() return Profile().multiDotDemonicBrand ~= false end,
-        function(value)
-            Profile().multiDotDemonicBrand = value and nil or false
-            if WarlockHudMultiTarget then WarlockHudMultiTarget.Refresh() end
-        end,
-        "Saves now. Native aura slots refresh when combat and aura protection allow it.", false)
     Button(multiDotPanel, "Reset position", 20, -229, 130, function()
         if InCombatLockdown() then return end
         Profile().multiDotX, Profile().multiDotY = nil, nil
@@ -73,7 +66,7 @@ function WarlockHudOptionsMultiTarget.Build(context)
         20, -318, "GameFontHighlightSmall")
     Text(multiDotPanel, "A nameplate token can be reused; its old label is cleared on removal.",
         20, -349, "GameFontHighlightSmall")
-    Text(multiDotPanel, "Native aura slots show your tracked effects, including Brand when talented.",
+    Text(multiDotPanel, "Native aura slots show tracked effects. Brand follows Target DoTs settings.",
         20, -374, "GameFontHighlightSmall")
     Text(multiDotPanel, "Each row shows a portrait, name, health bar, and 20% health mark.",
         20, -399, "GameFontHighlightSmall")

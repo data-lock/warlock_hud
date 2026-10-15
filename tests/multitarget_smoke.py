@@ -44,7 +44,8 @@ WarlockHudAPI = {
         local keys = {}
         for _, key in ipairs(profile.mainOrder) do
             if key == 'demonicbrand' then
-                if brandKnown and profile.multiDotDemonicBrand ~= false then
+                if brandKnown and profile.enabled['Demonic Brand'] ~= false
+                    and profile.enabled.demonicbrand ~= false then
                     keys[#keys + 1] = key
                 end
             elseif profile.enabled[key] ~= false then
@@ -565,8 +566,6 @@ close.scripts.OnClick()
 assert(profile.multiDotEnabled == false)
 profile.multiDotEnabled = true
 profile.multiDotHideOutOfCombat = false
-profile.enabled['Demonic Brand'] = false -- main HUD preference stays independent
-profile.enabled.demonicbrand = false
 brandKnown = true
 assert(WarlockHudMultiTarget.Refresh() == true)
 assert(root.shown == false) -- retired window and its native slots are hidden
@@ -641,9 +640,7 @@ for _, child in ipairs(compactDisplay.children[6].children) do
 end
 assert(compactContainer and #compactContainer.slots == 5)
 assert(compactDisplay.width + 8 + 4 * 27 + 24 <= compactViewport.width)
-profile.enabled['Demonic Brand'] = nil
-profile.enabled.demonicbrand = nil
-profile.multiDotDemonicBrand = false
+profile.enabled['Demonic Brand'] = false
 assert(WarlockHudMultiTarget.Refresh() == true)
 local noBrandRoot, noBrandViewport = LatestWindow()
 assert(noBrandRoot ~= compactRoot)
@@ -652,10 +649,20 @@ for _, child in ipairs(noBrandViewport.scrollChild.children[1].children[6].child
     if child.kind == 'AuraContainer' then noBrandContainer = child end
 end
 assert(noBrandContainer and #noBrandContainer.slots == 4)
+profile.enabled['Demonic Brand'] = nil
+profile.enabled.demonicbrand = false
+assert(WarlockHudMultiTarget.Refresh() == true)
+local noBrandRowRoot, noBrandRowViewport = LatestWindow()
+assert(noBrandRowRoot == noBrandRoot)
+local noBrandRowContainer
+for _, child in ipairs(noBrandRowViewport.scrollChild.children[1].children[6].children) do
+    if child.kind == 'AuraContainer' then noBrandRowContainer = child end
+end
+assert(noBrandRowContainer and #noBrandRowContainer.slots == 4)
 profile.dotTimerMilliseconds = false
 assert(WarlockHudMultiTarget.Refresh() == true)
 local secondsRoot, secondsViewport = LatestWindow()
-assert(secondsRoot ~= noBrandRoot)
+assert(secondsRoot ~= noBrandRowRoot)
 local secondsContainer
 for _, child in ipairs(secondsViewport.scrollChild.children[1].children[6].children) do
     if child.kind == 'AuraContainer' then secondsContainer = child end

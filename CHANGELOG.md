@@ -1,5 +1,12 @@
 # Changelog
 
+## v0.41.1-review.42 (internal)
+
+- Remove the separate Multi-Target Demonic Brand checkbox. The Target DoTs
+  tracking settings now control Brand in both displays.
+- Older profiles retain their Target DoTs preference; the retired Multi-Target
+  Brand preference is ignored.
+
 ## v0.41.1-review.41 (internal)
 
 - Add a per-profile Tracked Auras toggle for native decimal countdowns on

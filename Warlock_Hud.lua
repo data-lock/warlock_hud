@@ -297,17 +297,12 @@ function WarlockHudRowVisibility.RefreshConflagrate()
     if not immolateActive then entry.icon:SetAlpha(1) end
 end
 
-local function VisibleOrder(order, multiTarget)
+local function VisibleOrder(order)
     local visible = {}
     for _, key in ipairs(order) do
         local hasSpell = true
         if key == "demonicbrand" then
-            if multiTarget then
-                hasSpell = KnowsDemonicBrand()
-                    and profile.multiDotDemonicBrand ~= false
-            else
-                hasSpell = KnowsDemonicBrand() and Enabled("Demonic Brand")
-            end
+            hasSpell = KnowsDemonicBrand() and Enabled("Demonic Brand")
         elseif key == "fear" or MAIN_KEY_SET[key] then
             hasSpell = false
             for _, spell in ipairs(SPELLS) do
@@ -327,7 +322,7 @@ local function VisibleOrder(order, multiTarget)
             hasSpell = KnownSpellID(688) == true
                 and groupBuffIcons.demonLayoutVisible == true
         end
-        if (multiTarget and key == "demonicbrand" or Enabled(key)) and hasSpell then
+        if Enabled(key) and hasSpell then
             visible[#visible + 1] = key
         end
     end
@@ -2403,7 +2398,7 @@ WarlockHudAPI = {
     ActiveTalentGroup = ActiveTalentGroup,
     MainKeys = MAIN_KEYS,
     GetMultiTargetEffectOrder = function()
-        return profile and VisibleOrder(profile.mainOrder, true) or {}
+        return profile and VisibleOrder(profile.mainOrder) or {}
     end,
     CooldownKeys = COOLDOWN_KEYS,
     BuffKeys = BUFF_KEYS,
