@@ -1172,6 +1172,79 @@ local function BuildBuffAnchor(saved, buffOrder)
     rowFrames.buffMover:Hide()
 end
 
+local function BuildConsumeAnchor(saved, consumeOrder)
+    local consumeWidth = math.max(1, #consumeOrder * consumeState.size
+        + math.max(0, #consumeOrder - 1) * ICON_SPACING)
+    consumeState.anchor = CreateFrame("Frame", nil, WarlockHudRowVisibility.masks.consumes)
+    consumeState.anchor:SetSize(consumeWidth, consumeState.size)
+    consumeState.anchor:SetMovable(true)
+    consumeState.anchor:SetClampedToScreen(true)
+    if type(saved.consumeX) == "number" and type(saved.consumeY) == "number" then
+        if not saved.consumeLeftAligned then
+            local buffCenterX, buffCenterY = rowFrames.buffAnchor:GetCenter()
+            local defaultY = buffCenterY
+                and buffCenterY + (BUFF_ICON_SIZE + consumeState.size) / 2 + 18
+            if buffCenterX and defaultY and rowFrames.buffAnchor:GetLeft()
+                and math.abs(saved.consumeX * UIParent:GetWidth() - buffCenterX) < 1
+                and math.abs(saved.consumeY * UIParent:GetHeight() - defaultY) < 1 then
+                saved.consumeX = rowFrames.buffAnchor:GetLeft() / UIParent:GetWidth()
+            else
+                saved.consumeX = saved.consumeX - consumeWidth / (2 * UIParent:GetWidth())
+            end
+            saved.consumeLeftAligned = true
+        end
+        consumeState.anchor:SetPoint("LEFT", UIParent, "BOTTOMLEFT",
+            saved.consumeX * UIParent:GetWidth(), saved.consumeY * UIParent:GetHeight())
+    else
+        local buffLeftX = rowFrames.buffAnchor:GetLeft()
+        local _, buffCenterY = rowFrames.buffAnchor:GetCenter()
+        buffLeftX = buffLeftX or UIParent:GetWidth() / 2
+        buffCenterY = buffCenterY or UIParent:GetHeight() / 2
+        local consumeY = buffCenterY + (BUFF_ICON_SIZE + consumeState.size) / 2 + 18
+        consumeState.anchor:SetPoint("LEFT", UIParent, "BOTTOMLEFT", buffLeftX, consumeY)
+        saved.consumeX = buffLeftX / UIParent:GetWidth()
+        saved.consumeY = consumeY / UIParent:GetHeight()
+        saved.consumeLeftAligned = true
+    end
+    consumeState.mover = CreateFrame("Button", nil, consumeState.anchor)
+    consumeState.mover:SetAllPoints(consumeState.anchor)
+    consumeState.mover:SetFrameStrata("DIALOG")
+    consumeState.mover:EnableMouse(true)
+    consumeState.mover:RegisterForDrag("LeftButton")
+    local consumeShade = consumeState.mover:CreateTexture(nil, "BACKGROUND")
+    consumeShade:SetAllPoints(consumeState.mover)
+    consumeShade:SetColorTexture(0, 0.65, 0.85, 0.25)
+    local consumeLabel = consumeState.mover:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
+    consumeLabel:SetPoint("BOTTOM", consumeState.mover, "TOP", 0, 5)
+    consumeLabel:SetText("Warlock HUD Consumes")
+    consumeState.mover:SetScript("OnDragStart", function()
+        if not InCombatLockdown() then consumeState.anchor:StartMoving() end
+    end)
+    consumeState.mover:SetScript("OnDragStop", function()
+        consumeState.anchor:StopMovingOrSizing()
+        local leftX = consumeState.anchor:GetLeft()
+        local _, centerY = consumeState.anchor:GetCenter()
+        if leftX and centerY then
+            local grid = EditModeManagerFrame and EditModeManagerFrame.Grid
+            if grid and grid:IsShown() and type(grid.gridSpacing) == "number"
+                and grid.gridSpacing > 0 then
+                local gridX, gridY = grid:GetCenter()
+                if gridX and gridY then
+                    local spacing = grid.gridSpacing
+                    leftX = gridX + math.floor((leftX - gridX) / spacing + 0.5) * spacing
+                    centerY = gridY + math.floor((centerY - gridY) / spacing + 0.5) * spacing
+                    consumeState.anchor:ClearAllPoints()
+                    consumeState.anchor:SetPoint("LEFT", UIParent, "BOTTOMLEFT", leftX, centerY)
+                end
+            end
+            profile.consumeX = leftX / UIParent:GetWidth()
+            profile.consumeY = centerY / UIParent:GetHeight()
+            profile.consumeLeftAligned = true
+        end
+    end)
+    consumeState.mover:Hide()
+end
+
 local function Build()
     if container then
         return
@@ -1371,76 +1444,7 @@ local function Build()
 
     BuildBuffAnchor(saved, buffOrder)
 
-    local consumeWidth = math.max(1, #consumeOrder * consumeState.size
-        + math.max(0, #consumeOrder - 1) * ICON_SPACING)
-    consumeState.anchor = CreateFrame("Frame", nil, WarlockHudRowVisibility.masks.consumes)
-    consumeState.anchor:SetSize(consumeWidth, consumeState.size)
-    consumeState.anchor:SetMovable(true)
-    consumeState.anchor:SetClampedToScreen(true)
-    if type(saved.consumeX) == "number" and type(saved.consumeY) == "number" then
-        if not saved.consumeLeftAligned then
-            local buffCenterX, buffCenterY = rowFrames.buffAnchor:GetCenter()
-            local defaultY = buffCenterY
-                and buffCenterY + (BUFF_ICON_SIZE + consumeState.size) / 2 + 18
-            if buffCenterX and defaultY and rowFrames.buffAnchor:GetLeft()
-                and math.abs(saved.consumeX * UIParent:GetWidth() - buffCenterX) < 1
-                and math.abs(saved.consumeY * UIParent:GetHeight() - defaultY) < 1 then
-                saved.consumeX = rowFrames.buffAnchor:GetLeft() / UIParent:GetWidth()
-            else
-                saved.consumeX = saved.consumeX - consumeWidth / (2 * UIParent:GetWidth())
-            end
-            saved.consumeLeftAligned = true
-        end
-        consumeState.anchor:SetPoint("LEFT", UIParent, "BOTTOMLEFT",
-            saved.consumeX * UIParent:GetWidth(), saved.consumeY * UIParent:GetHeight())
-    else
-        local buffLeftX = rowFrames.buffAnchor:GetLeft()
-        local _, buffCenterY = rowFrames.buffAnchor:GetCenter()
-        buffLeftX = buffLeftX or UIParent:GetWidth() / 2
-        buffCenterY = buffCenterY or UIParent:GetHeight() / 2
-        local consumeY = buffCenterY + (BUFF_ICON_SIZE + consumeState.size) / 2 + 18
-        consumeState.anchor:SetPoint("LEFT", UIParent, "BOTTOMLEFT", buffLeftX, consumeY)
-        saved.consumeX = buffLeftX / UIParent:GetWidth()
-        saved.consumeY = consumeY / UIParent:GetHeight()
-        saved.consumeLeftAligned = true
-    end
-    consumeState.mover = CreateFrame("Button", nil, consumeState.anchor)
-    consumeState.mover:SetAllPoints(consumeState.anchor)
-    consumeState.mover:SetFrameStrata("DIALOG")
-    consumeState.mover:EnableMouse(true)
-    consumeState.mover:RegisterForDrag("LeftButton")
-    local consumeShade = consumeState.mover:CreateTexture(nil, "BACKGROUND")
-    consumeShade:SetAllPoints(consumeState.mover)
-    consumeShade:SetColorTexture(0, 0.65, 0.85, 0.25)
-    local consumeLabel = consumeState.mover:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
-    consumeLabel:SetPoint("BOTTOM", consumeState.mover, "TOP", 0, 5)
-    consumeLabel:SetText("Warlock HUD Consumes")
-    consumeState.mover:SetScript("OnDragStart", function()
-        if not InCombatLockdown() then consumeState.anchor:StartMoving() end
-    end)
-    consumeState.mover:SetScript("OnDragStop", function()
-        consumeState.anchor:StopMovingOrSizing()
-        local leftX = consumeState.anchor:GetLeft()
-        local _, centerY = consumeState.anchor:GetCenter()
-        if leftX and centerY then
-            local grid = EditModeManagerFrame and EditModeManagerFrame.Grid
-            if grid and grid:IsShown() and type(grid.gridSpacing) == "number"
-                and grid.gridSpacing > 0 then
-                local gridX, gridY = grid:GetCenter()
-                if gridX and gridY then
-                    local spacing = grid.gridSpacing
-                    leftX = gridX + math.floor((leftX - gridX) / spacing + 0.5) * spacing
-                    centerY = gridY + math.floor((centerY - gridY) / spacing + 0.5) * spacing
-                    consumeState.anchor:ClearAllPoints()
-                    consumeState.anchor:SetPoint("LEFT", UIParent, "BOTTOMLEFT", leftX, centerY)
-                end
-            end
-            profile.consumeX = leftX / UIParent:GetWidth()
-            profile.consumeY = centerY / UIParent:GetHeight()
-            profile.consumeLeftAligned = true
-        end
-    end)
-    consumeState.mover:Hide()
+    BuildConsumeAnchor(saved, consumeOrder)
 
     BuildProcAnchor(saved, procOrder)
 
