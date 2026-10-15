@@ -95,8 +95,14 @@ local original = db.profiles.Default
 local invalid, reason = WarlockHudSharing.Decode('WHUD1:%%%%')
 assert(not invalid and reason)
 assert(db.profiles.Default == original)
+db.autoSpecProfiles = true
+db.specProfiles = { [1] = 'Default' }
+WarlockHudAPI.ActiveTalentGroup = function() return 1 end
 local count2, result2 = WarlockHudSharing.Import(parsed, { stones=true }, true)
 assert(count2 == 1, result2)
 assert(db.profiles['Default Imported'].stones.autoPlaceHealthstone == true)
+assert(db.activeProfile == 'Default Imported')
+assert(db.specProfiles[1] == 'Default Imported')
+assert(result2:find('Imported and selected profile:', 1, true))
 """)
 print("Sharing smoke tests OK")

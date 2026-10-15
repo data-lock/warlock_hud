@@ -311,8 +311,22 @@ function sharing.Import(parsed, selected, importAll)
         end
     end
     for name, profile in pairs(staged) do db.profiles[name] = profile end
+    local activated
+    if importAll and #names == 1 then
+        activated = next(staged)
+        db.activeProfile = activated
+        if db.autoSpecProfiles and type(db.specProfiles) == "table"
+            and api.ActiveTalentGroup then
+            local group = api.ActiveTalentGroup()
+            if group then db.specProfiles[group] = activated end
+        end
+    end
     api.InitializeProfiles()
-    return #names, importAll and "Imported new profiles (existing names got 'Imported')." or "Imported into current profile."
+    if activated then
+        return #names, "Imported and selected profile: " .. activated .. "."
+    end
+    return #names, importAll and "Imported new profiles. Select one on the Profiles page."
+        or "Imported into current profile."
 end
 
 WarlockHudSharing = sharing

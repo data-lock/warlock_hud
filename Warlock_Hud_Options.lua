@@ -1168,7 +1168,7 @@ Text(sharingPanel, "All profiles (otherwise current profile)", 48, -187, "GameFo
 allCheck:SetScript("OnClick", function(self) allProfiles = self:GetChecked() and true or false end)
 Text(sharingPanel, "Importing one profile merges selected sections into the current profile.",
     20, -213, "GameFontHighlightSmall")
-Text(sharingPanel, "Importing all creates profiles; existing names receive an 'Imported' suffix.",
+Text(sharingPanel, "Import all creates profiles; one is selected, or choose among multiple on Profiles.",
     20, -230, "GameFontHighlightSmall")
 Text(sharingPanel, "Share code", 20, -257, "GameFontNormal")
 local shareArea = CreateFrame("Frame", nil, sharingPanel)
