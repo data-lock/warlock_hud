@@ -69,6 +69,7 @@ jobs:
             Warlock_Hud_OptionsTrackedAuras.lua Warlock_Hud_OptionsRows.lua \
             Warlock_Hud_OptionsGeneral.lua Warlock_Hud_OptionsMultiTarget.lua \
             Warlock_Hud_OptionsProfiles.lua Warlock_Hud_OptionsSharing.lua \
+            Warlock_Hud_OptionsNotifications.lua \
             Warlock_Hud_Options.lua \
             Warlock_Hud_Notifications.lua Warlock_Hud_SummonQueue.lua \
             Warlock_Hud_SummonQueueUI.lua Warlock_Hud_Nameplates.lua \
