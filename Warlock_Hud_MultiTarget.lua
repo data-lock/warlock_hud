@@ -106,7 +106,8 @@ local function Position()
     end
 end
 
-local identity = WarlockHudMultiTargetIdentity.New(rows, SPELLS, ROWS, Plain)
+local identity = WarlockHudMultiTargetIdentity.New(function() return rows end,
+    SPELLS, ROWS, Plain)
 local ClearIdentity = identity.ClearIdentity
 local GroupThreat = identity.GroupThreat
 local TargetsGroup = identity.TargetsGroup
@@ -132,7 +133,8 @@ local function UpdateStatus()
     end
 end
 
-local CompactRows = WarlockHudMultiTargetLayout.New(rows, DOT_SLOTS, ICON_SIZE,
+local CompactRows = WarlockHudMultiTargetLayout.New(function() return rows end,
+    function() return DOT_SLOTS end, ICON_SIZE,
     ROW_HEIGHT, Profile, function() return scrollFrame, scrollContent, scrollBar end,
     function() pending = true end)
 

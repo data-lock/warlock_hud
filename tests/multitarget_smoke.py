@@ -538,6 +538,40 @@ profile.multiDotHideOutOfCombat = false
 brandKnown = true
 assert(WarlockHudMultiTarget.Refresh() == true)
 assert(root.shown == false) -- retired window and its native slots are hidden
+local brandedRoot, brandedViewport
+for _, child in ipairs(UIParent.children) do
+    if child ~= root then
+        for _, descendant in ipairs(child.children or {}) do
+            if descendant.kind == 'ScrollFrame' then
+                brandedRoot, brandedViewport = child, descendant
+            end
+        end
+    end
+end
+assert(brandedRoot and brandedViewport)
+local brandedDisplay = brandedViewport.scrollChild.children[1]
+local brandedContainer
+for _, child in ipairs(brandedDisplay.children[6].children) do
+    if child.kind == 'AuraContainer' then brandedContainer = child end
+end
+assert(brandedContainer and #brandedContainer.slots == 7)
+assert(brandedDisplay.width + 8 + 6 * 27 + 24 <= brandedViewport.width,
+    tostring(brandedDisplay.width) .. ' / ' .. tostring(brandedViewport.width))
+plates.nameplate3 = 'Other Branded Mob'
+dots.nameplate3 = 172
+eventFrame.scripts.OnEvent(nil, 'NAME_PLATE_UNIT_ADDED', 'nameplate3')
+plates.nameplate2 = 'Branded Mob'
+dots.nameplate2 = 172
+eventFrame.scripts.OnEvent(nil, 'NAME_PLATE_UNIT_ADDED', 'nameplate2')
+local brandedSecond = brandedViewport.scrollChild.children[2]
+local brandedThird = brandedViewport.scrollChild.children[3]
+assert(brandedSecond.alpha == 1 and brandedSecond.children[5].text == 'Branded Mob')
+assert(brandedThird.point[5] == -29)
+plates.nameplate2 = nil
+dots.nameplate2 = nil
+eventFrame.scripts.OnEvent(nil, 'NAME_PLATE_UNIT_REMOVED', 'nameplate2')
+assert(brandedSecond.alpha == 0 and brandedSecond.children[5].text == '')
+assert(brandedThird.point[5] == 0)
 ''')
 
 deferred = LuaRuntime(unpack_returned_tuples=True)

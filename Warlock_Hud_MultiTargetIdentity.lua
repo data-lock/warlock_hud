@@ -2,7 +2,7 @@
 -- Native aura containers remain owned by Warlock_Hud_MultiTarget.lua.
 WarlockHudMultiTargetIdentity = {}
 
-function WarlockHudMultiTargetIdentity.New(rows, spells, rowLimit, plain)
+function WarlockHudMultiTargetIdentity.New(getRows, spells, rowLimit, plain)
     local SPELLS, ROWS, Plain = spells, rowLimit, plain
 
     local function ClearIdentity(row)
@@ -303,7 +303,7 @@ function WarlockHudMultiTargetIdentity.New(rows, spells, rowLimit, plain)
 
     local function NormalizeRows()
         local seen, accepted, count = {}, {}, 0
-        for _, row in ipairs(rows) do
+        for _, row in ipairs(getRows()) do
             if row.eligible then
                 local guid = ReadableGuid(row.unit)
                 local duplicate = guid ~= "unavailable" and seen[guid]

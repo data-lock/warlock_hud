@@ -1,9 +1,9 @@
 -- Multi-Target row compaction and scroll range.
 WarlockHudMultiTargetLayout = {}
 
-function WarlockHudMultiTargetLayout.New(rows, dotSlots, iconSize, rowHeight,
+function WarlockHudMultiTargetLayout.New(getRows, dotSlots, iconSize, rowHeight,
     profile, getScrollFrames, markPending)
-    local DOT_SLOTS, ICON_SIZE, ROW_HEIGHT = dotSlots, iconSize, rowHeight
+    local ICON_SIZE, ROW_HEIGHT = iconSize, rowHeight
     local Profile = profile
 
     local function UpdateScrollRange(height, present)
@@ -18,18 +18,18 @@ function WarlockHudMultiTargetLayout.New(rows, dotSlots, iconSize, rowHeight,
 
     local function CompactRows(width, height, positionsOnly)
         local _, scrollContent = getScrollFrames()
-        local displayWidth = width - (DOT_SLOTS * (ICON_SIZE + 3) + 38)
+        local displayWidth = width - (dotSlots() * (ICON_SIZE + 3) + 38)
         local healthWidth = displayWidth - 48
         local profile = Profile()
         local showExecute = profile and profile.enabled
             and profile.enabled.executeMarker ~= false
         local step = ROW_HEIGHT
         local present = 0
-        for _, row in ipairs(rows) do
+        for _, row in ipairs(getRows()) do
             if row.present then present = present + 1 end
         end
         local activePosition, emptyPosition = 0, present
-        for _, row in ipairs(rows) do
+        for _, row in ipairs(getRows()) do
             local position
             if row.present then
                 activePosition = activePosition + 1
