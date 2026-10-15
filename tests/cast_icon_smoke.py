@@ -5,7 +5,7 @@ from lupa import LuaRuntime
 
 source = Path("Warlock_Hud.lua").read_text(encoding="utf-8")
 start = source.index("local function CastSpellTexture(")
-end = source.index("local function KnownSpellID(", start)
+end = source.index("local KnownSpellID = WarlockHudSpellbook.KnownSpellID", start)
 lua = LuaRuntime(unpack_returned_tuples=True)
 lua.execute("""
 C_Spell = { GetSpellTexture = function(identifier)
