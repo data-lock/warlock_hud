@@ -974,6 +974,92 @@ function WarlockHudPrepareAssignmentFlash(root, size)
         assignmentFlashes[key] = frame
     end
 end
+local function BuildShardRow(saved)
+    if profile.enabled.soulshards ~= false then
+        local shardSize = profile.shardSize
+        local shardAnchor = CreateFrame("Frame", nil, WarlockHudRowVisibility.masks.shards)
+        shardState.anchor = shardAnchor
+        shardAnchor:SetSize(shardSize, shardSize)
+        shardAnchor:SetMovable(true)
+        shardAnchor:SetClampedToScreen(true)
+        if type(saved.shardX) == "number" and type(saved.shardY) == "number" then
+            shardAnchor:SetPoint("CENTER", UIParent, "BOTTOMLEFT",
+                saved.shardX * UIParent:GetWidth(), saved.shardY * UIParent:GetHeight())
+        elseif PlayerFrame then
+            shardAnchor:SetPoint("RIGHT", PlayerFrame, "TOPLEFT", -8, -44)
+        else
+            shardAnchor:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", 100, 210)
+        end
+        local shardMover = CreateFrame("Button", nil, shardAnchor)
+        shardState.mover = shardMover
+        shardMover:SetAllPoints(shardAnchor)
+        shardMover:SetFrameStrata("DIALOG")
+        shardMover:EnableMouse(true)
+        shardMover:RegisterForDrag("LeftButton")
+        local shardShade = shardMover:CreateTexture(nil, "BACKGROUND")
+        shardShade:SetAllPoints(shardMover)
+        shardShade:SetColorTexture(0, 0.65, 0.85, 0.25)
+        local shardLabel = shardMover:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
+        shardLabel:SetPoint("BOTTOM", shardMover, "TOP", 0, 5)
+        shardLabel:SetText("Soul Shards")
+        shardMover:SetScript("OnDragStart", function()
+            if not InCombatLockdown() then shardAnchor:StartMoving() end
+        end)
+        shardMover:SetScript("OnDragStop", function()
+            shardAnchor:StopMovingOrSizing()
+            local centerX, centerY = shardAnchor:GetCenter()
+            if centerX and centerY then
+                local grid = EditModeManagerFrame and EditModeManagerFrame.Grid
+                if grid and grid:IsShown() and type(grid.gridSpacing) == "number"
+                    and grid.gridSpacing > 0 then
+                    local gridX, gridY = grid:GetCenter()
+                    if gridX and gridY then
+                        local spacing = grid.gridSpacing
+                        centerX = gridX + math.floor((centerX - gridX) / spacing + 0.5) * spacing
+                        centerY = gridY + math.floor((centerY - gridY) / spacing + 0.5) * spacing
+                        shardAnchor:ClearAllPoints()
+                        shardAnchor:SetPoint("CENTER", UIParent, "BOTTOMLEFT", centerX, centerY)
+                    end
+                end
+                profile.shardX = centerX / UIParent:GetWidth()
+                profile.shardY = centerY / UIParent:GetHeight()
+            end
+        end)
+        shardMover:Hide()
+        local shardButton = CreateFrame("Button", nil, shardAnchor)
+        shardState.button = shardButton
+        shardButton:SetSize(shardSize, shardSize)
+        shardButton:SetPoint("CENTER", shardAnchor, "CENTER")
+        shardButton:RegisterForClicks("LeftButtonUp")
+        local icon = shardButton:CreateTexture(nil, "ARTWORK")
+        icon:SetAllPoints(shardButton)
+        icon:SetTexture(C_Item and C_Item.GetItemIconByID
+            and C_Item.GetItemIconByID(SOUL_SHARD_ID)
+            or "Interface\\Icons\\INV_Misc_Gem_Amethyst_02")
+        icon:SetTexCoord(ICON_CROP, 1 - ICON_CROP, ICON_CROP, 1 - ICON_CROP)
+        shardState.icon = icon
+        local shardCountText = shardButton:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+        shardState.countText = shardCountText
+        shardCountText:SetPoint("BOTTOMRIGHT", shardButton, "BOTTOMRIGHT", -2, 2)
+        shardCountText:SetTextColor(1, 1, 1)
+        shardButton:SetScript("OnClick", shardState.click)
+        shardButton:SetScript("OnEnter", function(self)
+            GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+            GameTooltip:SetText("Soul Shards")
+            GameTooltip:AddLine("Click to destroy one shard from a regular bag.", 1, 1, 1)
+            GameTooltip:AddLine("Stops when regular bags are clear or " ..
+                profile.shardKeepCount .. " shards remain.", 1, 1, 1)
+            GameTooltip:AddLine("Unavailable in combat.", 1, 1, 1)
+            GameTooltip:Show()
+        end)
+        shardButton:SetScript("OnLeave", function() GameTooltip:Hide() end)
+        MakeBorder(shardAnchor, 0, shardSize)
+        shardState.glow = MakeReminderGlow(shardAnchor, 0, nil, shardSize)
+        shardState.glow.pulseIcon = icon
+        UpdateShardCount()
+    end
+end
+
 local function Build()
     if container then
         return
@@ -1446,89 +1532,7 @@ local function Build()
         border:Hide()
     end
 
-    if profile.enabled.soulshards ~= false then
-        local shardSize = profile.shardSize
-        local shardAnchor = CreateFrame("Frame", nil, WarlockHudRowVisibility.masks.shards)
-        shardState.anchor = shardAnchor
-        shardAnchor:SetSize(shardSize, shardSize)
-        shardAnchor:SetMovable(true)
-        shardAnchor:SetClampedToScreen(true)
-        if type(saved.shardX) == "number" and type(saved.shardY) == "number" then
-            shardAnchor:SetPoint("CENTER", UIParent, "BOTTOMLEFT",
-                saved.shardX * UIParent:GetWidth(), saved.shardY * UIParent:GetHeight())
-        elseif PlayerFrame then
-            shardAnchor:SetPoint("RIGHT", PlayerFrame, "TOPLEFT", -8, -44)
-        else
-            shardAnchor:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", 100, 210)
-        end
-        local shardMover = CreateFrame("Button", nil, shardAnchor)
-        shardState.mover = shardMover
-        shardMover:SetAllPoints(shardAnchor)
-        shardMover:SetFrameStrata("DIALOG")
-        shardMover:EnableMouse(true)
-        shardMover:RegisterForDrag("LeftButton")
-        local shardShade = shardMover:CreateTexture(nil, "BACKGROUND")
-        shardShade:SetAllPoints(shardMover)
-        shardShade:SetColorTexture(0, 0.65, 0.85, 0.25)
-        local shardLabel = shardMover:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
-        shardLabel:SetPoint("BOTTOM", shardMover, "TOP", 0, 5)
-        shardLabel:SetText("Soul Shards")
-        shardMover:SetScript("OnDragStart", function()
-            if not InCombatLockdown() then shardAnchor:StartMoving() end
-        end)
-        shardMover:SetScript("OnDragStop", function()
-            shardAnchor:StopMovingOrSizing()
-            local centerX, centerY = shardAnchor:GetCenter()
-            if centerX and centerY then
-                local grid = EditModeManagerFrame and EditModeManagerFrame.Grid
-                if grid and grid:IsShown() and type(grid.gridSpacing) == "number"
-                    and grid.gridSpacing > 0 then
-                    local gridX, gridY = grid:GetCenter()
-                    if gridX and gridY then
-                        local spacing = grid.gridSpacing
-                        centerX = gridX + math.floor((centerX - gridX) / spacing + 0.5) * spacing
-                        centerY = gridY + math.floor((centerY - gridY) / spacing + 0.5) * spacing
-                        shardAnchor:ClearAllPoints()
-                        shardAnchor:SetPoint("CENTER", UIParent, "BOTTOMLEFT", centerX, centerY)
-                    end
-                end
-                profile.shardX = centerX / UIParent:GetWidth()
-                profile.shardY = centerY / UIParent:GetHeight()
-            end
-        end)
-        shardMover:Hide()
-        local shardButton = CreateFrame("Button", nil, shardAnchor)
-        shardState.button = shardButton
-        shardButton:SetSize(shardSize, shardSize)
-        shardButton:SetPoint("CENTER", shardAnchor, "CENTER")
-        shardButton:RegisterForClicks("LeftButtonUp")
-        local icon = shardButton:CreateTexture(nil, "ARTWORK")
-        icon:SetAllPoints(shardButton)
-        icon:SetTexture(C_Item and C_Item.GetItemIconByID
-            and C_Item.GetItemIconByID(SOUL_SHARD_ID)
-            or "Interface\\Icons\\INV_Misc_Gem_Amethyst_02")
-        icon:SetTexCoord(ICON_CROP, 1 - ICON_CROP, ICON_CROP, 1 - ICON_CROP)
-        shardState.icon = icon
-        local shardCountText = shardButton:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-        shardState.countText = shardCountText
-        shardCountText:SetPoint("BOTTOMRIGHT", shardButton, "BOTTOMRIGHT", -2, 2)
-        shardCountText:SetTextColor(1, 1, 1)
-        shardButton:SetScript("OnClick", shardState.click)
-        shardButton:SetScript("OnEnter", function(self)
-            GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-            GameTooltip:SetText("Soul Shards")
-            GameTooltip:AddLine("Click to destroy one shard from a regular bag.", 1, 1, 1)
-            GameTooltip:AddLine("Stops when regular bags are clear or " ..
-                profile.shardKeepCount .. " shards remain.", 1, 1, 1)
-            GameTooltip:AddLine("Unavailable in combat.", 1, 1, 1)
-            GameTooltip:Show()
-        end)
-        shardButton:SetScript("OnLeave", function() GameTooltip:Hide() end)
-        MakeBorder(shardAnchor, 0, shardSize)
-        shardState.glow = MakeReminderGlow(shardAnchor, 0, nil, shardSize)
-        shardState.glow.pulseIcon = icon
-        UpdateShardCount()
-    end
+    BuildShardRow(saved)
 
     auraContainer:SetSize(rowWidth, ICON_SIZE)
     auraContainer:SetPoint("CENTER", rowFrames.hudAnchor, "CENTER")
