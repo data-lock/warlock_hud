@@ -1060,6 +1060,56 @@ local function BuildShardRow(saved)
     end
 end
 
+local function BuildProcAnchor(saved, procOrder)
+    local procWidth = math.max(1, #procOrder * PROC_ICON_SIZE
+        + math.max(0, #procOrder - 1) * ICON_SPACING)
+    rowFrames.procAnchor = CreateFrame("Frame", nil, WarlockHudRowVisibility.masks.procs)
+    rowFrames.procAnchor:SetSize(procWidth, PROC_ICON_SIZE)
+    rowFrames.procAnchor:SetMovable(true)
+    rowFrames.procAnchor:SetClampedToScreen(true)
+    if type(saved.procX) == "number" and type(saved.procY) == "number" then
+        rowFrames.procAnchor:SetPoint("CENTER", UIParent, "BOTTOMLEFT",
+            saved.procX * UIParent:GetWidth(), saved.procY * UIParent:GetHeight())
+    else
+        rowFrames.procAnchor:SetPoint("BOTTOM", rowFrames.hudAnchor, "TOP", 0, 12)
+    end
+    rowFrames.procMover = CreateFrame("Button", nil, rowFrames.procAnchor)
+    rowFrames.procMover:SetAllPoints(rowFrames.procAnchor)
+    rowFrames.procMover:SetFrameStrata("DIALOG")
+    rowFrames.procMover:EnableMouse(true)
+    rowFrames.procMover:RegisterForDrag("LeftButton")
+    local procShade = rowFrames.procMover:CreateTexture(nil, "BACKGROUND")
+    procShade:SetAllPoints(rowFrames.procMover)
+    procShade:SetColorTexture(0, 0.65, 0.85, 0.25)
+    local procLabel = rowFrames.procMover:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
+    procLabel:SetPoint("BOTTOM", rowFrames.procMover, "TOP", 0, 5)
+    procLabel:SetText("Warlock HUD Procs")
+    rowFrames.procMover:SetScript("OnDragStart", function()
+        if not InCombatLockdown() then rowFrames.procAnchor:StartMoving() end
+    end)
+    rowFrames.procMover:SetScript("OnDragStop", function()
+        rowFrames.procAnchor:StopMovingOrSizing()
+        local centerX, centerY = rowFrames.procAnchor:GetCenter()
+        if centerX and centerY then
+            local grid = EditModeManagerFrame and EditModeManagerFrame.Grid
+            if grid and grid:IsShown() and type(grid.gridSpacing) == "number"
+                and grid.gridSpacing > 0 then
+                local gridX, gridY = grid:GetCenter()
+                if gridX and gridY then
+                    local spacing = grid.gridSpacing
+                    centerX = gridX + math.floor((centerX - gridX) / spacing + 0.5) * spacing
+                    centerY = gridY + math.floor((centerY - gridY) / spacing + 0.5) * spacing
+                    rowFrames.procAnchor:ClearAllPoints()
+                    rowFrames.procAnchor:SetPoint("CENTER", UIParent, "BOTTOMLEFT", centerX, centerY)
+                end
+            end
+            profile.procX = centerX / UIParent:GetWidth()
+            profile.procY = centerY / UIParent:GetHeight()
+        end
+    end)
+    rowFrames.procMover:Hide()
+end
+
 local function Build()
     if container then
         return
@@ -1388,53 +1438,7 @@ local function Build()
     end)
     consumeState.mover:Hide()
 
-    local procWidth = math.max(1, #procOrder * PROC_ICON_SIZE
-        + math.max(0, #procOrder - 1) * ICON_SPACING)
-    rowFrames.procAnchor = CreateFrame("Frame", nil, WarlockHudRowVisibility.masks.procs)
-    rowFrames.procAnchor:SetSize(procWidth, PROC_ICON_SIZE)
-    rowFrames.procAnchor:SetMovable(true)
-    rowFrames.procAnchor:SetClampedToScreen(true)
-    if type(saved.procX) == "number" and type(saved.procY) == "number" then
-        rowFrames.procAnchor:SetPoint("CENTER", UIParent, "BOTTOMLEFT",
-            saved.procX * UIParent:GetWidth(), saved.procY * UIParent:GetHeight())
-    else
-        rowFrames.procAnchor:SetPoint("BOTTOM", rowFrames.hudAnchor, "TOP", 0, 12)
-    end
-    rowFrames.procMover = CreateFrame("Button", nil, rowFrames.procAnchor)
-    rowFrames.procMover:SetAllPoints(rowFrames.procAnchor)
-    rowFrames.procMover:SetFrameStrata("DIALOG")
-    rowFrames.procMover:EnableMouse(true)
-    rowFrames.procMover:RegisterForDrag("LeftButton")
-    local procShade = rowFrames.procMover:CreateTexture(nil, "BACKGROUND")
-    procShade:SetAllPoints(rowFrames.procMover)
-    procShade:SetColorTexture(0, 0.65, 0.85, 0.25)
-    local procLabel = rowFrames.procMover:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
-    procLabel:SetPoint("BOTTOM", rowFrames.procMover, "TOP", 0, 5)
-    procLabel:SetText("Warlock HUD Procs")
-    rowFrames.procMover:SetScript("OnDragStart", function()
-        if not InCombatLockdown() then rowFrames.procAnchor:StartMoving() end
-    end)
-    rowFrames.procMover:SetScript("OnDragStop", function()
-        rowFrames.procAnchor:StopMovingOrSizing()
-        local centerX, centerY = rowFrames.procAnchor:GetCenter()
-        if centerX and centerY then
-            local grid = EditModeManagerFrame and EditModeManagerFrame.Grid
-            if grid and grid:IsShown() and type(grid.gridSpacing) == "number"
-                and grid.gridSpacing > 0 then
-                local gridX, gridY = grid:GetCenter()
-                if gridX and gridY then
-                    local spacing = grid.gridSpacing
-                    centerX = gridX + math.floor((centerX - gridX) / spacing + 0.5) * spacing
-                    centerY = gridY + math.floor((centerY - gridY) / spacing + 0.5) * spacing
-                    rowFrames.procAnchor:ClearAllPoints()
-                    rowFrames.procAnchor:SetPoint("CENTER", UIParent, "BOTTOMLEFT", centerX, centerY)
-                end
-            end
-            profile.procX = centerX / UIParent:GetWidth()
-            profile.procY = centerY / UIParent:GetHeight()
-        end
-    end)
-    rowFrames.procMover:Hide()
+    BuildProcAnchor(saved, procOrder)
 
     for _, stone in ipairs(STONES) do
         local x = CooldownX(stone.name == "Healthstone" and "healthstone" or "soulstone")
