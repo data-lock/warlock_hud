@@ -4,8 +4,7 @@ from pathlib import Path
 from lupa import LuaRuntime
 
 source = Path("Warlock_Hud.lua").read_text(encoding="utf-8")
-start = source.index("local function CastSpellTexture(")
-end = source.index("local KnownSpellID = WarlockHudSpellbook.KnownSpellID", start)
+spellbook_source = Path("Warlock_Hud_Spellbook.lua").read_text(encoding="utf-8")
 lua = LuaRuntime(unpack_returned_tuples=True)
 lua.execute("""
 C_Spell = { GetSpellTexture = function(identifier)
@@ -14,15 +13,16 @@ C_Spell = { GetSpellTexture = function(identifier)
     if identifier == 1225228 then return 1359 end
 end }
 """)
-lua.execute(source[start:end] + "\nCastSpellTextureForTest = CastSpellTexture")
+lua.execute(spellbook_source)
 lua.execute("""
-assert(CastSpellTextureForTest({ name = 'Bane of Havoc', ids = {1225228} }, 9000) == 2468)
+assert(WarlockHudSpellbook.CastSpellTexture({ name = 'Bane of Havoc', ids = {1225228} }, 9000) == 2468)
 C_Spell.GetSpellTexture = function(identifier)
     if identifier == 9000 then return 'INV_Misc_QuestionMark' end
     if identifier == 1225228 then return 1359 end
 end
-assert(CastSpellTextureForTest({ name = 'Bane of Havoc', ids = {1225228} }, 9000) == 1359)
+assert(WarlockHudSpellbook.CastSpellTexture({ name = 'Bane of Havoc', ids = {1225228} }, 9000) == 1359)
 """)
+assert 'local CastSpellTexture = WarlockHudSpellbook.CastSpellTexture' in source
 assert 'button:SetIcon(auraIcon)' in source
 assert 'local castIcon = button:CreateTexture(nil, "OVERLAY")' in source
 assert 'button:HookScript(' not in source

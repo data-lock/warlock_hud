@@ -52,7 +52,25 @@ local function ConflagrateSpellID()
     end
 end
 
+local function CastSpellTexture(spell, currentID)
+    if not spell or not C_Spell or not C_Spell.GetSpellTexture then return nil end
+    local identifiers = {}
+    if currentID then identifiers[#identifiers + 1] = currentID end
+    identifiers[#identifiers + 1] = spell.name
+    for _, id in ipairs(spell.ids) do identifiers[#identifiers + 1] = id end
+    for _, identifier in ipairs(identifiers) do
+        local ok, texture = pcall(C_Spell.GetSpellTexture, identifier)
+        if ok and texture and (not issecretvalue or not issecretvalue(texture))
+            and texture ~= 134400
+            and (type(texture) ~= "string"
+                or not texture:lower():find("questionmark", 1, true)) then
+            return texture
+        end
+    end
+end
+
 WarlockHudSpellbook.KnownSpellID = KnownSpellID
 WarlockHudSpellbook.KnownSpell = KnownSpell
 WarlockHudSpellbook.KnowsDemonicBrand = KnowsDemonicBrand
 WarlockHudSpellbook.ConflagrateSpellID = ConflagrateSpellID
+WarlockHudSpellbook.CastSpellTexture = CastSpellTexture
