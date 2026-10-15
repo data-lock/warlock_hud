@@ -237,8 +237,6 @@ local function IconForKey(key)
         end
     end
     local spellIDs = {
-        corruption = 6222, bane = 1014, drain = 1120, immolate = 348,
-        siphonlife = 18265, demonicbrand = 1293696,
         fear = 5782, conflagrate = 1293817,
         armor = 706, wellfed = 19705, flask = 17628,
         spelldamage = 16889, shadow = 11474, fire = 26276,
@@ -266,7 +264,8 @@ local function IconForKey(key)
     if key == "curse" then
         return "Interface\\Icons\\Spell_Shadow_CurseOfMannoroth"
     end
-    return spellIDs[key] and C_Spell and C_Spell.GetSpellTexture(spellIDs[key])
+    local spellID = WarlockHudEffects.PreviewSpellIDs[key] or spellIDs[key]
+    return spellID and C_Spell and C_Spell.GetSpellTexture(spellID)
 end
 
 local iconDemo
