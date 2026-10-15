@@ -37,8 +37,22 @@ local profile = {
 assert(WarlockHudShards.WarningState(0, profile) == 'LOW')
 assert(WarlockHudShards.WarningState(6, profile) == 'HIGH')
 assert(WarlockHudShards.WarningState(3, profile) == 'HIGH')
+local visual = { countText = {}, icon = {}, button = {}, glow = { texture = {} } }
+visual.countText.SetText = function(_, value) visual.count = value end
+visual.icon.SetAlpha = function(_, value) visual.iconAlpha = value end
+visual.icon.SetVertexColor = function(_, r, g, b) visual.iconColor = { r, g, b } end
+visual.button.SetAlpha = function(_, value) visual.buttonAlpha = value end
+visual.glow.texture.SetVertexColor = function(_, r, g, b)
+    visual.glowColor = { r, g, b }
+end
+visual.glow.Show = function() visual.shown = true end
+visual.glow.Hide = function() visual.shown = false end
+WarlockHudShards.UpdateDisplay(visual, profile)
+assert(visual.count == 3 and visual.shown == true)
 profile.shardWarnOverflow = false
 assert(WarlockHudShards.WarningState(3, profile) == 'NORMAL')
+WarlockHudShards.UpdateDisplay(visual, profile)
+assert(visual.shown == false and visual.iconAlpha == 1)
 C_Item.GetItemCount = function() return 'SECRET' end
 assert(WarlockHudShards.GetCount() == nil)
 ''')

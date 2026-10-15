@@ -1,4 +1,4 @@
--- Read only shard and bag queries. The deletion action remains in the HUD.
+-- Shard and bag queries plus the shard-row display. Deletion remains in the HUD.
 WarlockHudShards = { ItemID = 6265 }
 
 function WarlockHudShards.IsSoulShardBag(bag)
@@ -48,4 +48,29 @@ function WarlockHudShards.GetCount()
     if not ok or (issecretvalue and issecretvalue(count))
         or type(count) ~= "number" then return nil end
     return count
+end
+
+local function UpdateWarningVisual(shardState, state, count)
+    if not shardState.glow or not shardState.icon then return end
+    if state == "NORMAL" then
+        shardState.glow:Hide()
+        shardState.icon:SetAlpha(1)
+        shardState.icon:SetVertexColor(1, 1, 1)
+        shardState.button:SetAlpha(count > 0 and 1 or 0.5)
+        return
+    end
+    shardState.button:SetAlpha(1)
+    shardState.icon:SetVertexColor(1,
+        state == "LOW" and 0.2 or 0.85, state == "LOW" and 0.2 or 0.1)
+    shardState.glow.texture:SetVertexColor(1,
+        state == "LOW" and 0.12 or 0.75, state == "LOW" and 0.12 or 0)
+    shardState.glow:Show()
+end
+
+function WarlockHudShards.UpdateDisplay(shardState, profile)
+    if not shardState.countText then return end
+    local count = WarlockHudShards.GetCount()
+    if not count then return end
+    shardState.countText:SetText(count)
+    UpdateWarningVisual(shardState, WarlockHudShards.WarningState(count, profile), count)
 end

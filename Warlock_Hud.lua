@@ -418,31 +418,10 @@ local function Report(message)
     print("|cffff7a7aWarlock HUD:|r " .. message)
 end
 
-local function UpdateShardWarningVisual(state, count)
-    if not shardState.glow or not shardState.icon then return end
-    if state == "NORMAL" then
-        shardState.glow:Hide()
-        shardState.icon:SetAlpha(1)
-        shardState.icon:SetVertexColor(1, 1, 1)
-        shardState.button:SetAlpha(count > 0 and 1 or 0.5)
-        return
-    end
-    shardState.button:SetAlpha(1)
-    shardState.icon:SetVertexColor(1,
-        state == "LOW" and 0.2 or 0.85, state == "LOW" and 0.2 or 0.1)
-    shardState.glow.texture:SetVertexColor(1,
-        state == "LOW" and 0.12 or 0.75, state == "LOW" and 0.12 or 0)
-    shardState.glow:Show()
-end
-
 local GetSoulShardCount = WarlockHudShards.GetCount
 
 local function UpdateShardCount()
-    if not shardState.countText then return end
-    local count = GetSoulShardCount()
-    if not count then return end
-    shardState.countText:SetText(count)
-    UpdateShardWarningVisual(WarlockHudShards.WarningState(count, profile), count)
+    WarlockHudShards.UpdateDisplay(shardState, profile)
 end
 
 local function DestroyOneShard()
