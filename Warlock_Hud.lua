@@ -1110,6 +1110,68 @@ local function BuildProcAnchor(saved, procOrder)
     rowFrames.procMover:Hide()
 end
 
+local function BuildBuffAnchor(saved, buffOrder)
+    local buffWidth = math.max(1, #buffOrder * BUFF_ICON_SIZE
+        + math.max(0, #buffOrder - 1) * ICON_SPACING)
+    rowFrames.buffAnchor = CreateFrame("Frame", nil, WarlockHudRowVisibility.masks.buffs)
+    rowFrames.buffAnchor:SetSize(buffWidth, BUFF_ICON_SIZE)
+    rowFrames.buffAnchor:SetMovable(true)
+    rowFrames.buffAnchor:SetClampedToScreen(true)
+    if type(saved.buffX) == "number" and type(saved.buffY) == "number" then
+        if not saved.buffLeftAligned then
+            saved.buffX = saved.buffX - buffWidth / (2 * UIParent:GetWidth())
+            saved.buffLeftAligned = true
+        end
+        rowFrames.buffAnchor:SetPoint("LEFT", UIParent, "BOTTOMLEFT",
+            saved.buffX * UIParent:GetWidth(), saved.buffY * UIParent:GetHeight())
+    elseif PlayerFrame then
+        local fullWidth = #BUFF_KEYS * BUFF_ICON_SIZE
+            + (#BUFF_KEYS - 1) * ICON_SPACING
+        rowFrames.buffAnchor:SetPoint("LEFT", PlayerFrame, "TOP",
+            -fullWidth / 2, 12 + BUFF_ICON_SIZE / 2)
+    else
+        rowFrames.buffAnchor:SetPoint("LEFT", UIParent, "BOTTOMLEFT",
+            180, 210 + BUFF_ICON_SIZE / 2)
+    end
+    rowFrames.buffMover = CreateFrame("Button", nil, rowFrames.buffAnchor)
+    rowFrames.buffMover:SetAllPoints(rowFrames.buffAnchor)
+    rowFrames.buffMover:SetFrameStrata("DIALOG")
+    rowFrames.buffMover:EnableMouse(true)
+    rowFrames.buffMover:RegisterForDrag("LeftButton")
+    local buffShade = rowFrames.buffMover:CreateTexture(nil, "BACKGROUND")
+    buffShade:SetAllPoints(rowFrames.buffMover)
+    buffShade:SetColorTexture(0, 0.65, 0.85, 0.25)
+    local buffLabel = rowFrames.buffMover:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
+    buffLabel:SetPoint("BOTTOM", rowFrames.buffMover, "TOP", 0, 5)
+    buffLabel:SetText("Warlock HUD Buffs")
+    rowFrames.buffMover:SetScript("OnDragStart", function()
+        if not InCombatLockdown() then rowFrames.buffAnchor:StartMoving() end
+    end)
+    rowFrames.buffMover:SetScript("OnDragStop", function()
+        rowFrames.buffAnchor:StopMovingOrSizing()
+        local leftX = rowFrames.buffAnchor:GetLeft()
+        local _, centerY = rowFrames.buffAnchor:GetCenter()
+        if leftX and centerY then
+            local grid = EditModeManagerFrame and EditModeManagerFrame.Grid
+            if grid and grid:IsShown() and type(grid.gridSpacing) == "number"
+                and grid.gridSpacing > 0 then
+                local gridX, gridY = grid:GetCenter()
+                if gridX and gridY then
+                    local spacing = grid.gridSpacing
+                    leftX = gridX + math.floor((leftX - gridX) / spacing + 0.5) * spacing
+                    centerY = gridY + math.floor((centerY - gridY) / spacing + 0.5) * spacing
+                    rowFrames.buffAnchor:ClearAllPoints()
+                    rowFrames.buffAnchor:SetPoint("LEFT", UIParent, "BOTTOMLEFT", leftX, centerY)
+                end
+            end
+            profile.buffX = leftX / UIParent:GetWidth()
+            profile.buffY = centerY / UIParent:GetHeight()
+            profile.buffLeftAligned = true
+        end
+    end)
+    rowFrames.buffMover:Hide()
+end
+
 local function Build()
     if container then
         return
@@ -1307,65 +1369,7 @@ local function Build()
     end)
     rowFrames.cooldownMover:Hide()
 
-    local buffWidth = math.max(1, #buffOrder * BUFF_ICON_SIZE
-        + math.max(0, #buffOrder - 1) * ICON_SPACING)
-    rowFrames.buffAnchor = CreateFrame("Frame", nil, WarlockHudRowVisibility.masks.buffs)
-    rowFrames.buffAnchor:SetSize(buffWidth, BUFF_ICON_SIZE)
-    rowFrames.buffAnchor:SetMovable(true)
-    rowFrames.buffAnchor:SetClampedToScreen(true)
-    if type(saved.buffX) == "number" and type(saved.buffY) == "number" then
-        if not saved.buffLeftAligned then
-            saved.buffX = saved.buffX - buffWidth / (2 * UIParent:GetWidth())
-            saved.buffLeftAligned = true
-        end
-        rowFrames.buffAnchor:SetPoint("LEFT", UIParent, "BOTTOMLEFT",
-            saved.buffX * UIParent:GetWidth(), saved.buffY * UIParent:GetHeight())
-    elseif PlayerFrame then
-        local fullWidth = #BUFF_KEYS * BUFF_ICON_SIZE
-            + (#BUFF_KEYS - 1) * ICON_SPACING
-        rowFrames.buffAnchor:SetPoint("LEFT", PlayerFrame, "TOP",
-            -fullWidth / 2, 12 + BUFF_ICON_SIZE / 2)
-    else
-        rowFrames.buffAnchor:SetPoint("LEFT", UIParent, "BOTTOMLEFT",
-            180, 210 + BUFF_ICON_SIZE / 2)
-    end
-    rowFrames.buffMover = CreateFrame("Button", nil, rowFrames.buffAnchor)
-    rowFrames.buffMover:SetAllPoints(rowFrames.buffAnchor)
-    rowFrames.buffMover:SetFrameStrata("DIALOG")
-    rowFrames.buffMover:EnableMouse(true)
-    rowFrames.buffMover:RegisterForDrag("LeftButton")
-    local buffShade = rowFrames.buffMover:CreateTexture(nil, "BACKGROUND")
-    buffShade:SetAllPoints(rowFrames.buffMover)
-    buffShade:SetColorTexture(0, 0.65, 0.85, 0.25)
-    local buffLabel = rowFrames.buffMover:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
-    buffLabel:SetPoint("BOTTOM", rowFrames.buffMover, "TOP", 0, 5)
-    buffLabel:SetText("Warlock HUD Buffs")
-    rowFrames.buffMover:SetScript("OnDragStart", function()
-        if not InCombatLockdown() then rowFrames.buffAnchor:StartMoving() end
-    end)
-    rowFrames.buffMover:SetScript("OnDragStop", function()
-        rowFrames.buffAnchor:StopMovingOrSizing()
-        local leftX = rowFrames.buffAnchor:GetLeft()
-        local _, centerY = rowFrames.buffAnchor:GetCenter()
-        if leftX and centerY then
-            local grid = EditModeManagerFrame and EditModeManagerFrame.Grid
-            if grid and grid:IsShown() and type(grid.gridSpacing) == "number"
-                and grid.gridSpacing > 0 then
-                local gridX, gridY = grid:GetCenter()
-                if gridX and gridY then
-                    local spacing = grid.gridSpacing
-                    leftX = gridX + math.floor((leftX - gridX) / spacing + 0.5) * spacing
-                    centerY = gridY + math.floor((centerY - gridY) / spacing + 0.5) * spacing
-                    rowFrames.buffAnchor:ClearAllPoints()
-                    rowFrames.buffAnchor:SetPoint("LEFT", UIParent, "BOTTOMLEFT", leftX, centerY)
-                end
-            end
-            profile.buffX = leftX / UIParent:GetWidth()
-            profile.buffY = centerY / UIParent:GetHeight()
-            profile.buffLeftAligned = true
-        end
-    end)
-    rowFrames.buffMover:Hide()
+    BuildBuffAnchor(saved, buffOrder)
 
     local consumeWidth = math.max(1, #consumeOrder * consumeState.size
         + math.max(0, #consumeOrder - 1) * ICON_SPACING)
