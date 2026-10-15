@@ -121,6 +121,14 @@ end
 function methods:SetTextColor(...) self.textColor = {...} end
 function methods:SetFont(path, size, flags) self.font = {path, size, flags} end
 function methods:SetCountdownFont(value) self.countdownFont = value end
+function methods:SetCountdownMillisecondsThreshold(value) self.millisecondsThreshold = value end
+function methods:GetCountdownFontString()
+    if not rawget(self, 'countdownText') then
+        self.countdownText = CreateFrame('FontString', nil, self)
+    end
+    return self.countdownText
+end
+function methods:SetApplicationCount(value) self.applicationCount = value end
 function methods:SetShown(value) self.shown = value end
 function methods:SetColorTexture(...) self.color = {...} end
 function methods:SetTexture(value)
@@ -197,6 +205,7 @@ end
 ''')
 lua.execute(Path("Warlock_Hud_MultiTargetIdentity.lua").read_text(encoding="utf-8"))
 lua.execute(Path("Warlock_Hud_MultiTargetLayout.lua").read_text(encoding="utf-8"))
+lua.execute(Path("Warlock_Hud_MultiTargetAuras.lua").read_text(encoding="utf-8"))
 lua.execute(Path("Warlock_Hud_MultiTarget.lua").read_text(encoding="utf-8"))
 lua.execute(r'''
 eventFrame.scripts.OnEvent(nil, 'PLAYER_LOGIN')
@@ -572,6 +581,15 @@ for _, child in ipairs(brandedDisplay.children[6].children) do
     if child.kind == 'AuraContainer' then brandedContainer = child end
 end
 assert(brandedContainer and #brandedContainer.slots == 7)
+local brandButton
+for index, slot in ipairs(brandedContainer.slots) do
+    if slot[1] == 'Demonic Brand' then brandButton = brandedContainer.children[index] end
+end
+assert(brandButton and brandButton.applicationCount)
+assert(brandButton.applicationCount.point[1] == 'TOPLEFT')
+assert(brandButton.cooldown.millisecondsThreshold == 10)
+assert(brandButton.cooldown.countdownText.point[1] == 'CENTER')
+assert(brandButton.cooldown.countdownText.point[4] == 3)
 assert(brandedDisplay.width + 8 + 6 * 27 + 24 <= brandedViewport.width,
     tostring(brandedDisplay.width) .. ' / ' .. tostring(brandedViewport.width))
 plates.nameplate3 = 'Other Branded Mob'
@@ -644,6 +662,7 @@ end
 ''')
 deferred.execute(Path("Warlock_Hud_MultiTargetIdentity.lua").read_text(encoding="utf-8"))
 deferred.execute(Path("Warlock_Hud_MultiTargetLayout.lua").read_text(encoding="utf-8"))
+deferred.execute(Path("Warlock_Hud_MultiTargetAuras.lua").read_text(encoding="utf-8"))
 deferred.execute(Path("Warlock_Hud_MultiTarget.lua").read_text(encoding="utf-8"))
 deferred.execute("assert(WarlockHudMultiTarget.Refresh() == false)")
 print("Multi-target fixed-token smoke tests OK")
