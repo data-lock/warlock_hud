@@ -132,69 +132,9 @@ local function UpdateStatus()
     end
 end
 
-local function UpdateScrollRange(height, present)
-    local viewportHeight = height - 57
-    local maxScroll = math.max(0, present * ROW_HEIGHT - viewportHeight)
-    scrollBar:SetMinMaxValues(0, maxScroll)
-    scrollBar:SetShown(maxScroll > 0)
-    if scrollBar:GetValue() > maxScroll then scrollBar:SetValue(maxScroll) end
-    if maxScroll == 0 then scrollFrame:SetVerticalScroll(0) end
-end
-
-local function CompactRows(width, height, positionsOnly)
-    local displayWidth = width - (DOT_SLOTS * (ICON_SIZE + 3) + 38)
-    local healthWidth = displayWidth - 48
-    local profile = Profile()
-    local showExecute = profile and profile.enabled
-        and profile.enabled.executeMarker ~= false
-    local step = ROW_HEIGHT
-    local present = 0
-    for _, row in ipairs(rows) do
-        if row.present then present = present + 1 end
-    end
-    local activePosition, emptyPosition = 0, present
-    for _, row in ipairs(rows) do
-        local position
-        if row.present then
-            activePosition = activePosition + 1
-            position = activePosition
-        else
-            emptyPosition = emptyPosition + 1
-            position = emptyPosition
-        end
-        if not positionsOnly then row.display:SetWidth(displayWidth) end
-        if row.position ~= position or row.step ~= step then
-            local y = -(position - 1) * step
-            if positionsOnly then
-                -- These display frames are created outside combat. Move only
-                -- an unprotected existing parent; never rebuild native auras.
-                local checked, protected = pcall(row.display.IsProtected, row.display)
-                if not checked or (issecretvalue and issecretvalue(protected))
-                    or protected then
-                    pending = true
-                else
-                    local moved = pcall(row.display.SetPoint, row.display,
-                        "TOPLEFT", scrollContent, "TOPLEFT", 0, y)
-                    if moved then row.position, row.step = position, step
-                    else pending = true end
-                end
-            else
-                row.display:ClearAllPoints()
-                row.display:SetPoint("TOPLEFT", scrollContent, "TOPLEFT", 0, y)
-                row.position, row.step = position, step
-            end
-        end
-        if not positionsOnly then
-            row.name:SetWidth(math.max(50, displayWidth - 49))
-            for _, tick in ipairs({ row.executeOutline, row.executeLine }) do
-                tick:ClearAllPoints()
-                tick:SetPoint("CENTER", row.healthBar, "LEFT", healthWidth * 0.2, 0)
-                tick:SetShown(showExecute)
-            end
-        end
-    end
-    UpdateScrollRange(height, present)
-end
+local CompactRows = WarlockHudMultiTargetLayout.New(rows, DOT_SLOTS, ICON_SIZE,
+    ROW_HEIGHT, Profile, function() return scrollFrame, scrollContent, scrollBar end,
+    function() pending = true end)
 
 local function ApplyLayout(width, height)
     root:SetSize(width, height)

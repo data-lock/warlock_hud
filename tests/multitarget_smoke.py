@@ -183,6 +183,7 @@ UnregisterStateDriver = function(button, state)
 end
 ''')
 lua.execute(Path("Warlock_Hud_MultiTargetIdentity.lua").read_text(encoding="utf-8"))
+lua.execute(Path("Warlock_Hud_MultiTargetLayout.lua").read_text(encoding="utf-8"))
 lua.execute(Path("Warlock_Hud_MultiTarget.lua").read_text(encoding="utf-8"))
 lua.execute(r'''
 eventFrame.scripts.OnEvent(nil, 'PLAYER_LOGIN')
@@ -553,6 +554,7 @@ CreateFrame = function()
 end
 ''')
 deferred.execute(Path("Warlock_Hud_MultiTargetIdentity.lua").read_text(encoding="utf-8"))
+deferred.execute(Path("Warlock_Hud_MultiTargetLayout.lua").read_text(encoding="utf-8"))
 deferred.execute(Path("Warlock_Hud_MultiTarget.lua").read_text(encoding="utf-8"))
 deferred.execute("assert(WarlockHudMultiTarget.Refresh() == false)")
 print("Multi-target fixed-token smoke tests OK")

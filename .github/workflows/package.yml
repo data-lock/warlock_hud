@@ -62,6 +62,7 @@ jobs:
           mkdir -p dist/Warlock_Hud
           cp Warlock_Hud.toc Warlock_Hud_Effects.lua Warlock_Hud_Profile.lua \
             Warlock_Hud.lua Warlock_Hud_MultiTargetIdentity.lua \
+            Warlock_Hud_MultiTargetLayout.lua \
             Warlock_Hud_MultiTarget.lua \
             Warlock_Hud_WandClick.lua \
             Warlock_Hud_ChannelTicks.lua Warlock_Hud_Downranks.lua \
