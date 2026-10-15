@@ -28,6 +28,7 @@ jobs:
           uv run --with lupa python tests/sharing_smoke.py
           uv run --with lupa python tests/consumables_smoke.py
           uv run --with lupa python tests/multitarget_smoke.py
+          uv run python tests/package_smoke.py
       - name: Run assignment smoke test with Lua 5.1
         run: |
           sudo apt-get update
@@ -59,27 +60,7 @@ jobs:
       - name: Build installable ZIP
         shell: bash
         run: |
-          mkdir -p dist/Warlock_Hud
-          cp Warlock_Hud.toc Warlock_Hud_Effects.lua Warlock_Hud_Profile.lua \
-            Warlock_Hud_Spellbook.lua \
-            Warlock_Hud.lua Warlock_Hud_MultiTargetIdentity.lua \
-            Warlock_Hud_MultiTargetLayout.lua Warlock_Hud_MultiTargetAuras.lua \
-            Warlock_Hud_MultiTargetProbe.lua \
-            Warlock_Hud_MultiTarget.lua \
-            Warlock_Hud_WandClick.lua \
-            Warlock_Hud_ChannelTicks.lua Warlock_Hud_Downranks.lua \
-            Warlock_Hud_Grimoires.lua Warlock_Hud_AssignmentProbe.lua \
-            Warlock_Hud_Assignments.lua Warlock_Hud_Sharing.lua \
-            Warlock_Hud_OptionsTrackedAuras.lua Warlock_Hud_OptionsRows.lua \
-            Warlock_Hud_OptionsGeneral.lua Warlock_Hud_OptionsMultiTarget.lua \
-            Warlock_Hud_OptionsProfiles.lua Warlock_Hud_OptionsSharing.lua \
-            Warlock_Hud_OptionsNotifications.lua Warlock_Hud_OptionsSummons.lua \
-            Warlock_Hud_OptionsStones.lua Warlock_Hud_OptionsShards.lua \
-            Warlock_Hud_OptionsAbout.lua \
-            Warlock_Hud_Options.lua \
-            Warlock_Hud_Notifications.lua Warlock_Hud_SummonQueue.lua \
-            Warlock_Hud_SummonQueueUI.lua Warlock_Hud_Nameplates.lua \
-            README.md LICENSE dist/Warlock_Hud/
+          python3 tools/package_addon.py dist/Warlock_Hud
           (cd dist && zip -q -r "Warlock_Hud-${PACKAGE_TAG}.zip" Warlock_Hud)
           unzip -Z1 "dist/Warlock_Hud-${PACKAGE_TAG}.zip"
 
