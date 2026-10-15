@@ -6,20 +6,16 @@ from lupa import LuaRuntime
 source = Path("Warlock_Hud.lua").read_text(encoding="utf-8")
 assert source.count('consumeAuras:AddAuraSlot("Well Fed"') == 1
 assert 'playerAuras:AddAuraSlot("Well Fed"' not in source
-start = source.index("local function NormalizeOrder(")
-end = source.index("local function ActiveTalentGroup(", start)
 lua = LuaRuntime(unpack_returned_tuples=True)
+lua.execute(Path("Warlock_Hud_Effects.lua").read_text(encoding="utf-8"))
+lua.execute(Path("Warlock_Hud_Profile.lua").read_text(encoding="utf-8"))
 lua.execute("""
-MAIN_KEYS = {'corruption'}
-COOLDOWN_KEYS = {'healthstone'}
-BUFF_KEYS = {'fort', 'motw', 'armor', 'breath'}
 consumeState = { keys = {'wellfed', 'flask', 'spelldamage', 'shadow', 'fire', 'wizardoil', 'manaregen'} }
-PROC_KEYS = {'nightfall'}
-DOT_DEFAULT_SLOTS = {}
-SPELLS = {}
-DEFAULT_SUMMON_KEYWORDS = '123, sum, summ'
+NormalizeProfileForTest = WarlockHudProfile.CreateNormalizer({
+    consume = consumeState.keys, cooldown = {'healthstone'},
+    buff = {'fort', 'motw', 'armor', 'breath'}, proc = {'nightfall'},
+})
 """)
-lua.execute(source[start:end] + "\nNormalizeProfileForTest = NormalizeProfile")
 lua.execute("""
 local old = {
     buffSize = 38, buffOrder = {'motw', 'wellfed', 'fort', 'armor', 'breath'},
