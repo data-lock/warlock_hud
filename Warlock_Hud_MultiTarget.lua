@@ -9,6 +9,7 @@ local scrollFrame, scrollContent, scrollBar
 local visibilityController
 local visibilityDriver = false
 local built, pending, auraWarning, failed = false, false, false, false
+local builtTimerMilliseconds
 local buildCount = 0
 local ROWS = 16
 local SOURCE_UNITS = {}
@@ -224,6 +225,7 @@ local function RetireWindow()
     root:Hide()
     rows, root, visibilityController = {}, nil, nil
     built = false
+    builtTimerMilliseconds = nil
 end
 
 local function Build()
@@ -480,6 +482,7 @@ local function Build()
     NormalizeRows()
     UpdateStatus()
     ApplyLayout(width, height)
+    builtTimerMilliseconds = p.dotTimerMilliseconds ~= false
     built, pending = true, false
     ApplyAppearance()
     return true
@@ -489,7 +492,10 @@ local function Refresh()
     local p = Profile()
     if not p then return false end
     if not Safe() then pending = true; return false end
-    if built and not SameEffects(api.GetMultiTargetEffectOrder()) then RetireWindow() end
+    if built and (not SameEffects(api.GetMultiTargetEffectOrder())
+        or builtTimerMilliseconds ~= (p.dotTimerMilliseconds ~= false)) then
+        RetireWindow()
+    end
     if not built then return Build() end
     local width = ClampWidth(p.multiDotWidth or BASE_WIDTH * ClampScale(p.multiDotScale))
     local height = ClampHeight(p.multiDotHeight or BASE_HEIGHT * ClampScale(p.multiDotScale))

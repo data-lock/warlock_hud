@@ -4,7 +4,8 @@ local sharing = {}
 -- when a field's meaning changes so older clients reject incompatible codes.
 local alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
 local sections = {
-    bars = { mainSize="number", cooldownSize="number", multiDotEnabled="boolean",
+    bars = { mainSize="number", cooldownSize="number", dotTimerMilliseconds="boolean",
+        multiDotEnabled="boolean",
         multiDotDemonicBrand="boolean",
         multiDotHideOutOfCombat="boolean", multiDotAlpha="number",
         multiDotScale="number", multiDotWidth="number", multiDotHeight="number",

@@ -101,15 +101,18 @@ function WarlockHudOptionsTrackedAuras.Build(context)
             else Profile().colorActiveDoTs = false end
         end,
         "On (default): color when active, grey when missing. This affects the Target DoTs row only.")
-    Text(spells, "Saves now; visual update waits until safe.",
-        373, -455, "GameFontHighlightSmall")
-    Button(spells, "Group Assignments", 345, -478, 165, function()
+    Check(spells, 345, -450, "Show milliseconds on DoT timers",
+        function() return Profile().dotTimerMilliseconds ~= false end,
+        function(value) Profile().dotTimerMilliseconds = value end,
+        "Applies to Target DoTs and Multi-Target DoTs. Saves now; native timers update when combat and aura protection allow a rebuild.")
+    Button(spells, "Group Assignments", 345, -488, 165, function()
         if WarlockHudOpenAssignments then WarlockHudOpenAssignments() end
     end)
     ResetPageButton(spells, "Tracked Auras", function()
         for _, spell in ipairs(api.Spells) do Profile().enabled[spell.name] = nil end
         Profile().defaultDotIcons = {}
         Profile().colorActiveDoTs = nil
+        Profile().dotTimerMilliseconds = true
         MarkChanged()
     end)
     return spells

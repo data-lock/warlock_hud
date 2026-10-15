@@ -1,5 +1,12 @@
 # Changelog
 
+## v0.41.1-review.41 (internal)
+
+- Add a per-profile Tracked Auras toggle for native decimal countdowns on
+  Target DoTs and Multi-Target DoTs. The choice is included in profile sharing.
+- Save the choice immediately and rebuild native timers when combat and aura
+  protection allow it.
+
 ## v0.41.0
 
 - Add Demonic Brand as a tracked target effect when the talent is learned.

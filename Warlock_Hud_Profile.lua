@@ -45,6 +45,7 @@ function WarlockHudProfile.CreateNormalizer(keys)
     return function(p)
         if type(p) ~= "table" then p = {} end
         p.mainSize = math.max(16, math.min(96, tonumber(p.mainSize) or 48))
+        p.dotTimerMilliseconds = p.dotTimerMilliseconds ~= false
         p.cooldownSize = math.max(16, math.min(64, tonumber(p.cooldownSize) or 24))
         if not p.shardLayoutAdjusted then
             if p.shardSize == nil or tonumber(p.shardSize) == 24 then

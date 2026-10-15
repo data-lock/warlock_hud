@@ -49,7 +49,8 @@ function WarlockHudMultiTargetAuras.New(plain, profile, placeDot, slotKeys,
                 cooldown:SetAllPoints(button)
                 cooldown:SetDrawBling(false)
                 cooldown:SetDrawEdge(false)
-                cooldown:SetCountdownMillisecondsThreshold(spell.talentEffect and 10 or 0)
+                cooldown:SetCountdownMillisecondsThreshold(
+                    Profile().dotTimerMilliseconds and 10 or 0)
                 if cooldown.SetCountdownAbbrevThreshold then
                     cooldown:SetCountdownAbbrevThreshold(60)
                 end

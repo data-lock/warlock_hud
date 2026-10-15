@@ -24,7 +24,7 @@ so you can see the full layout before choosing what to track. Open it from
 
 | Display | What it tracks |
 | --- | --- |
-| Main row | Corruption, Immolate, Siphon Life, Banes, Curses, Drain spells, and Demonic Brand when talented. Banes, Curses, and Drains each share an icon slot. Active target effects show a native countdown, including milliseconds. Brand also shows Blizzard's native application count. |
+| Main row | Corruption, Immolate, Siphon Life, Banes, Curses, Drain spells, and Demonic Brand when talented. Banes, Curses, and Drains each share an icon slot. Active target effects show a native countdown, with optional decimals near expiration. Brand also shows Blizzard's native application count. |
 | Multi-Target DoTs (optional) | Up to 16 view-only rows drawn from prebuilt nameplate, player-target, party-target, and raid-target tokens with native slots for your tracked effects, including Demonic Brand when talented. Brand has its own profile setting and shows a native countdown and application count for each enemy. Mobs with confirmed group threat, a target in your group, a party/raid target, or a safely verified player effect appear; matching tokens are deduplicated by identity. Each shown row has the mob's target portrait, any assigned raid marker, a separate name and health bar with current/max and percent, a 20% health tick when the execute marker is enabled, and a slim gold accent when selected. Target through the world nameplates or Tab. The window is disabled by default; use `/whud mtd` to open or close it outside combat. Outside combat, drag the title to move the window or the lower-right grip to resize it while keeping the top-left corner fixed. Shorter windows keep fixed row spacing and show a scroll bar when needed. Toggling, moving, and resizing are unavailable during combat. Settings can hide it outside combat and adjust transparency. |
 | Cooldown row | Healthstone, Soulstone, Fear, Conflagrate when learned, available racial abilities, and an optional flashing Sense Demons reminder when no demon or active Demonic Sacrifice is confirmed. Conflagrate shows its cooldown and pulses while your Immolate is active on the current target. |
 | Consumes row | Well Fed plus optional Flask of Supreme Power, Arcane Elixir family, Shadow Power, Greater Firepower, Mageblood family, and Wizard Oil family trackers. Aura effects use native countdowns; Wizard Oil reads temporary weapon-enchant state without a HUD countdown. Each category has its own tracking and missing-reminder choice. The row has its own position, icon size, visibility, and color settings. |
@@ -179,7 +179,9 @@ nameplate 20% marker.
 <summary>Tracked Auras</summary>
 
 Choose eligible Corruption, Immolate, Siphon Life, Bane, Curse, Drain, and Fear
-auras. Set whether active Target DoTs appear in color or grey.
+auras. Set whether active Target DoTs appear in color or grey. The milliseconds
+toggle controls native countdowns in both Target DoTs and Multi-Target DoTs and
+is saved per profile.
 
 Use **Group Assignments** to open a movable, resizable window with a Curse, Bane,
 Fear/Banish raid marker, and Soulstone target choice for each Warlock in your group, or yourself while

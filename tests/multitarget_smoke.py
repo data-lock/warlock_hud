@@ -21,6 +21,7 @@ chat = {}
 print = function(message) chat[#chat + 1] = message end
 combat = false
 profile = { multiDotEnabled = true, multiDotSize = 24,
+    dotTimerMilliseconds = true,
     enabled = { executeMarker = true },
     mainOrder = {'immolate', 'corruption', 'bane', 'curse', 'drain', 'siphonlife', 'demonicbrand'} }
 brandKnown = false
@@ -267,6 +268,7 @@ for i = 1, 16 do
     for _, aura in ipairs(container.children) do
         assert(aura.cooldown and aura.cooldown.kind == 'Cooldown')
         assert(aura.cooldown.countdownFont == 'WarlockHudMultiDotCountdownFont')
+        assert(aura.cooldown.millisecondsThreshold == 10)
     end
 end
 assert(frames.WarlockHudMultiDotCountdownFont.font[2] == 10)
@@ -650,6 +652,29 @@ for _, child in ipairs(noBrandViewport.scrollChild.children[1].children[6].child
     if child.kind == 'AuraContainer' then noBrandContainer = child end
 end
 assert(noBrandContainer and #noBrandContainer.slots == 4)
+profile.dotTimerMilliseconds = false
+assert(WarlockHudMultiTarget.Refresh() == true)
+local secondsRoot, secondsViewport = LatestWindow()
+assert(secondsRoot ~= noBrandRoot)
+local secondsContainer
+for _, child in ipairs(secondsViewport.scrollChild.children[1].children[6].children) do
+    if child.kind == 'AuraContainer' then secondsContainer = child end
+end
+assert(secondsContainer and #secondsContainer.slots == 4)
+for _, aura in ipairs(secondsContainer.children) do
+    assert(aura.cooldown.millisecondsThreshold == 0)
+end
+profile.dotTimerMilliseconds = true
+assert(WarlockHudMultiTarget.Refresh() == true)
+local decimalsRoot, decimalsViewport = LatestWindow()
+assert(decimalsRoot ~= secondsRoot)
+local decimalsContainer
+for _, child in ipairs(decimalsViewport.scrollChild.children[1].children[6].children) do
+    if child.kind == 'AuraContainer' then decimalsContainer = child end
+end
+for _, aura in ipairs(decimalsContainer.children) do
+    assert(aura.cooldown.millisecondsThreshold == 10)
+end
 ''')
 
 deferred = LuaRuntime(unpack_returned_tuples=True)

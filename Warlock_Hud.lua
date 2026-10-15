@@ -1454,7 +1454,8 @@ local function BuildTargetAuraSlots(auraContainer, utilityAuras, mainOrder, rowW
                     if spell.group == 2 then
                         cooldown:SetHideCountdownNumbers(true)
                     else
-                        cooldown:SetCountdownMillisecondsThreshold(10)
+                        cooldown:SetCountdownMillisecondsThreshold(
+                            profile.dotTimerMilliseconds and 10 or 0)
                         cooldown:SetReverse(true)
                     end
                     button:SetDurationCooldown(cooldown)
