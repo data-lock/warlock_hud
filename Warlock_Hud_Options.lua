@@ -746,17 +746,16 @@ Check(buffLayout, 20, -490, "Color when active; grey when missing",
     end,
     "On (default): color when active, grey when missing. Off reverses the colors. Missing-buff pulses stay red.")
 
-local procLayout = Panel("Warlock HUD - Procs")
-Text(procLayout, "Move this row in Edit Mode. Its icons appear only while a proc is active.",
-    20, -50, "GameFontHighlightSmall")
-Text(procLayout, "Icon size", 20, -85, "GameFontNormal")
-SizeSlider(procLayout, "Proc icon size", "procSize", 20, 64, 20, -110)
-OrderSection(procLayout, "Active procs", "procOrder", api.ProcKeys, -165, nil, function()
-    ResetRowValues("procSize", "procOrder", api.ProcKeys, DefaultProfile())
-    MarkChanged()
-end)
-Text(procLayout, "Power Infusion and Nightfall (Shadow Trance) pulse with a countdown.",
-    20, -310, "GameFontHighlightSmall")
+local procLayout = WarlockHudOptionsRows.BuildProcs({
+    api = api,
+    Panel = Panel,
+    Text = Text,
+    SizeSlider = SizeSlider,
+    OrderSection = OrderSection,
+    ResetRowValues = ResetRowValues,
+    DefaultProfile = DefaultProfile,
+    MarkChanged = MarkChanged,
+})
 
 local spells = WarlockHudOptionsTrackedAuras.Build({
     api = api,

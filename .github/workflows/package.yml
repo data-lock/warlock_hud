@@ -66,7 +66,8 @@ jobs:
             Warlock_Hud_ChannelTicks.lua Warlock_Hud_Downranks.lua \
             Warlock_Hud_Grimoires.lua Warlock_Hud_AssignmentProbe.lua \
             Warlock_Hud_Assignments.lua Warlock_Hud_Sharing.lua \
-            Warlock_Hud_OptionsTrackedAuras.lua Warlock_Hud_Options.lua \
+            Warlock_Hud_OptionsTrackedAuras.lua Warlock_Hud_OptionsRows.lua \
+            Warlock_Hud_Options.lua \
             Warlock_Hud_Notifications.lua Warlock_Hud_SummonQueue.lua \
             Warlock_Hud_SummonQueueUI.lua Warlock_Hud_Nameplates.lua \
             README.md LICENSE dist/Warlock_Hud/
