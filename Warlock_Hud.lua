@@ -1243,6 +1243,7 @@ local function BuildConsumeAnchor(saved, consumeOrder)
         end
     end)
     consumeState.mover:Hide()
+    return consumeWidth
 end
 
 local function Build()
@@ -1444,7 +1445,7 @@ local function Build()
 
     BuildBuffAnchor(saved, buffOrder)
 
-    BuildConsumeAnchor(saved, consumeOrder)
+    local consumeWidth = BuildConsumeAnchor(saved, consumeOrder)
 
     BuildProcAnchor(saved, procOrder)
 
