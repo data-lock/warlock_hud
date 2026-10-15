@@ -630,36 +630,19 @@ for index, option in ipairs({
 end
 Text(general, "If you /reload during combat, the HUD loads after combat ends.",
     20, -520, "GameFontHighlightSmall")
-Text(layout, "Move rows in Edit Mode. Drag icons to reorder them; use the checks to show or hide them.",
-    20, -50, "GameFontHighlightSmall")
-Text(layout, "Icon sizes", 20, -82, "GameFontNormal")
-SizeSlider(layout, "Target DoT icon size", "mainSize", 16, 96, 20, -105)
-SizeSlider(layout, "Utility icon size", "cooldownSize", 16, 64, 20, -135)
-OrderSection(layout, "Target DoTs", "mainOrder", api.MainKeys, -180, nil, function()
-    ResetRowValues("mainSize", "mainOrder", api.MainKeys, DefaultProfile())
-    MarkChanged()
-end)
-OrderSection(layout, "Utility", "cooldownOrder", api.CooldownKeys, -315, nil, function()
-    ResetRowValues("cooldownSize", "cooldownOrder", api.CooldownKeys, DefaultProfile())
-    MarkChanged()
-end)
-Text(layout, "Nameplates", 20, -455, "GameFontNormal")
-Check(layout, 20, -475, "20% marker on attackable nameplates",
-    function() return Profile().enabled.executeMarker ~= false end,
-    function(value)
-        if value then
-            Profile().enabled.executeMarker = nil
-        else
-            Profile().enabled.executeMarker = false
-        end
-    end)
-ResetPageButton(layout, "Rows & Layout", function()
-    local defaults = DefaultProfile()
-    ResetRowValues("mainSize", "mainOrder", api.MainKeys, defaults)
-    ResetRowValues("cooldownSize", "cooldownOrder", api.CooldownKeys, defaults)
-    Profile().enabled.executeMarker = nil
-    MarkChanged()
-end)
+WarlockHudOptionsRows.BuildLayout({
+    api = api,
+    layout = layout,
+    Text = Text,
+    Check = Check,
+    SizeSlider = SizeSlider,
+    OrderSection = OrderSection,
+    ResetRowValues = ResetRowValues,
+    ResetPageButton = ResetPageButton,
+    DefaultProfile = DefaultProfile,
+    Profile = Profile,
+    MarkChanged = MarkChanged,
+})
 
 local consumeLayout = WarlockHudOptionsRows.BuildConsumes({
     api = api,
