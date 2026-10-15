@@ -1300,6 +1300,59 @@ local function BuildCooldownAnchor(saved, cooldownOrder)
     return cooldownWidth
 end
 
+local function BuildMainAnchor(saved, mainOrder)
+    local rowWidth = math.max(1, #mainOrder * ICON_SIZE + math.max(0, #mainOrder - 1) * ICON_SPACING)
+    rowFrames.hudAnchor = CreateFrame("Frame", nil, WarlockHudRowVisibility.masks.main)
+    rowFrames.hudAnchor:SetSize(rowWidth, ICON_SIZE)
+    rowFrames.hudAnchor:SetMovable(true)
+    rowFrames.hudAnchor:SetClampedToScreen(true)
+    if type(saved) == "table" and type(saved.x) == "number" and type(saved.y) == "number" then
+        rowFrames.hudAnchor:SetPoint("CENTER", UIParent, "BOTTOMLEFT",
+            saved.x * UIParent:GetWidth(), saved.y * UIParent:GetHeight())
+    else
+        rowFrames.hudAnchor:SetPoint("CENTER", UIParent, "CENTER", 0, -120)
+    end
+
+    rowFrames.editMover = CreateFrame("Button", nil, rowFrames.hudAnchor)
+    rowFrames.editMover:SetAllPoints(rowFrames.hudAnchor)
+    rowFrames.editMover:SetFrameStrata("DIALOG")
+    rowFrames.editMover:EnableMouse(true)
+    rowFrames.editMover:RegisterForDrag("LeftButton")
+    local moverShade = rowFrames.editMover:CreateTexture(nil, "BACKGROUND")
+    moverShade:SetAllPoints(rowFrames.editMover)
+    moverShade:SetColorTexture(0, 0.65, 0.85, 0.25)
+    local moverLabel = rowFrames.editMover:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
+    moverLabel:SetPoint("BOTTOM", rowFrames.editMover, "TOP", 0, 5)
+    moverLabel:SetText("Warlock HUD")
+    rowFrames.editMover:SetScript("OnDragStart", function()
+        if not InCombatLockdown() then
+            rowFrames.hudAnchor:StartMoving()
+        end
+    end)
+    rowFrames.editMover:SetScript("OnDragStop", function()
+        rowFrames.hudAnchor:StopMovingOrSizing()
+        local centerX, centerY = rowFrames.hudAnchor:GetCenter()
+        if centerX and centerY then
+            local grid = EditModeManagerFrame and EditModeManagerFrame.Grid
+            if grid and grid:IsShown() and type(grid.gridSpacing) == "number"
+                and grid.gridSpacing > 0 then
+                local gridX, gridY = grid:GetCenter()
+                if gridX and gridY then
+                    local spacing = grid.gridSpacing
+                    centerX = gridX + math.floor((centerX - gridX) / spacing + 0.5) * spacing
+                    centerY = gridY + math.floor((centerY - gridY) / spacing + 0.5) * spacing
+                    rowFrames.hudAnchor:ClearAllPoints()
+                    rowFrames.hudAnchor:SetPoint("CENTER", UIParent, "BOTTOMLEFT", centerX, centerY)
+                end
+            end
+            profile.x = centerX / UIParent:GetWidth()
+            profile.y = centerY / UIParent:GetHeight()
+        end
+    end)
+    rowFrames.editMover:Hide()
+    return rowWidth
+end
+
 local function Build()
     if container then
         return
@@ -1395,56 +1448,8 @@ local function Build()
     local buffOrder = VisibleOrder(profile.buffOrder)
     local consumeOrder = VisibleOrder(profile.consumeOrder)
     local procOrder = VisibleOrder(profile.procOrder)
-    local rowWidth = math.max(1, #mainOrder * ICON_SIZE + math.max(0, #mainOrder - 1) * ICON_SPACING)
-    rowFrames.hudAnchor = CreateFrame("Frame", nil, WarlockHudRowVisibility.masks.main)
-    rowFrames.hudAnchor:SetSize(rowWidth, ICON_SIZE)
-    rowFrames.hudAnchor:SetMovable(true)
-    rowFrames.hudAnchor:SetClampedToScreen(true)
     local saved = profile
-    if type(saved) == "table" and type(saved.x) == "number" and type(saved.y) == "number" then
-        rowFrames.hudAnchor:SetPoint("CENTER", UIParent, "BOTTOMLEFT",
-            saved.x * UIParent:GetWidth(), saved.y * UIParent:GetHeight())
-    else
-        rowFrames.hudAnchor:SetPoint("CENTER", UIParent, "CENTER", 0, -120)
-    end
-
-    rowFrames.editMover = CreateFrame("Button", nil, rowFrames.hudAnchor)
-    rowFrames.editMover:SetAllPoints(rowFrames.hudAnchor)
-    rowFrames.editMover:SetFrameStrata("DIALOG")
-    rowFrames.editMover:EnableMouse(true)
-    rowFrames.editMover:RegisterForDrag("LeftButton")
-    local moverShade = rowFrames.editMover:CreateTexture(nil, "BACKGROUND")
-    moverShade:SetAllPoints(rowFrames.editMover)
-    moverShade:SetColorTexture(0, 0.65, 0.85, 0.25)
-    local moverLabel = rowFrames.editMover:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
-    moverLabel:SetPoint("BOTTOM", rowFrames.editMover, "TOP", 0, 5)
-    moverLabel:SetText("Warlock HUD")
-    rowFrames.editMover:SetScript("OnDragStart", function()
-        if not InCombatLockdown() then
-            rowFrames.hudAnchor:StartMoving()
-        end
-    end)
-    rowFrames.editMover:SetScript("OnDragStop", function()
-        rowFrames.hudAnchor:StopMovingOrSizing()
-        local centerX, centerY = rowFrames.hudAnchor:GetCenter()
-        if centerX and centerY then
-            local grid = EditModeManagerFrame and EditModeManagerFrame.Grid
-            if grid and grid:IsShown() and type(grid.gridSpacing) == "number"
-                and grid.gridSpacing > 0 then
-                local gridX, gridY = grid:GetCenter()
-                if gridX and gridY then
-                    local spacing = grid.gridSpacing
-                    centerX = gridX + math.floor((centerX - gridX) / spacing + 0.5) * spacing
-                    centerY = gridY + math.floor((centerY - gridY) / spacing + 0.5) * spacing
-                    rowFrames.hudAnchor:ClearAllPoints()
-                    rowFrames.hudAnchor:SetPoint("CENTER", UIParent, "BOTTOMLEFT", centerX, centerY)
-                end
-            end
-            profile.x = centerX / UIParent:GetWidth()
-            profile.y = centerY / UIParent:GetHeight()
-        end
-    end)
-    rowFrames.editMover:Hide()
+    local rowWidth = BuildMainAnchor(saved, mainOrder)
 
     local cooldownWidth = BuildCooldownAnchor(saved, cooldownOrder)
 

@@ -26,9 +26,12 @@ end
 CreateFrame = function() return Frame() end
 UIParent = Frame()
 rowFrames = { hudAnchor = Frame(), buffAnchor = Frame() }
-WarlockHudRowVisibility = { masks = { consumes = Frame(), utility = Frame() } }
+WarlockHudRowVisibility = { masks = {
+    main = Frame(), consumes = Frame(), utility = Frame(),
+} }
 consumeState = { size = 24 }
 ICON_SPACING = 4
+ICON_SIZE = 48
 COOLDOWN_ICON_SIZE = 24
 BUFF_ICON_SIZE = 24
 profile = {
@@ -41,9 +44,13 @@ assert(BuildConsumeAnchor(profile, { 'wellfed', 'wizardoil' }) == 52)
 assert(consumeState.anchor.width == 52)
 assert(BuildCooldownAnchor(profile, { 'healthstone', 'soulstone' }) == 52)
 assert(rowFrames.cooldownAnchor.width == 52)
+assert(BuildMainAnchor(profile, { 'curse', 'bane', 'corruption' }) == 152)
+assert(rowFrames.hudAnchor.width == 152)
 ''')
 assert "local consumeWidth = BuildConsumeAnchor(saved, consumeOrder)" in source
 assert "consumeAuras:SetSize(consumeWidth, consumeState.size)" in source
 assert "local cooldownWidth = BuildCooldownAnchor(saved, cooldownOrder)" in source
 assert "utilityAuras:SetSize(cooldownWidth, COOLDOWN_ICON_SIZE)" in source
+assert "local rowWidth = BuildMainAnchor(saved, mainOrder)" in source
+assert "auraContainer:SetSize(rowWidth, ICON_SIZE)" in source
 print("Row anchor width contracts OK")
