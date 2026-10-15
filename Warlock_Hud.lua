@@ -2349,47 +2349,9 @@ local function DebugState()
         end
     end
 end
-local function TracePetBuffs()
-    if InCombatLockdown() or (C_Secrets and C_Secrets.ShouldAurasBeSecret
-        and C_Secrets.ShouldAurasBeSecret()) then
-        Report("Pet buff scan is unavailable during combat or secret aura states.")
-        return
-    end
-    if not C_UnitAuras or not C_UnitAuras.GetBuffDataByIndex then
-        Report("Pet buff scan API is unavailable on this client.")
-        return
-    end
-    local ok, exists = pcall(UnitExists, "pet")
-    if not ok or (issecretvalue and issecretvalue(exists)) then
-        Report("Pet presence is unreadable.")
-        return
-    end
-    if not exists then
-        Report("No pet to scan.")
-        return
-    end
-    local count = 0
-    for index = 1, 40 do
-        local readOK, aura = pcall(C_UnitAuras.GetBuffDataByIndex, "pet", index)
-        if not readOK or (issecretvalue and issecretvalue(aura)) then
-            Report("Pet buff " .. index .. " is unreadable; scan stopped.")
-            return
-        end
-        if not aura then break end
-        local name, spellID = aura.name, aura.spellId
-        if (issecretvalue and (issecretvalue(name) or issecretvalue(spellID))) then
-            Report("Pet buff " .. index .. " has restricted fields; scan stopped.")
-            return
-        end
-        Report("Pet buff " .. index .. ": " .. tostring(name)
-            .. " (ID " .. tostring(spellID) .. ")")
-        count = count + 1
-    end
-    if count == 0 then Report("Pet has no visible buffs.") end
-end
 SlashCmdList.WARLOCKHUD = function(message)
     if message == "petbuffs" then
-        TracePetBuffs()
+        WarlockHudDebug.TracePetBuffs(Report)
         return
     end
     if message == "announceassignments" and WarlockHudAnnounceAssignments then
