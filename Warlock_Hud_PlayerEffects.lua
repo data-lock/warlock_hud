@@ -1,6 +1,23 @@
 -- Static player buff and proc definitions. Runtime aura handling stays in
 -- Warlock_Hud.lua so Blizzard continues to own native aura presentation.
 WarlockHudPlayerEffects = {
+    CooldownKeys = { "healthstone", "soulstone", "fear", "conflagrate", "racial1", "racial2", "demon" },
+    Stones = {
+        { name = "Healthstone", defaultID = 5512,
+            ids = { 9421, 19012, 19013, 5510, 19010, 19011, 5509, 19008, 19009,
+                5511, 19006, 19007, 5512, 19004, 19005 } },
+        { name = "Soulstone", defaultID = 5232,
+            ids = { 16896, 16895, 16893, 16892, 5232 } },
+    },
+    -- Only active racials have a cooldown to display. These are the five
+    -- races that can be Warlocks in Forever's current beta build.
+    Racials = {
+        [1] = { { "Perception", 20600 }, { "Will to Survive", 1259718 } },
+        [7] = { { "Escape Artist", 20589 }, { "Eureka!", 1259821 } },
+        [2] = { { "Blood Fury", 20572 }, { "Shatter Curse", 1299026 } },
+        [5] = { { "Will of the Forsaken", 7744 }, { "Cannibalize", 20577 } },
+        [8] = { { "Berserking", 20554 }, { "Rapid Regeneration", 1260270 } },
+    },
     ProcKeys = { "powerinfusion", "nightfall" },
     BuffKeys = { "fort", "motw", "int", "spirit", "kings", "salv", "armor", "thorns", "sacrifice", "soullink", "breath" },
     Procs = {

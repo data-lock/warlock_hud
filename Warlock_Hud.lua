@@ -52,7 +52,7 @@ local MAIN_KEYS = WarlockHudEffects.MainKeys
 local MAIN_KEY_SET = {}
 for _, key in ipairs(MAIN_KEYS) do MAIN_KEY_SET[key] = true end
 local DOT_DEFAULT_SLOTS = WarlockHudEffects.DefaultSlots
-local COOLDOWN_KEYS = { "healthstone", "soulstone", "fear", "conflagrate", "racial1", "racial2", "demon" }
+local COOLDOWN_KEYS = WarlockHudPlayerEffects.CooldownKeys
 local BUFF_KEYS = WarlockHudPlayerEffects.BuffKeys
 local PROC_KEYS = WarlockHudPlayerEffects.ProcKeys
 local PROCS = WarlockHudPlayerEffects.Procs
@@ -365,23 +365,8 @@ local function Position(order, key, size)
     end
 end
 
-local STONES = {
-    { name = "Healthstone", defaultID = 5512,
-        ids = { 9421, 19012, 19013, 5510, 19010, 19011, 5509, 19008, 19009,
-            5511, 19006, 19007, 5512, 19004, 19005 } },
-    { name = "Soulstone", defaultID = 5232,
-        ids = { 16896, 16895, 16893, 16892, 5232 } },
-}
-
--- Only active racials have a cooldown to display. These are the five
--- races that can be Warlocks in Forever's current beta build.
-local RACIALS = {
-    [1] = { { "Perception", 20600 }, { "Will to Survive", 1259718 } },
-    [7] = { { "Escape Artist", 20589 }, { "Eureka!", 1259821 } },
-    [2] = { { "Blood Fury", 20572 }, { "Shatter Curse", 1299026 } },
-    [5] = { { "Will of the Forsaken", 7744 }, { "Cannibalize", 20577 } },
-    [8] = { { "Berserking", 20554 }, { "Rapid Regeneration", 1260270 } },
-}
+local STONES = WarlockHudPlayerEffects.Stones
+local RACIALS = WarlockHudPlayerEffects.Racials
 
 local function CooldownX(key)
     return Position(VisibleOrder(profile.cooldownOrder), key, COOLDOWN_ICON_SIZE)
