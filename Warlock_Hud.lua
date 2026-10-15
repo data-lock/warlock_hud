@@ -1246,6 +1246,60 @@ local function BuildConsumeAnchor(saved, consumeOrder)
     return consumeWidth
 end
 
+local function BuildCooldownAnchor(saved, cooldownOrder)
+    local cooldownWidth = math.max(1, #cooldownOrder * COOLDOWN_ICON_SIZE
+        + math.max(0, #cooldownOrder - 1) * ICON_SPACING)
+    rowFrames.cooldownAnchor = CreateFrame("Frame", nil, WarlockHudRowVisibility.masks.utility)
+    rowFrames.cooldownAnchor:SetSize(cooldownWidth, COOLDOWN_ICON_SIZE)
+    rowFrames.cooldownAnchor:SetMovable(true)
+    rowFrames.cooldownAnchor:SetClampedToScreen(true)
+    if type(saved) == "table" and type(saved.cooldownX) == "number"
+        and type(saved.cooldownY) == "number" then
+        rowFrames.cooldownAnchor:SetPoint("CENTER", UIParent, "BOTTOMLEFT",
+            saved.cooldownX * UIParent:GetWidth(), saved.cooldownY * UIParent:GetHeight())
+    else
+        rowFrames.cooldownAnchor:SetPoint("CENTER", rowFrames.hudAnchor, "CENTER", 0, -60)
+    end
+    rowFrames.cooldownMover = CreateFrame("Button", nil, rowFrames.cooldownAnchor)
+    rowFrames.cooldownMover:SetAllPoints(rowFrames.cooldownAnchor)
+    rowFrames.cooldownMover:SetFrameStrata("DIALOG")
+    rowFrames.cooldownMover:EnableMouse(true)
+    rowFrames.cooldownMover:RegisterForDrag("LeftButton")
+    local cooldownShade = rowFrames.cooldownMover:CreateTexture(nil, "BACKGROUND")
+    cooldownShade:SetAllPoints(rowFrames.cooldownMover)
+    cooldownShade:SetColorTexture(0, 0.65, 0.85, 0.25)
+    local cooldownLabel = rowFrames.cooldownMover:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
+    cooldownLabel:SetPoint("BOTTOM", rowFrames.cooldownMover, "TOP", 0, 5)
+    cooldownLabel:SetText("Warlock HUD Cooldowns")
+    rowFrames.cooldownMover:SetScript("OnDragStart", function()
+        if not InCombatLockdown() then
+            rowFrames.cooldownAnchor:StartMoving()
+        end
+    end)
+    rowFrames.cooldownMover:SetScript("OnDragStop", function()
+        rowFrames.cooldownAnchor:StopMovingOrSizing()
+        local centerX, centerY = rowFrames.cooldownAnchor:GetCenter()
+        if centerX and centerY then
+            local grid = EditModeManagerFrame and EditModeManagerFrame.Grid
+            if grid and grid:IsShown() and type(grid.gridSpacing) == "number"
+                and grid.gridSpacing > 0 then
+                local gridX, gridY = grid:GetCenter()
+                if gridX and gridY then
+                    local spacing = grid.gridSpacing
+                    centerX = gridX + math.floor((centerX - gridX) / spacing + 0.5) * spacing
+                    centerY = gridY + math.floor((centerY - gridY) / spacing + 0.5) * spacing
+                    rowFrames.cooldownAnchor:ClearAllPoints()
+                    rowFrames.cooldownAnchor:SetPoint("CENTER", UIParent, "BOTTOMLEFT", centerX, centerY)
+                end
+            end
+            profile.cooldownX = centerX / UIParent:GetWidth()
+            profile.cooldownY = centerY / UIParent:GetHeight()
+        end
+    end)
+    rowFrames.cooldownMover:Hide()
+    return cooldownWidth
+end
+
 local function Build()
     if container then
         return
@@ -1392,56 +1446,7 @@ local function Build()
     end)
     rowFrames.editMover:Hide()
 
-    local cooldownWidth = math.max(1, #cooldownOrder * COOLDOWN_ICON_SIZE
-        + math.max(0, #cooldownOrder - 1) * ICON_SPACING)
-    rowFrames.cooldownAnchor = CreateFrame("Frame", nil, WarlockHudRowVisibility.masks.utility)
-    rowFrames.cooldownAnchor:SetSize(cooldownWidth, COOLDOWN_ICON_SIZE)
-    rowFrames.cooldownAnchor:SetMovable(true)
-    rowFrames.cooldownAnchor:SetClampedToScreen(true)
-    if type(saved) == "table" and type(saved.cooldownX) == "number"
-        and type(saved.cooldownY) == "number" then
-        rowFrames.cooldownAnchor:SetPoint("CENTER", UIParent, "BOTTOMLEFT",
-            saved.cooldownX * UIParent:GetWidth(), saved.cooldownY * UIParent:GetHeight())
-    else
-        rowFrames.cooldownAnchor:SetPoint("CENTER", rowFrames.hudAnchor, "CENTER", 0, -60)
-    end
-    rowFrames.cooldownMover = CreateFrame("Button", nil, rowFrames.cooldownAnchor)
-    rowFrames.cooldownMover:SetAllPoints(rowFrames.cooldownAnchor)
-    rowFrames.cooldownMover:SetFrameStrata("DIALOG")
-    rowFrames.cooldownMover:EnableMouse(true)
-    rowFrames.cooldownMover:RegisterForDrag("LeftButton")
-    local cooldownShade = rowFrames.cooldownMover:CreateTexture(nil, "BACKGROUND")
-    cooldownShade:SetAllPoints(rowFrames.cooldownMover)
-    cooldownShade:SetColorTexture(0, 0.65, 0.85, 0.25)
-    local cooldownLabel = rowFrames.cooldownMover:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
-    cooldownLabel:SetPoint("BOTTOM", rowFrames.cooldownMover, "TOP", 0, 5)
-    cooldownLabel:SetText("Warlock HUD Cooldowns")
-    rowFrames.cooldownMover:SetScript("OnDragStart", function()
-        if not InCombatLockdown() then
-            rowFrames.cooldownAnchor:StartMoving()
-        end
-    end)
-    rowFrames.cooldownMover:SetScript("OnDragStop", function()
-        rowFrames.cooldownAnchor:StopMovingOrSizing()
-        local centerX, centerY = rowFrames.cooldownAnchor:GetCenter()
-        if centerX and centerY then
-            local grid = EditModeManagerFrame and EditModeManagerFrame.Grid
-            if grid and grid:IsShown() and type(grid.gridSpacing) == "number"
-                and grid.gridSpacing > 0 then
-                local gridX, gridY = grid:GetCenter()
-                if gridX and gridY then
-                    local spacing = grid.gridSpacing
-                    centerX = gridX + math.floor((centerX - gridX) / spacing + 0.5) * spacing
-                    centerY = gridY + math.floor((centerY - gridY) / spacing + 0.5) * spacing
-                    rowFrames.cooldownAnchor:ClearAllPoints()
-                    rowFrames.cooldownAnchor:SetPoint("CENTER", UIParent, "BOTTOMLEFT", centerX, centerY)
-                end
-            end
-            profile.cooldownX = centerX / UIParent:GetWidth()
-            profile.cooldownY = centerY / UIParent:GetHeight()
-        end
-    end)
-    rowFrames.cooldownMover:Hide()
+    local cooldownWidth = BuildCooldownAnchor(saved, cooldownOrder)
 
     BuildBuffAnchor(saved, buffOrder)
 
