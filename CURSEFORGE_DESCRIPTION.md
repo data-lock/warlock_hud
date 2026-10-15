@@ -38,6 +38,8 @@ Track your DoTs on up to 16 enemies in a compact, scrollable window. Each row sh
 
 When talented and enabled in Target DoTs settings, Demonic Brand can also appear on each tracked enemy with its own native countdown and application count.
 
+A colored line above each health bar estimates the remaining damage from your Corruption, Bane of Agony, Siphon Life, and Immolate. It begins from the spell description when available and adjusts from observed noncritical ticks. The line is an estimate and may differ from the final damage.
+
 The window is **off by default**. Outside combat, type **`/whud mtd`** to open or close it. You can move and resize it, set its transparency, or choose to hide it outside combat. **Toggling and adjustments are available only outside combat.** The list is view-only; select enemies with world nameplates or Tab. Mobs the client does not expose through these unit tokens cannot appear.
 
 ### Consumes, Buffs & Procs
@@ -249,5 +251,7 @@ Special thanks to:
 *   **Tiny** — for testing just about everything I've built.
 *   **Wheat** — for feedback and testing around the summon window and pending summon behavior.
 *   **stevegeoffmcgeofforington** — for recommending Demonic Brand tracking
+*   **GamaKatsu** — for recommending a DoT kill tracker on the Multi-Target DoTs window
+*   **Drugnanov** — for recommending a toggle for milliseconds or seconds.
 
 And thanks to everyone downloading, testing, and sharing feedback. It means a lot to see other Warlocks getting use out of something I originally built for myself!

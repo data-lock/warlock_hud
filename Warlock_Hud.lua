@@ -1399,7 +1399,9 @@ local function BuildTargetAuraSlots(auraContainer, utilityAuras, mainOrder, rowW
                     icon:SetDesaturated(profile.colorActiveDoTs ~= false)
                 end
                 icons[#icons + 1] = {
-                    spell = spell, key = groupKey, rangeSpell = preview,
+                    spell = spell, key = groupKey,
+                    rangeSpell = spell.talentEffect and { name = "Searing Pain" }
+                        or preview,
                     icon = icon, border = MakeBorder(anchor, x, iconSize),
                 }
                 baseCreated[groupKey] = true
@@ -1910,49 +1912,51 @@ local function Build()
         end
     end
 
-    for _, proc in ipairs(PROCS) do
-        local x = Position(procOrder, proc.key, PROC_ICON_SIZE)
-        if x then
-            local includeSpellIDs = {}
-            for _, spellID in ipairs(proc.ids) do includeSpellIDs[spellID] = true end
-            local currentID = C_Spell.GetSpellIDForSpellIdentifier(proc.name)
-            if currentID then includeSpellIDs[currentID] = true end
-            procAuras:AddAuraSlot(proc.key, "HELPFUL", {
-                candidateFilters = { includeSpellIDs = includeSpellIDs },
-                initializeFrame = function(button)
-                    button:SetSize(PROC_ICON_SIZE, PROC_ICON_SIZE)
-                    button:ClearAllPoints()
-                    button:SetPoint("CENTER", rowFrames.procAnchor, "CENTER", x, 0)
-                    local auraIcon = button:CreateTexture(nil, "ARTWORK")
-                    auraIcon:SetAllPoints(button)
-                    auraIcon:SetTexCoord(ICON_CROP, 1 - ICON_CROP, ICON_CROP, 1 - ICON_CROP)
-                    button:SetIcon(auraIcon)
+    for _, key in ipairs(procOrder) do
+        for _, proc in ipairs(PROCS) do
+            if proc.key == key then
+                local includeSpellIDs = {}
+                for _, spellID in ipairs(proc.ids) do includeSpellIDs[spellID] = true end
+                local currentID = C_Spell.GetSpellIDForSpellIdentifier(proc.name)
+                if currentID then includeSpellIDs[currentID] = true end
+                procAuras:AddAuraGroup(proc.key, "HELPFUL", {
+                    candidateFilters = { includeSpellIDs = includeSpellIDs },
+                    maxFrameCount = 1,
+                    layout = { groupSpacing = ICON_SPACING },
+                    initializeFrame = function(button)
+                        button:SetSize(PROC_ICON_SIZE, PROC_ICON_SIZE)
+                        local auraIcon = button:CreateTexture(nil, "ARTWORK")
+                        auraIcon:SetAllPoints(button)
+                        auraIcon:SetTexCoord(ICON_CROP, 1 - ICON_CROP, ICON_CROP, 1 - ICON_CROP)
+                        button:SetIcon(auraIcon)
 
-                    local glow = CreateFrame("Frame", nil, button)
-                    glow:SetSize(PROC_ICON_SIZE + 20, PROC_ICON_SIZE + 20)
-                    glow:SetPoint("CENTER", button, "CENTER")
-                    local glowTexture = glow:CreateTexture(nil, "OVERLAY")
-                    glowTexture:SetAllPoints(glow)
-                    glowTexture:SetTexture("Interface\\Buttons\\UI-ActionButton-Border")
-                    glowTexture:SetBlendMode("ADD")
-                    glowTexture:SetVertexColor(1, 0.72, 0.12, 1)
-                    local pulse = glow:CreateAnimationGroup()
-                    pulse:SetLooping("BOUNCE")
-                    local fade = pulse:CreateAnimation("Alpha")
-                    fade:SetFromAlpha(0.25)
-                    fade:SetToAlpha(1)
-                    fade:SetDuration(0.45)
-                    pulse:Play()
+                        local glow = CreateFrame("Frame", nil, button)
+                        glow:SetSize(PROC_ICON_SIZE + 20, PROC_ICON_SIZE + 20)
+                        glow:SetPoint("CENTER", button, "CENTER")
+                        local glowTexture = glow:CreateTexture(nil, "OVERLAY")
+                        glowTexture:SetAllPoints(glow)
+                        glowTexture:SetTexture("Interface\\Buttons\\UI-ActionButton-Border")
+                        glowTexture:SetBlendMode("ADD")
+                        glowTexture:SetVertexColor(1, 0.72, 0.12, 1)
+                        local pulse = glow:CreateAnimationGroup()
+                        pulse:SetLooping("BOUNCE")
+                        local fade = pulse:CreateAnimation("Alpha")
+                        fade:SetFromAlpha(0.25)
+                        fade:SetToAlpha(1)
+                        fade:SetDuration(0.45)
+                        pulse:Play()
 
-                    local cooldown = CreateFrame("Cooldown", nil, button, "CooldownFrameTemplate")
-                    cooldown:SetAllPoints(button)
-                    cooldown:SetDrawBling(false)
-                    cooldown:SetDrawEdge(false)
-                    cooldown:SetHideCountdownNumbers(false)
-                    cooldown:SetReverse(true)
-                    button:SetDurationCooldown(cooldown)
-                end,
-            })
+                        local cooldown = CreateFrame("Cooldown", nil, button, "CooldownFrameTemplate")
+                        cooldown:SetAllPoints(button)
+                        cooldown:SetDrawBling(false)
+                        cooldown:SetDrawEdge(false)
+                        cooldown:SetHideCountdownNumbers(false)
+                        cooldown:SetReverse(true)
+                        button:SetDurationCooldown(cooldown)
+                    end,
+                })
+                break
+            end
         end
     end
 
@@ -1964,7 +1968,8 @@ local function Build()
     petAuras:SetPoint("CENTER", rowFrames.buffAnchor, "CENTER")
     utilityAuras:SetSize(cooldownWidth, COOLDOWN_ICON_SIZE)
     utilityAuras:SetPoint("CENTER", rowFrames.cooldownAnchor, "CENTER")
-    procAuras:SetSize(math.max(1, #procOrder * PROC_ICON_SIZE), PROC_ICON_SIZE)
+    -- Native aura groups resize this container to the active proc count.
+    -- Its center stays on the user's saved proc anchor.
     procAuras:SetPoint("CENTER", rowFrames.procAnchor, "CENTER")
 
     auraContainer:SetUnit("target")

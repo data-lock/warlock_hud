@@ -61,7 +61,7 @@ function WarlockHudMultiTargetLayout.New(getRows, dotSlots, iconSize, rowHeight,
                 end
             end
             if not positionsOnly then
-                row.name:SetWidth(math.max(50, displayWidth - 49))
+                row.name:SetWidth(math.max(50, displayWidth - 125))
                 for _, tick in ipairs({ row.executeOutline, row.executeLine }) do
                     tick:ClearAllPoints()
                     tick:SetPoint("CENTER", row.healthBar, "LEFT", healthWidth * 0.2, 0)

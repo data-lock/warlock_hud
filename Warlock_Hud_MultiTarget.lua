@@ -120,6 +120,8 @@ local ReadableGuid = identity.ReadableGuid
 local RaidMarkerFor = identity.RaidMarkerFor
 local UpdateIdentity = identity.UpdateIdentity
 local NormalizeRows = identity.NormalizeRows
+local damage = WarlockHudMultiTargetDamage.New(function() return rows end,
+    ReadableGuid)
 
 local function UpdateStatus()
     if not status then return end
@@ -399,23 +401,44 @@ local function Build()
         local healthTrack = healthBar:CreateTexture(nil, "BACKGROUND")
         healthTrack:SetAllPoints(healthBar)
         healthTrack:SetColorTexture(0.025, 0.025, 0.03, 0.95)
-        local executeOutline = healthBar:CreateTexture(nil, "OVERLAY", nil, -2)
-        executeOutline:SetSize(5, 17)
+        local executeLayer = CreateFrame("Frame", nil, display)
+        executeLayer:SetAllPoints(healthBar)
+        executeLayer:SetFrameLevel(healthBar:GetFrameLevel() + 5)
+        local executeOutline = executeLayer:CreateTexture(nil, "OVERLAY", nil, -2)
+        executeOutline:SetSize(5, 19)
         executeOutline:SetColorTexture(0, 0, 0, 1)
-        local executeLine = healthBar:CreateTexture(nil, "OVERLAY", nil, -1)
-        executeLine:SetSize(3, 17)
+        local executeLine = executeLayer:CreateTexture(nil, "OVERLAY", nil, -1)
+        executeLine:SetSize(3, 19)
         executeLine:SetColorTexture(0.78, 0.43, 0.20, 1)
         healthBar:SetMinMaxValues(0, 1)
         healthBar:SetValue(0)
-        local healthText = healthBar:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-        healthText:SetPoint("CENTER", healthBar, "CENTER", 0, 0)
+        local healthText = display:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+        healthText:SetPoint("TOPRIGHT", display, "TOPRIGHT", -4, -2)
+        healthText:SetSize(76, 12)
+        healthText:SetJustifyH("RIGHT")
         healthText:SetTextColor(0.96, 0.96, 0.94)
         healthText:SetShadowColor(0, 0, 0, 1)
         healthText:SetShadowOffset(1, -1)
         healthText:SetText("")
+        local function DamageSegment(level, red, green, blue)
+            local bar = CreateFrame("StatusBar", nil, display)
+            bar:SetPoint("TOPLEFT", healthBar, "TOPLEFT", 0, 0)
+            bar:SetPoint("TOPRIGHT", healthBar, "TOPRIGHT", 0, 0)
+            bar:SetHeight(4)
+            bar:SetFrameLevel(healthBar:GetFrameLevel() + level)
+            bar:SetStatusBarTexture("Interface\\TargetingFrame\\UI-StatusBar")
+            bar:SetStatusBarColor(red, green, blue, 0.95)
+            bar:SetMinMaxValues(0, 1)
+            bar:SetValue(0)
+            return bar
+        end
+        local damageMarker = DamageSegment(4, 1, 0.66, 0.2)
+        local baneMarker = DamageSegment(3, 0.7, 0.38, 0.9)
+        local siphonMarker = DamageSegment(2, 0.24, 0.75, 0.68)
+        local immolateMarker = DamageSegment(1, 1, 0.29, 0.13)
         local name = display:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
         name:SetPoint("TOPLEFT", display, "TOPLEFT", 45, -2)
-        name:SetWidth(math.max(50, width - (DOT_SLOTS * (size + 3) + 67)))
+        name:SetWidth(math.max(50, width - (DOT_SLOTS * (size + 3) + 143)))
         name:SetJustifyH("LEFT")
         name:SetTextColor(0.96, 0.96, 0.94)
         name:SetShadowColor(0, 0, 0, 1)
@@ -436,6 +459,8 @@ local function Build()
         local row = { unit = unit, source = source,
             display = display, icons = iconHolder, name = name,
             healthBar = healthBar, healthText = healthText,
+            damageMarker = damageMarker, baneMarker = baneMarker,
+            siphonMarker = siphonMarker, immolateMarker = immolateMarker,
             executeOutline = executeOutline, executeLine = executeLine,
             portrait = portrait, marker = marker, target = selection, auras = auras,
             dotVisuals = {} }
@@ -611,6 +636,7 @@ events:SetScript("OnEvent", function(_, event, unit)
         NormalizeRows()
         UpdateStatus()
         ReflowRows()
+        damage.Update()
     elseif event == "UNIT_PORTRAIT_UPDATE" or event == "PORTRAITS_UPDATED" then
         if event == "PORTRAITS_UPDATED" then
             for _, row in ipairs(rows) do UpdatePortrait(row) end
@@ -625,6 +651,7 @@ events:SetScript("OnEvent", function(_, event, unit)
             if row.unit == unit then
                 -- A newly assigned token may refer to a different mob.
                 ClearIdentity(row)
+                damage.Clear(row)
                 if event == "NAME_PLATE_UNIT_ADDED" then UpdateIdentity(row) end
                 -- The token may now denote another creature. Ask Blizzard's
                 -- container to discard any aura display from its old occupant.
@@ -641,6 +668,7 @@ events:SetScript("OnEvent", function(_, event, unit)
         NormalizeRows()
         UpdateStatus()
         ReflowRows()
+        damage.Update()
     elseif event == "PLAYER_TARGET_CHANGED" or event == "RAID_TARGET_UPDATE"
         or event == "GROUP_ROSTER_UPDATE" or event == "UNIT_THREAT_LIST_UPDATE"
         or event == "UNIT_THREAT_SITUATION_UPDATE" or event == "UNIT_AURA"
@@ -671,5 +699,6 @@ events:SetScript("OnEvent", function(_, event, unit)
         NormalizeRows()
         UpdateStatus()
         ReflowRows()
+        damage.Update()
     end
 end)

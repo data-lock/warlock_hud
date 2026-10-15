@@ -303,6 +303,14 @@ and aura-tracker initialization without reading aura data.
 
 ## Development
 
+### Future Multi-Target work
+
+- Flash a mob portrait when estimated remaining DoT damage exceeds its current
+  health. Attempts in review builds 0.42.15–0.42.19 did not flash in game:
+  the visible nameplate row reported protected health and rejected the tested
+  native curve paths. Revisit only with a verified client-supported way to
+  compare the estimate with protected health. Keep the health color gradient.
+
 The `.toc` file defines the addon version and Lua load order. Edit the Lua files
 directly and use `/reload` in game to test changes. The game stores profiles in
 `WarlockHudDB` as a SavedVariable.

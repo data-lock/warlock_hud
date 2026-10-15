@@ -1,5 +1,165 @@
 # Changelog
 
+## v0.42.22
+
+- Release the Multi-Target DoT damage estimate and layout changes from the
+  0.42 review builds. See `releases/v0.42.22.md` for details and test status.
+
+## v0.42.21 (in-game review)
+
+- Center the visible proc icons on the saved proc anchor by using native aura
+  groups that resize with the active count. Preserve the configured proc order
+  and Blizzard-owned aura visibility and cooldowns.
+
+## v0.42.20 (in-game review)
+
+- Remove the unfinished portrait-flash warning and its diagnostic code after
+  it failed in-game testing with protected nameplate health. Record it as
+  future work in README. Keep the green-to-red health bar gradient.
+
+## v0.42.19 (in-game review)
+
+- Cache readable maximum health as soon as a nameplate is seen, before it
+  qualifies for a visible Multi-Target row. Keep the cache tied to the mob's
+  GUID for the portrait warning during protected combat.
+
+## v0.42.18 (in-game review)
+
+- Report the portrait-warning path from whichever Multi-Target row owns an
+  estimate, including nameplate rows. The earlier diagnostic only watched the
+  separate target row and could miss the displayed mob.
+
+## v0.42.17 (in-game review)
+
+- Try a native curve against protected current health when maximum health is
+  also unavailable. Its step threshold is the estimated remaining DoT damage.
+
+## v0.42.16 (in-game review)
+
+- Let the portrait warning use a native health-percent curve when current
+  health is protected but maximum health was readable. Cache readable maximum
+  health for the same row identity so the warning can continue in combat.
+
+## v0.42.15 (in-game review)
+
+- Shade Multi-Target health bars from green at high health through yellow to
+  red near death using a native health color curve.
+- Flash a red highlight over a mob portrait when readable current health is
+  at or below the estimated remaining DoT damage. Suppress that comparison
+  while health is protected by the client.
+
+## v0.42.14 (in-game review)
+
+- Move Multi-Target health text into the top right of each row, above the
+  health bar. Reserve space beside the mob name at every window width.
+
+## v0.42.13 (in-game review)
+
+- Stop tinting Demonic Brand's native aura textures, which are protected in
+  combat. Keep Searing Pain range coloring on the HUD-owned idle icon.
+
+## v0.42.12 (in-game review)
+
+- Use Searing Pain's range for the Demonic Brand target icon. Tint both its
+  idle image and active native aura image red when the target is out of range.
+
+## v0.42.11 (in-game review)
+
+- Increase the colored Multi-Target damage line from 2 to 4 pixels high.
+  Draw the 20% tick in a higher frame layer and extend it slightly so it
+  remains clear where it crosses the thicker line.
+
+## v0.42.10 (in-game review)
+
+- Add Siphon Life and Immolate periodic damage to the Multi-Target estimate.
+  They use teal and flame red segments after Corruption's amber and Bane's
+  violet. Immolate's direct impact is excluded.
+- Use a readable spell description for their cast-time estimate when possible.
+  If unavailable, wait for a matching noncritical tick rather than draw a
+  misleading rank-one fallback. Reuse a previously observed noncritical tick
+  for later casts of the same rank during that session. This behavior needs
+  in-game verification.
+
+## v0.42.9 (in-game review)
+
+- Adjust the Multi-Target estimate from observed noncritical Shadow ticks at
+  each spell's expected tick time. Corruption uses the observed tick size for
+  its remaining ticks; Bane of Agony keeps at least its initial average while
+  using larger later ticks as its damage ramps. These observations include
+  gear, consumables, and target damage modifiers such as Curse of the Elements
+  when they affect the actual hit. Critical ticks do not set the estimate.
+- Keep the cast-time rank estimate until a usable tick arrives. Ambiguous
+  simultaneous Shadow hits are ignored rather than assigned to a spell.
+
+## v0.42.8 (in-game review)
+
+- Use the player's observed tooltip totals, 223 for Corruption rank 6223 and
+  214 for Bane of Agony rank 1014, when descriptions cannot be parsed. This
+  review calibration replaces the undersized 40/84 fallbacks for those exact
+  spell IDs. Readable tooltip totals still take priority.
+
+## v0.42.7 (in-game review)
+
+- Read cast spell totals from the spell tooltip when the plain description
+  does not parse, and cache those totals outside combat. This targets the
+  undersized bars caused by the low fallback amounts. The trace now records
+  each cast's total and whether it came from the description, tooltip, or
+  fallback. Colored bars remain anchored to the full health bar width.
+
+## v0.42.6 (in-game review)
+
+- Parent the colored damage bars to the full Multi-Target row while keeping
+  their anchors on the full health bar, so the fill cannot clip them.
+- Cache spell description totals outside combat and reuse the cast rank's
+  cached total in combat. Trace the selected total for troubleshooting when
+  the display is shorter than the spell tooltip implies.
+
+## v0.42.5 (in-game review)
+
+- Restore the estimated damage line to the left edge and scale it against
+  maximum health. Use the full described damage of both Corruption and Bane
+  of Agony at cast. First ticks confirm the casts but no longer shrink their
+  described totals; critical tick amounts therefore cannot inflate them.
+- Trace when a spell description cannot be read and the low fallback is used.
+
+## v0.42.4 (in-game review)
+
+- Use the full described Corruption damage as the starting estimate instead
+  of 75%. Keep the first observed tick as a downward-only correction.
+- Anchor estimated damage to the current health fill and draw it leftward
+  from the health edge. Secret current health goes directly to native status
+  bars; Lua does not calculate with it. This geometry needs in-game review.
+
+## v0.42.3 (in-game review)
+
+- Color the Multi-Target estimated damage line by spell: amber for Corruption
+  and violet for Bane of Agony. When both are present, show their cumulative
+  estimate as adjacent colored portions on the same health scale.
+
+## v0.42.2 (in-game review)
+
+- Show the Corruption and Bane damage line as soon as the cast succeeds.
+  Start from 75% of Corruption's or 60% of Bane's described total damage;
+  use a low rank-one fallback if the description cannot be read. A first
+  observed tick may lower the estimate but cannot raise it, avoiding inflated
+  estimates from a critical tick. Clear unconfirmed casts after the expected
+  first tick window. The estimate still needs in-game verification.
+
+## v0.42.1 (in-game review)
+
+- Include Bane of Agony in the Multi-Target orange damage estimate after its
+  first observed tick. Add its estimate to Corruption on the same mob. Agony's
+  increasing tick damage makes this initial estimate deliberately conservative.
+- The existing tracker can lose a mob when its nameplate leaves range; retain
+  this as a future Multi-Target identity issue.
+
+## v0.42 (in-game review)
+
+- Add an original, conservative Corruption damage estimate to Multi-Target
+  health bars. An orange line appears only after a matching first damage tick
+  and when the mob has a readable GUID. It clears after the expected duration
+  or when the row changes identity. This needs in-game verification.
+
 ## v0.41.2
 
 - Remove the separate Multi-Target Demonic Brand checkbox. The Target DoTs

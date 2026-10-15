@@ -70,6 +70,8 @@ function WarlockHudOptionsMultiTarget.Build(context)
         20, -374, "GameFontHighlightSmall")
     Text(multiDotPanel, "Each row shows a portrait, name, health bar, and 20% health mark.",
         20, -399, "GameFontHighlightSmall")
+    Text(multiDotPanel, "Damage: amber Corruption, violet Bane, teal Siphon, red Immolate.",
+        20, -449, "GameFontHighlightSmall")
     Text(multiDotPanel, "Timer decimals follow the setting on Tracked Auras.",
         20, -424, "GameFontHighlightSmall")
 end

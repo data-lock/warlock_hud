@@ -58,6 +58,8 @@ WarlockHudAPI = {
     InitializeProfiles = function() end,
     IsAddonEnabled = function() return true end,
 }
+WarlockHudEffects = { Spells = WarlockHudAPI.Spells }
+GetTime = function() return 0 end
 UIParent = { GetWidth = function() return 1200 end,
     GetHeight = function() return 800 end,
     GetEffectiveScale = function() return 1 end }
@@ -209,6 +211,7 @@ lua.execute(Path("Warlock_Hud_MultiTargetIdentity.lua").read_text(encoding="utf-
 lua.execute(Path("Warlock_Hud_MultiTargetLayout.lua").read_text(encoding="utf-8"))
 lua.execute(Path("Warlock_Hud_MultiTargetAuras.lua").read_text(encoding="utf-8"))
 lua.execute(Path("Warlock_Hud_MultiTargetProbe.lua").read_text(encoding="utf-8"))
+lua.execute(Path("Warlock_Hud_MultiTargetDamage.lua").read_text(encoding="utf-8"))
 lua.execute(Path("Warlock_Hud_MultiTarget.lua").read_text(encoding="utf-8"))
 lua.execute(r'''
 eventFrame.scripts.OnEvent(nil, 'PLAYER_LOGIN')
@@ -257,11 +260,15 @@ for i = 1, 16 do
     local display = Display(i)
     assert(display.kind == 'Frame' and display.parent == viewport.scrollChild)
     assert(display.alpha == 0)
-    local iconHolder = display.children[6]
-    assert(iconHolder.kind == 'Frame' and iconHolder.parent == display)
     local container
-    for _, child in ipairs(iconHolder.children) do
-        if child.kind == 'AuraContainer' then container = child end
+    for _, child in ipairs(display.children) do
+        if child.kind == 'Frame' then
+            for _, grandchild in ipairs(child.children) do
+                if grandchild.kind == 'AuraContainer' then
+                    container = grandchild
+                end
+            end
+        end
     end
     assert(container and #container.slots == 6)
     assert(container.slots[1][1] == 'Corruption')
@@ -275,7 +282,7 @@ end
 assert(frames.WarlockHudMultiDotCountdownFont.font[2] == 10)
 local firstDisplay = Display(1)
 local firstContainer
-for _, child in ipairs(firstDisplay.children[6].children) do
+for _, child in ipairs(firstDisplay.children[12].children) do
     if child.kind == 'AuraContainer' then firstContainer = child end
 end
 assert(firstContainer.children[1].point[4] == 8 + 27) -- Corruption follows Immolate
@@ -289,10 +296,10 @@ assert(status.text == '1 engaged or dotted target')
 local display = Display(2)
 assert(display.point[5] == 0)
 assert(display.alpha == 1)
-assert(display.children[6].alpha == 1)
+assert(display.children[12].alpha == 1)
 assert(display.children[1].color[1] < 0.1) -- row stays dark when selected
-assert(display.children[7].color[4] == 0.95) -- narrow selection accent
-assert(display.children[7].width == 4 and display.children[7].height == 29)
+assert(display.children[13].color[4] == 0.95) -- narrow selection accent
+assert(display.children[13].width == 4 and display.children[13].height == 29)
 local portrait = display.children[2]
 assert(portrait.point[4] == 8)
 local marker = display.children[3]
@@ -319,8 +326,10 @@ eventFrame.scripts.OnEvent(nil, 'UNIT_PORTRAIT_UPDATE', 'nameplate2')
 assert(portraitCalls == firstPortraitCalls + 1)
 firstPortraitCalls = portraitCalls
 local bar = display.children[4]
-local name = display.children[5]
-local tickOutline, tick, healthText = bar.children[2], bar.children[3], bar.children[4]
+local name = display.children[11]
+local tickOutline, tick = display.children[5].children[1],
+    display.children[5].children[2]
+local healthText = display.children[6]
 assert(name.text == 'First Mob')
 assert(bar.children[1].color[1] < 0.1) -- depleted bar track is dark
 assert(tickOutline.width == 5 and tick.width == 3)
@@ -358,12 +367,12 @@ eventFrame.scripts.OnEvent(nil, 'NAME_PLATE_UNIT_ADDED', 'nameplate3')
 local dottedDisplay = Display(3)
 local rowStep = 29
 assert(dottedDisplay.point[5] == -rowStep)
-assert(dottedDisplay.children[5].text == 'Dotted Mob')
+assert(dottedDisplay.children[11].text == 'Dotted Mob')
 assert(status.text == '2 engaged or dotted targets')
 plates.nameplate4 = 'Idle Mob'
 eventFrame.scripts.OnEvent(nil, 'NAME_PLATE_UNIT_ADDED', 'nameplate4')
 local idleDisplay = Display(4)
-assert(idleDisplay.alpha == 0 and idleDisplay.children[5].text == '')
+assert(idleDisplay.alpha == 0 and idleDisplay.children[11].text == '')
 targetUnit = 'nameplate4'
 eventFrame.scripts.OnEvent(nil, 'PLAYER_TARGET_CHANGED')
 assert(idleDisplay.alpha == 0) -- selecting an idle mob is not combat evidence
@@ -395,7 +404,7 @@ guids.party1target = 'Creature-party-only'
 grouped = true
 eventFrame.scripts.OnEvent(nil, 'UNIT_TARGET', 'party1')
 assert(partyDisplay.alpha == 1)
-assert(partyDisplay.children[5].text == 'Group-only Mob')
+assert(partyDisplay.children[11].text == 'Group-only Mob')
 plates.party1target = nil
 guids.party1target = nil
 grouped = false
@@ -432,16 +441,16 @@ assert(idleDisplay.alpha == 1 and idleDisplay.point[5] == -2 * rowStep)
 assert(status.text == '3 engaged or dotted targets')
 dots.nameplate4 = nil
 eventFrame.scripts.OnEvent(nil, 'UNIT_AURA', 'nameplate4')
-assert(idleDisplay.alpha == 0 and idleDisplay.children[5].text == '')
+assert(idleDisplay.alpha == 0 and idleDisplay.children[11].text == '')
 assert(status.text == '2 engaged or dotted targets')
 plates.nameplate5 = 'Unreadable Mob'
 eventFrame.scripts.OnEvent(nil, 'NAME_PLATE_UNIT_ADDED', 'nameplate5')
 local unknownDisplay = Display(5)
-assert(unknownDisplay.alpha == 0 and unknownDisplay.children[5].text == '')
+assert(unknownDisplay.alpha == 0 and unknownDisplay.children[11].text == '')
 assert(status.text == '2 engaged or dotted targets')
 plates.nameplate2 = nil
 local reusedContainer
-for _, child in ipairs(display.children[6].children) do
+for _, child in ipairs(display.children[12].children) do
     if child.kind == 'AuraContainer' then reusedContainer = child end
 end
 assert(reusedContainer)
@@ -584,7 +593,7 @@ local brandedRoot, brandedViewport = LatestWindow()
 assert(brandedRoot and brandedViewport)
 local brandedDisplay = brandedViewport.scrollChild.children[1]
 local brandedContainer
-for _, child in ipairs(brandedDisplay.children[6].children) do
+for _, child in ipairs(brandedDisplay.children[12].children) do
     if child.kind == 'AuraContainer' then brandedContainer = child end
 end
 assert(brandedContainer and #brandedContainer.slots == 7)
@@ -607,12 +616,12 @@ dots.nameplate2 = 172
 eventFrame.scripts.OnEvent(nil, 'NAME_PLATE_UNIT_ADDED', 'nameplate2')
 local brandedSecond = brandedViewport.scrollChild.children[2]
 local brandedThird = brandedViewport.scrollChild.children[3]
-assert(brandedSecond.alpha == 1 and brandedSecond.children[5].text == 'Branded Mob')
+assert(brandedSecond.alpha == 1 and brandedSecond.children[11].text == 'Branded Mob')
 assert(brandedThird.point[5] == -29)
 plates.nameplate2 = nil
 dots.nameplate2 = nil
 eventFrame.scripts.OnEvent(nil, 'NAME_PLATE_UNIT_REMOVED', 'nameplate2')
-assert(brandedSecond.alpha == 0 and brandedSecond.children[5].text == '')
+assert(brandedSecond.alpha == 0 and brandedSecond.children[11].text == '')
 assert(brandedThird.point[5] == 0)
 table.insert(WarlockHudAPI.MainKeys, 'extra')
 table.insert(WarlockHudAPI.Spells, {name='Extra Effect', slot=8, ids={123456}})
@@ -622,7 +631,7 @@ local expandedRoot, expandedViewport = LatestWindow()
 assert(expandedRoot ~= brandedRoot)
 local expandedDisplay = expandedViewport.scrollChild.children[1]
 local expandedContainer
-for _, child in ipairs(expandedDisplay.children[6].children) do
+for _, child in ipairs(expandedDisplay.children[12].children) do
     if child.kind == 'AuraContainer' then expandedContainer = child end
 end
 assert(expandedContainer and #expandedContainer.slots == 8)
@@ -635,7 +644,7 @@ local compactRoot, compactViewport = LatestWindow()
 assert(compactRoot ~= expandedRoot)
 local compactDisplay = compactViewport.scrollChild.children[1]
 local compactContainer
-for _, child in ipairs(compactDisplay.children[6].children) do
+for _, child in ipairs(compactDisplay.children[12].children) do
     if child.kind == 'AuraContainer' then compactContainer = child end
 end
 assert(compactContainer and #compactContainer.slots == 5)
@@ -645,7 +654,7 @@ assert(WarlockHudMultiTarget.Refresh() == true)
 local noBrandRoot, noBrandViewport = LatestWindow()
 assert(noBrandRoot ~= compactRoot)
 local noBrandContainer
-for _, child in ipairs(noBrandViewport.scrollChild.children[1].children[6].children) do
+for _, child in ipairs(noBrandViewport.scrollChild.children[1].children[12].children) do
     if child.kind == 'AuraContainer' then noBrandContainer = child end
 end
 assert(noBrandContainer and #noBrandContainer.slots == 4)
@@ -655,7 +664,7 @@ assert(WarlockHudMultiTarget.Refresh() == true)
 local noBrandRowRoot, noBrandRowViewport = LatestWindow()
 assert(noBrandRowRoot == noBrandRoot)
 local noBrandRowContainer
-for _, child in ipairs(noBrandRowViewport.scrollChild.children[1].children[6].children) do
+for _, child in ipairs(noBrandRowViewport.scrollChild.children[1].children[12].children) do
     if child.kind == 'AuraContainer' then noBrandRowContainer = child end
 end
 assert(noBrandRowContainer and #noBrandRowContainer.slots == 4)
@@ -664,7 +673,7 @@ assert(WarlockHudMultiTarget.Refresh() == true)
 local secondsRoot, secondsViewport = LatestWindow()
 assert(secondsRoot ~= noBrandRowRoot)
 local secondsContainer
-for _, child in ipairs(secondsViewport.scrollChild.children[1].children[6].children) do
+for _, child in ipairs(secondsViewport.scrollChild.children[1].children[12].children) do
     if child.kind == 'AuraContainer' then secondsContainer = child end
 end
 assert(secondsContainer and #secondsContainer.slots == 4)
@@ -676,7 +685,7 @@ assert(WarlockHudMultiTarget.Refresh() == true)
 local decimalsRoot, decimalsViewport = LatestWindow()
 assert(decimalsRoot ~= secondsRoot)
 local decimalsContainer
-for _, child in ipairs(decimalsViewport.scrollChild.children[1].children[6].children) do
+for _, child in ipairs(decimalsViewport.scrollChild.children[1].children[12].children) do
     if child.kind == 'AuraContainer' then decimalsContainer = child end
 end
 for _, aura in ipairs(decimalsContainer.children) do
@@ -691,6 +700,9 @@ WarlockHudAPI = { GetProfile = function() return { multiDotEnabled = true } end,
     MainKeys = {'corruption', 'bane', 'curse', 'drain', 'immolate', 'siphonlife'},
     Spells = {}, GetDotDefaultSpell = function() return nil end,
     GetMultiTargetEffectOrder = function() return {} end }
+WarlockHudMultiTargetDamage = { New = function()
+    return { Update = function() end, Clear = function() end }
+end }
 combat = true
 InCombatLockdown = function() return combat end
 C_Secrets = { ShouldAurasBeSecret = function() return false end }

@@ -4,6 +4,18 @@ WarlockHudMultiTargetIdentity = {}
 
 function WarlockHudMultiTargetIdentity.New(getRows, spells, rowLimit, plain)
     local SPELLS, ROWS, Plain = spells, rowLimit, plain
+    local healthColorCurve
+    if C_CurveUtil and C_CurveUtil.CreateColorCurve and CreateColor
+        and Enum and Enum.LuaCurveType then
+        local ok, curve = pcall(C_CurveUtil.CreateColorCurve)
+        if ok and curve then
+            curve:SetType(Enum.LuaCurveType.Linear)
+            curve:AddPoint(0, CreateColor(0.88, 0.12, 0.12, 0.9))
+            curve:AddPoint(0.5, CreateColor(0.95, 0.72, 0.16, 0.9))
+            curve:AddPoint(1, CreateColor(0.2, 0.72, 0.3, 0.9))
+            healthColorCurve = curve
+        end
+    end
 
     local function ClearIdentity(row)
         row.present = false
@@ -53,6 +65,19 @@ function WarlockHudMultiTargetIdentity.New(getRows, spells, rowLimit, plain)
         -- never compares, divides, concatenates, or formats them.
         pcall(row.healthBar.SetMinMaxValues, row.healthBar, 0, maximum)
         pcall(row.healthBar.SetValue, row.healthBar, health)
+        if healthColorCurve then
+            local colorOK, color = pcall(UnitHealthPercent, row.unit, true,
+                healthColorCurve)
+            if colorOK and color then
+                pcall(function()
+                    row.healthBar:SetStatusBarColor(color:GetRGBA())
+                end)
+            end
+        elseif not (issecretvalue and issecretvalue(percent)) then
+            local fraction = math.max(0, math.min(1, percent / 100))
+            row.healthBar:SetStatusBarColor(1 - 0.8 * fraction,
+                0.12 + 0.6 * fraction, 0.12 + 0.18 * fraction, 0.9)
+        end
         local formatted = pcall(row.healthText.SetFormattedText, row.healthText,
             "%.0f / %.0f  %.0f%%", health, maximum, percent)
         if not formatted then row.healthText:SetText("") end
