@@ -49,6 +49,8 @@ local function IsSoulShardBag(bag)
     return math.floor(family / 4) % 2 == 1
 end
 local MAIN_KEYS = WarlockHudEffects.MainKeys
+local MAIN_KEY_SET = {}
+for _, key in ipairs(MAIN_KEYS) do MAIN_KEY_SET[key] = true end
 local DOT_DEFAULT_SLOTS = WarlockHudEffects.DefaultSlots
 local COOLDOWN_KEYS = { "healthstone", "soulstone", "fear", "conflagrate", "racial1", "racial2", "demon" }
 local BUFF_KEYS = { "fort", "motw", "int", "spirit", "kings", "salv", "armor", "thorns", "sacrifice", "soullink", "breath" }
@@ -418,15 +420,18 @@ function WarlockHudRowVisibility.RefreshConflagrate()
     if not immolateActive then entry.icon:SetAlpha(1) end
 end
 
-local function VisibleOrder(order)
+local function VisibleOrder(order, multiTarget)
     local visible = {}
     for _, key in ipairs(order) do
         local hasSpell = true
         if key == "demonicbrand" then
-            hasSpell = KnowsDemonicBrand() and Enabled("Demonic Brand")
-        elseif key == "fear" or key == "corruption" or key == "bane"
-            or key == "curse" or key == "drain" or key == "immolate"
-            or key == "siphonlife" then
+            if multiTarget then
+                hasSpell = KnowsDemonicBrand()
+                    and profile.multiDotDemonicBrand ~= false
+            else
+                hasSpell = KnowsDemonicBrand() and Enabled("Demonic Brand")
+            end
+        elseif key == "fear" or MAIN_KEY_SET[key] then
             hasSpell = false
             for _, spell in ipairs(SPELLS) do
                 local spellKey = spell.group == 2 and "fear" or MAIN_KEYS[spell.slot]
@@ -445,7 +450,9 @@ local function VisibleOrder(order)
             hasSpell = KnownSpellID(688) == true
                 and groupBuffIcons.demonLayoutVisible == true
         end
-        if Enabled(key) and hasSpell then visible[#visible + 1] = key end
+        if (multiTarget and key == "demonicbrand" or Enabled(key)) and hasSpell then
+            visible[#visible + 1] = key
+        end
     end
     return visible
 end
@@ -2599,6 +2606,9 @@ WarlockHudAPI = {
     InitializeProfiles = InitializeProfiles,
     ActiveTalentGroup = ActiveTalentGroup,
     MainKeys = MAIN_KEYS,
+    GetMultiTargetEffectOrder = function()
+        return profile and VisibleOrder(profile.mainOrder, true) or {}
+    end,
     CooldownKeys = COOLDOWN_KEYS,
     BuffKeys = BUFF_KEYS,
     ConsumeKeys = consumeState.keys,

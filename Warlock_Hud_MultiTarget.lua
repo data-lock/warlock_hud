@@ -9,7 +9,7 @@ local scrollFrame, scrollContent, scrollBar
 local visibilityController
 local visibilityDriver = false
 local built, pending, auraWarning, failed = false, false, false, false
-local builtBrand, buildCount = false, 0
+local buildCount = 0
 local ROWS = 16
 local SOURCE_UNITS = {}
 for i = 1, ROWS do SOURCE_UNITS[#SOURCE_UNITS + 1] = "nameplate" .. i end
@@ -23,8 +23,9 @@ local BASE_WIDTH, BASE_HEIGHT = 430, 548
 local COUNTDOWN_FONT = "WarlockHudMultiDotCountdownFont"
 local countdownFontReady = false
 local SPELLS = api.Spells
-local DOT_KEYS = { unpack(api.MainKeys, 1, 6) }
-local DOT_SLOTS = #DOT_KEYS
+local DOT_KEYS = {}
+local DOT_SLOTS = 0
+local SLOT_KEYS = api.MainKeys
 local ICON_CROP = (1 - 1 / 1.3) / 2
 local RAID_ICONS = "Interface\\TargetingFrame\\UI-RaidTargetingIcons"
 local function ClampScale(value)
@@ -32,8 +33,8 @@ local function ClampScale(value)
 end
 
 local function ClampWidth(value)
-    -- Six fixed DoT slots need enough room for a readable name and HP bar.
-    return math.max(390, math.min(700, tonumber(value) or BASE_WIDTH))
+    local minimum = math.max(390, DOT_SLOTS * (ICON_SIZE + 3) + 201)
+    return math.max(minimum, math.min(700, tonumber(value) or BASE_WIDTH))
 end
 
 local function ClampHeight(value)
@@ -220,7 +221,7 @@ local function CreateAuraSlot(row, spell, index, size)
             button:SetSize(size, size)
             PlaceDot(button, row.display, index, size)
             row.dotVisuals[#row.dotVisuals + 1] = {
-                icon = button, key = DOT_KEYS[spell.slot] }
+                icon = button, key = SLOT_KEYS[spell.slot] }
             local icon = button:CreateTexture(nil, "ARTWORK")
             icon:SetAllPoints(button)
             icon:SetTexCoord(ICON_CROP, 1 - ICON_CROP, ICON_CROP, 1 - ICON_CROP)
@@ -276,10 +277,14 @@ local function CreateAuraSlot(row, spell, index, size)
     })
 end
 
-local function WantsBrand(p)
-    return p.multiDotDemonicBrand ~= false and WarlockHudRowVisibility
-        and WarlockHudRowVisibility.KnowsDemonicBrand
-        and WarlockHudRowVisibility.KnowsDemonicBrand() == true
+local function SameEffects(current)
+    if #current ~= DOT_SLOTS then return false end
+    local included = {}
+    for _, key in ipairs(DOT_KEYS) do included[key] = true end
+    for _, key in ipairs(current) do
+        if not included[key] then return false end
+    end
+    return true
 end
 
 local function RetireWindow()
@@ -300,13 +305,10 @@ local function Build()
     if built or not Safe() then pending = true; return false end
     local p = Profile()
     if not p or not api.IsAddonEnabled() then return false end
-    builtBrand = WantsBrand(p)
-    if builtBrand then
-        DOT_KEYS[7] = "demonicbrand"
-    else
-        DOT_KEYS[7] = nil
-    end
+    DOT_KEYS = api.GetMultiTargetEffectOrder()
     DOT_SLOTS = #DOT_KEYS
+    local active = {}
+    for _, key in ipairs(DOT_KEYS) do active[key] = true end
     if not C_AddOns or not C_AddOns.LoadAddOn then return false end
     if not C_AddOns.IsAddOnLoaded("Blizzard_AuraContainer") then
         local loaded = C_AddOns.LoadAddOn("Blizzard_AuraContainer")
@@ -500,7 +502,7 @@ local function Build()
         selection:SetColorTexture(0.86, 0.66, 0.25, 0)
         local auras = CreateFrame("AuraContainer", nil, iconHolder,
             "CustomAuraContainerTemplate")
-        auras:SetSize(DOT_SLOTS * (size + 3), size)
+        auras:SetSize(math.max(1, DOT_SLOTS * (size + 3)), size)
         auras:SetPoint("LEFT", display, "RIGHT", 7, 0)
         local source = i <= ROWS and "nameplate" or
             (i == ROWS + 1 and "target" or (i <= ROWS + 5 and "party" or "raid"))
@@ -512,18 +514,20 @@ local function Build()
             dotVisuals = {} }
         rows[i] = row
         local positions = DotOrder(p)
-        for slot, key in ipairs(DOT_KEYS) do
+        for _, key in ipairs(DOT_KEYS) do
             local preview = api.GetDotDefaultSpell(key)
             if not preview then
                 for _, spell in ipairs(SPELLS) do
-                    if spell.group ~= 2 and DOT_KEYS[spell.slot] == key
-                        and (not p.enabled or p.enabled[spell.name] ~= false) then
+                    if spell.group ~= 2 and SLOT_KEYS[spell.slot] == key
+                        and (key == "demonicbrand" or not p.enabled
+                            or p.enabled[spell.name] ~= false) then
                         preview = spell
                         break
                     end
                 end
             end
-            if preview and (not p.enabled or p.enabled[key] ~= false) then
+            if preview and (key == "demonicbrand" or not p.enabled
+                or p.enabled[key] ~= false) then
                 local idle = iconHolder:CreateTexture(nil, "ARTWORK")
                 idle:SetSize(size, size)
                 PlaceDot(idle, display, positions[key], size)
@@ -536,10 +540,10 @@ local function Build()
             end
         end
         for _, spell in ipairs(SPELLS) do
-            if spell.group ~= 2 and DOT_KEYS[spell.slot]
-                and (not p.enabled or p.enabled[DOT_KEYS[spell.slot]] ~= false)
-                and (not p.enabled or p.enabled[spell.name] ~= false) then
-                CreateAuraSlot(row, spell, positions[DOT_KEYS[spell.slot]], size)
+            if spell.group ~= 2 and active[SLOT_KEYS[spell.slot]]
+                and (SLOT_KEYS[spell.slot] == "demonicbrand" or not p.enabled
+                    or p.enabled[spell.name] ~= false) then
+                CreateAuraSlot(row, spell, positions[SLOT_KEYS[spell.slot]], size)
             end
         end
         auras:SetUnit(unit)
@@ -560,7 +564,7 @@ local function Refresh()
     local p = Profile()
     if not p then return false end
     if not Safe() then pending = true; return false end
-    if built and WantsBrand(p) ~= builtBrand then RetireWindow() end
+    if built and not SameEffects(api.GetMultiTargetEffectOrder()) then RetireWindow() end
     if not built then return Build() end
     local width = ClampWidth(p.multiDotWidth or BASE_WIDTH * ClampScale(p.multiDotScale))
     local height = ClampHeight(p.multiDotHeight or BASE_HEIGHT * ClampScale(p.multiDotScale))

@@ -22,7 +22,7 @@ print = function(message) chat[#chat + 1] = message end
 combat = false
 profile = { multiDotEnabled = true, multiDotSize = 24,
     enabled = { executeMarker = true },
-    mainOrder = {'immolate', 'corruption', 'bane', 'curse', 'drain', 'siphonlife'} }
+    mainOrder = {'immolate', 'corruption', 'bane', 'curse', 'drain', 'siphonlife', 'demonicbrand'} }
 brandKnown = false
 WarlockHudRowVisibility = { KnowsDemonicBrand = function() return brandKnown end }
 cursorX, cursorY = 500, 500
@@ -39,6 +39,19 @@ WarlockHudAPI = {
         {name='Demonic Brand', slot=7, ids={1293696}, talentEffect=true},
     },
     GetDotDefaultSpell = function() return nil end,
+    GetMultiTargetEffectOrder = function()
+        local keys = {}
+        for _, key in ipairs(profile.mainOrder) do
+            if key == 'demonicbrand' then
+                if brandKnown and profile.multiDotDemonicBrand ~= false then
+                    keys[#keys + 1] = key
+                end
+            elseif profile.enabled[key] ~= false then
+                keys[#keys + 1] = key
+            end
+        end
+        return keys
+    end,
     GetProfile = function() return profile end,
     InitializeProfiles = function() end,
     IsAddonEnabled = function() return true end,
@@ -253,7 +266,7 @@ for _, child in ipairs(firstDisplay.children[6].children) do
     if child.kind == 'AuraContainer' then firstContainer = child end
 end
 assert(firstContainer.children[1].point[4] == 8 + 27) -- Corruption follows Immolate
-profile.mainOrder = {'corruption', 'immolate', 'bane', 'curse', 'drain', 'siphonlife'}
+profile.mainOrder = {'corruption', 'immolate', 'bane', 'curse', 'drain', 'siphonlife', 'demonicbrand'}
 assert(WarlockHudMultiTarget.Refresh() == true)
 assert(firstContainer.children[1].point[4] == 8)
 plates.nameplate2 = 'First Mob'
@@ -535,19 +548,23 @@ close.scripts.OnClick()
 assert(profile.multiDotEnabled == false)
 profile.multiDotEnabled = true
 profile.multiDotHideOutOfCombat = false
+profile.enabled['Demonic Brand'] = false -- main HUD preference stays independent
+profile.enabled.demonicbrand = false
 brandKnown = true
 assert(WarlockHudMultiTarget.Refresh() == true)
 assert(root.shown == false) -- retired window and its native slots are hidden
-local brandedRoot, brandedViewport
-for _, child in ipairs(UIParent.children) do
-    if child ~= root then
+local function LatestWindow()
+    local foundRoot, foundViewport
+    for _, child in ipairs(UIParent.children) do
         for _, descendant in ipairs(child.children or {}) do
             if descendant.kind == 'ScrollFrame' then
-                brandedRoot, brandedViewport = child, descendant
+                foundRoot, foundViewport = child, descendant
             end
         end
     end
+    return foundRoot, foundViewport
 end
+local brandedRoot, brandedViewport = LatestWindow()
 assert(brandedRoot and brandedViewport)
 local brandedDisplay = brandedViewport.scrollChild.children[1]
 local brandedContainer
@@ -572,6 +589,43 @@ dots.nameplate2 = nil
 eventFrame.scripts.OnEvent(nil, 'NAME_PLATE_UNIT_REMOVED', 'nameplate2')
 assert(brandedSecond.alpha == 0 and brandedSecond.children[5].text == '')
 assert(brandedThird.point[5] == 0)
+table.insert(WarlockHudAPI.MainKeys, 'extra')
+table.insert(WarlockHudAPI.Spells, {name='Extra Effect', slot=8, ids={123456}})
+table.insert(profile.mainOrder, 'extra')
+assert(WarlockHudMultiTarget.Refresh() == true)
+local expandedRoot, expandedViewport = LatestWindow()
+assert(expandedRoot ~= brandedRoot)
+local expandedDisplay = expandedViewport.scrollChild.children[1]
+local expandedContainer
+for _, child in ipairs(expandedDisplay.children[6].children) do
+    if child.kind == 'AuraContainer' then expandedContainer = child end
+end
+assert(expandedContainer and #expandedContainer.slots == 8)
+assert(expandedDisplay.width + 8 + 7 * 27 + 24 <= expandedViewport.width)
+profile.enabled.immolate = false
+profile.enabled.curse = false
+profile.enabled.drain = false
+assert(WarlockHudMultiTarget.Refresh() == true)
+local compactRoot, compactViewport = LatestWindow()
+assert(compactRoot ~= expandedRoot)
+local compactDisplay = compactViewport.scrollChild.children[1]
+local compactContainer
+for _, child in ipairs(compactDisplay.children[6].children) do
+    if child.kind == 'AuraContainer' then compactContainer = child end
+end
+assert(compactContainer and #compactContainer.slots == 5)
+assert(compactDisplay.width + 8 + 4 * 27 + 24 <= compactViewport.width)
+profile.enabled['Demonic Brand'] = nil
+profile.enabled.demonicbrand = nil
+profile.multiDotDemonicBrand = false
+assert(WarlockHudMultiTarget.Refresh() == true)
+local noBrandRoot, noBrandViewport = LatestWindow()
+assert(noBrandRoot ~= compactRoot)
+local noBrandContainer
+for _, child in ipairs(noBrandViewport.scrollChild.children[1].children[6].children) do
+    if child.kind == 'AuraContainer' then noBrandContainer = child end
+end
+assert(noBrandContainer and #noBrandContainer.slots == 4)
 ''')
 
 deferred = LuaRuntime(unpack_returned_tuples=True)
@@ -579,7 +633,8 @@ deferred.execute(r'''
 WarlockHudAPI = { GetProfile = function() return { multiDotEnabled = true } end,
     InitializeProfiles = function() end, IsAddonEnabled = function() return true end,
     MainKeys = {'corruption', 'bane', 'curse', 'drain', 'immolate', 'siphonlife'},
-    Spells = {}, GetDotDefaultSpell = function() return nil end }
+    Spells = {}, GetDotDefaultSpell = function() return nil end,
+    GetMultiTargetEffectOrder = function() return {} end }
 combat = true
 InCombatLockdown = function() return combat end
 C_Secrets = { ShouldAurasBeSecret = function() return false end }
