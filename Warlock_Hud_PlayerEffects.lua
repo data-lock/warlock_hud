@@ -38,4 +38,28 @@ WarlockHudPlayerEffects = {
         { key = "soullink", name = "Soul Link", activeOnly = true,
             names = { "Soul Link" }, ids = { 25228, 19028 } },
     },
+    WellFedIDs = { [19705] = true },
+    -- Forever aura IDs are item effects, not alchemy recipe or item IDs. The
+    -- unverified Greater Mageblood effect ID can be learned out of combat.
+    Consumables = {
+        { key = "flask", label = "Flask", names = { "Supreme Power" },
+            ids = { [17628] = true }, itemID = 13512 },
+        { key = "spelldamage", label = "Spell Damage Elixir",
+            names = { "Lesser Arcane Elixir", "Arcane Elixir", "Greater Arcane Elixir" },
+            ids = { [1250971] = true, [439959] = true, [11390] = true,
+                [16889] = true }, itemID = 13454 },
+        { key = "shadow", label = "Shadow Damage Elixir", names = { "Shadow Power" },
+            ids = { [11474] = true }, itemID = 9264 },
+        { key = "fire", label = "Fire Damage Elixir",
+            names = { "Fire Power", "Greater Firepower" },
+            ids = { [7844] = true, [26276] = true }, itemID = 21546 },
+        { key = "manaregen", label = "Mana Regeneration",
+            names = { "Minor Mageblood Elixir", "Lesser Mageblood Elixir",
+                "Mana Regeneration", "Greater Mageblood Elixir" },
+            learnNames = { "Greater Mageblood Elixir" },
+            ids = { [1250942] = true, [1250944] = true, [24363] = true },
+            itemID = 20007 },
+    },
+    OilEnchantIDs = { [2623] = true, [2626] = true,
+        [2627] = true, [2628] = true },
 }
