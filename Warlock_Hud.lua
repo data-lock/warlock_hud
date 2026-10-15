@@ -2080,6 +2080,15 @@ events:RegisterEvent("ZONE_CHANGED_NEW_AREA")
 events:RegisterUnitEvent("UNIT_AURA", "player", "pet")
 events:RegisterUnitEvent("UNIT_PET", "player")
 events:RegisterUnitEvent("UNIT_HEALTH", "pet")
+local function RefreshFullVisualState()
+    UpdateVisualState()
+    UpdateArmorGlow()
+    UpdateWellFedGlow()
+    UpdateConsumableGlows()
+    UpdateGroupBuffs()
+    UpdateRowVisibility()
+end
+
 events:SetScript("OnEvent", function(_, event)
     -- Roster and aura events can arrive before PLAYER_LOGIN. Initialize the
     -- profile on the first event so those events cannot block HUD startup.
@@ -2109,24 +2118,14 @@ events:SetScript("OnEvent", function(_, event)
                 and C_Secrets.ShouldAurasBeSecret())) then
             pendingKnownRebuild = true
         end
-        UpdateVisualState()
-        UpdateArmorGlow()
-        UpdateWellFedGlow()
-        UpdateConsumableGlows()
-        UpdateGroupBuffs()
-        UpdateRowVisibility()
+        RefreshFullVisualState()
         if event == "PLAYER_LOGIN" then
             local version = C_AddOns and C_AddOns.GetAddOnMetadata
                 and C_AddOns.GetAddOnMetadata("Warlock_Hud", "Version") or "unknown"
             Report("v" .. version .. " loaded. Tracks Warlock spells, cooldowns, and buffs. Type /whub for settings.")
         end
     elseif event == "PLAYER_REGEN_DISABLED" then
-        UpdateVisualState()
-        UpdateArmorGlow()
-        UpdateWellFedGlow()
-        UpdateConsumableGlows()
-        UpdateGroupBuffs()
-        UpdateRowVisibility()
+        RefreshFullVisualState()
     elseif event == "BAG_UPDATE_DELAYED" or event == "BAG_UPDATE_COOLDOWN" then
         UpdateStones()
         UpdateShardCount()
