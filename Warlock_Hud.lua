@@ -1353,6 +1353,124 @@ local function BuildMainAnchor(saved, mainOrder)
     return rowWidth
 end
 
+local function BuildTargetAuraSlots(auraContainer, utilityAuras, mainOrder, rowWidth)
+    auraContainer:SetSize(rowWidth, ICON_SIZE)
+    auraContainer:SetPoint("CENTER", rowFrames.hudAnchor, "CENTER")
+
+    local baseCreated = {}
+    for _, spell in ipairs(SPELLS) do
+        local includeSpellIDs = {}
+        for _, spellID in ipairs(spell.ids) do
+            includeSpellIDs[spellID] = true
+        end
+        local currentSpellID = C_Spell and C_Spell.GetSpellIDForSpellIdentifier
+            and C_Spell.GetSpellIDForSpellIdentifier(spell.name)
+        if currentSpellID and not spell.talentEffect then
+            includeSpellIDs[currentSpellID] = true
+        end
+        local groupKey = spell.group == 2 and "fear" or MAIN_KEYS[spell.slot]
+        local x = spell.group == 2 and CooldownX(groupKey)
+            or Position(mainOrder, groupKey, ICON_SIZE)
+        if x and Enabled(spell.name)
+            and (spell.talentEffect and KnowsDemonicBrand() or KnownSpell(spell))
+            and next(includeSpellIDs) then
+            local anchor = spell.group == 2 and rowFrames.cooldownAnchor or rowFrames.hudAnchor
+            local iconSize = spell.group == 2 and COOLDOWN_ICON_SIZE or ICON_SIZE
+            if not baseCreated[groupKey] then
+                local assigned = WarlockHudAssignmentSpell
+                    and WarlockHudAssignmentSpell(groupKey)
+                local preview = assigned or spell
+                local selected = profile.defaultDotIcons
+                    and profile.defaultDotIcons[groupKey]
+                if selected and not assigned then
+                    for _, candidate in ipairs(SPELLS) do
+                        if candidate.slot == spell.slot
+                            and candidate.name == selected then
+                            preview = candidate
+                            break
+                        end
+                    end
+                end
+                local previewID = C_Spell and C_Spell.GetSpellIDForSpellIdentifier
+                    and C_Spell.GetSpellIDForSpellIdentifier(preview.name)
+                    or preview.ids[1]
+                local icon = anchor:CreateTexture(nil, "ARTWORK")
+                icon:SetSize(iconSize, iconSize)
+                icon:SetPoint("CENTER", anchor, "CENTER", x, 0)
+                icon:SetTexture(CastSpellTexture(preview, previewID)
+                    or CastSpellTexture(spell, currentSpellID))
+                icon:SetTexCoord(ICON_CROP, 1 - ICON_CROP, ICON_CROP, 1 - ICON_CROP)
+                if spell.group ~= 2 then
+                    icon:SetDesaturated(profile.colorActiveDoTs ~= false)
+                end
+                icons[#icons + 1] = {
+                    spell = spell, key = groupKey, rangeSpell = preview,
+                    icon = icon, border = MakeBorder(anchor, x, iconSize),
+                }
+                baseCreated[groupKey] = true
+            end
+
+            (spell.group == 2 and utilityAuras or auraContainer):AddAuraSlot(
+                spell.name, "HARMFUL|PLAYER", {
+                candidateFilters = {
+                    includeSpellIDs = includeSpellIDs,
+                },
+                initializeFrame = function(button)
+                    button:SetSize(iconSize, iconSize)
+                    button:ClearAllPoints()
+                    button:SetPoint("CENTER", anchor, "CENTER", x, 0)
+                    if spell.name == "Immolate" and groupBuffIcons.conflagrate then
+                        local entry = groupBuffIcons.conflagrate
+                        entry.immolateButtons[#entry.immolateButtons + 1] = button
+                    end
+
+                    local auraIcon = button:CreateTexture(nil, "ARTWORK")
+                    auraIcon:SetAllPoints(button)
+                    auraIcon:SetTexCoord(ICON_CROP, 1 - ICON_CROP, ICON_CROP, 1 - ICON_CROP)
+                    if spell.group ~= 2 then
+                        auraIcon:SetDesaturated(profile.colorActiveDoTs == false)
+                    end
+                    button:SetIcon(auraIcon)
+                    if spell.group ~= 2 then
+                        -- Forever can supply a question-mark aura texture for a
+                        -- custom effect. This slot represents one cast spell,
+                        -- so its known cast texture can cover that placeholder
+                        -- while Blizzard still owns visibility and duration.
+                        local castTexture = CastSpellTexture(spell, currentSpellID)
+                        if castTexture then
+                            local castIcon = button:CreateTexture(nil, "OVERLAY")
+                            castIcon:SetAllPoints(button)
+                            castIcon:SetTexture(castTexture)
+                            castIcon:SetTexCoord(ICON_CROP, 1 - ICON_CROP,
+                                ICON_CROP, 1 - ICON_CROP)
+                            castIcon:SetDesaturated(profile.colorActiveDoTs == false)
+                        end
+                    end
+
+                    local cooldown = CreateFrame("Cooldown", nil, button, "CooldownFrameTemplate")
+                    cooldown:SetAllPoints(button)
+                    cooldown:SetDrawBling(false)
+                    cooldown:SetDrawEdge(false)
+                    if spell.group == 2 then
+                        cooldown:SetHideCountdownNumbers(true)
+                    else
+                        cooldown:SetCountdownMillisecondsThreshold(10)
+                        cooldown:SetReverse(true)
+                    end
+                    button:SetDurationCooldown(cooldown)
+                    if spell.talentEffect and button.SetApplicationCount then
+                        -- Blizzard writes application counts directly to this
+                        -- FontString, including while aura data is secret.
+                        local count = button:CreateFontString(nil, "OVERLAY", "NumberFontNormal")
+                        count:SetPoint("BOTTOMRIGHT", button, "BOTTOMRIGHT", -2, 2)
+                        button:SetApplicationCount(count, {})
+                    end
+                end,
+            })
+        end
+    end
+end
+
 local function Build()
     if container then
         return
@@ -1557,121 +1675,7 @@ local function Build()
 
     BuildShardRow(saved)
 
-    auraContainer:SetSize(rowWidth, ICON_SIZE)
-    auraContainer:SetPoint("CENTER", rowFrames.hudAnchor, "CENTER")
-
-    local baseCreated = {}
-    for _, spell in ipairs(SPELLS) do
-        local includeSpellIDs = {}
-        for _, spellID in ipairs(spell.ids) do
-            includeSpellIDs[spellID] = true
-        end
-        local currentSpellID = C_Spell and C_Spell.GetSpellIDForSpellIdentifier
-            and C_Spell.GetSpellIDForSpellIdentifier(spell.name)
-        if currentSpellID and not spell.talentEffect then
-            includeSpellIDs[currentSpellID] = true
-        end
-        local groupKey = spell.group == 2 and "fear" or MAIN_KEYS[spell.slot]
-        local x = spell.group == 2 and CooldownX(groupKey)
-            or Position(mainOrder, groupKey, ICON_SIZE)
-        if x and Enabled(spell.name)
-            and (spell.talentEffect and KnowsDemonicBrand() or KnownSpell(spell))
-            and next(includeSpellIDs) then
-            local anchor = spell.group == 2 and rowFrames.cooldownAnchor or rowFrames.hudAnchor
-            local iconSize = spell.group == 2 and COOLDOWN_ICON_SIZE or ICON_SIZE
-            if not baseCreated[groupKey] then
-                local assigned = WarlockHudAssignmentSpell
-                    and WarlockHudAssignmentSpell(groupKey)
-                local preview = assigned or spell
-                local selected = profile.defaultDotIcons
-                    and profile.defaultDotIcons[groupKey]
-                if selected and not assigned then
-                    for _, candidate in ipairs(SPELLS) do
-                        if candidate.slot == spell.slot
-                            and candidate.name == selected then
-                            preview = candidate
-                            break
-                        end
-                    end
-                end
-                local previewID = C_Spell and C_Spell.GetSpellIDForSpellIdentifier
-                    and C_Spell.GetSpellIDForSpellIdentifier(preview.name)
-                    or preview.ids[1]
-                local icon = anchor:CreateTexture(nil, "ARTWORK")
-                icon:SetSize(iconSize, iconSize)
-                icon:SetPoint("CENTER", anchor, "CENTER", x, 0)
-                icon:SetTexture(CastSpellTexture(preview, previewID)
-                    or CastSpellTexture(spell, currentSpellID))
-                icon:SetTexCoord(ICON_CROP, 1 - ICON_CROP, ICON_CROP, 1 - ICON_CROP)
-                if spell.group ~= 2 then
-                    icon:SetDesaturated(profile.colorActiveDoTs ~= false)
-                end
-                icons[#icons + 1] = {
-                    spell = spell, key = groupKey, rangeSpell = preview,
-                    icon = icon, border = MakeBorder(anchor, x, iconSize),
-                }
-                baseCreated[groupKey] = true
-            end
-
-            (spell.group == 2 and utilityAuras or auraContainer):AddAuraSlot(
-                spell.name, "HARMFUL|PLAYER", {
-                candidateFilters = {
-                    includeSpellIDs = includeSpellIDs,
-                },
-                initializeFrame = function(button)
-                    button:SetSize(iconSize, iconSize)
-                    button:ClearAllPoints()
-                    button:SetPoint("CENTER", anchor, "CENTER", x, 0)
-                    if spell.name == "Immolate" and groupBuffIcons.conflagrate then
-                        local entry = groupBuffIcons.conflagrate
-                        entry.immolateButtons[#entry.immolateButtons + 1] = button
-                    end
-
-                    local auraIcon = button:CreateTexture(nil, "ARTWORK")
-                    auraIcon:SetAllPoints(button)
-                    auraIcon:SetTexCoord(ICON_CROP, 1 - ICON_CROP, ICON_CROP, 1 - ICON_CROP)
-                    if spell.group ~= 2 then
-                        auraIcon:SetDesaturated(profile.colorActiveDoTs == false)
-                    end
-                    button:SetIcon(auraIcon)
-                    if spell.group ~= 2 then
-                        -- Forever can supply a question-mark aura texture for a
-                        -- custom effect. This slot represents one cast spell,
-                        -- so its known cast texture can cover that placeholder
-                        -- while Blizzard still owns visibility and duration.
-                        local castTexture = CastSpellTexture(spell, currentSpellID)
-                        if castTexture then
-                            local castIcon = button:CreateTexture(nil, "OVERLAY")
-                            castIcon:SetAllPoints(button)
-                            castIcon:SetTexture(castTexture)
-                            castIcon:SetTexCoord(ICON_CROP, 1 - ICON_CROP,
-                                ICON_CROP, 1 - ICON_CROP)
-                            castIcon:SetDesaturated(profile.colorActiveDoTs == false)
-                        end
-                    end
-
-                    local cooldown = CreateFrame("Cooldown", nil, button, "CooldownFrameTemplate")
-                    cooldown:SetAllPoints(button)
-                    cooldown:SetDrawBling(false)
-                    cooldown:SetDrawEdge(false)
-                    if spell.group == 2 then
-                        cooldown:SetHideCountdownNumbers(true)
-                    else
-                        cooldown:SetCountdownMillisecondsThreshold(10)
-                        cooldown:SetReverse(true)
-                    end
-                    button:SetDurationCooldown(cooldown)
-                    if spell.talentEffect and button.SetApplicationCount then
-                        -- Blizzard writes application counts directly to this
-                        -- FontString, including while aura data is secret.
-                        local count = button:CreateFontString(nil, "OVERLAY", "NumberFontNormal")
-                        count:SetPoint("BOTTOMRIGHT", button, "BOTTOMRIGHT", -2, 2)
-                        button:SetApplicationCount(count, {})
-                    end
-                end,
-            })
-        end
-    end
+    BuildTargetAuraSlots(auraContainer, utilityAuras, mainOrder, rowWidth)
 
     for _, key in ipairs(buffOrder) do
         local holder = CreateFrame("Frame", nil, rowFrames.buffAnchor)
