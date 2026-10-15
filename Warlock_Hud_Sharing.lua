@@ -323,9 +323,10 @@ function sharing.Import(parsed, selected, importAll)
     end
     api.InitializeProfiles()
     if activated then
-        return #names, "Imported and selected profile: " .. activated .. "."
+        return #names, "Created and selected new profile: " .. activated
+            .. ". Existing profiles were not overwritten."
     end
-    return #names, importAll and "Imported new profiles. Select one on the Profiles page."
+    return #names, importAll and "Created new profiles without overwriting existing ones. Select one on the Profiles page."
         or "Imported into current profile."
 end
 

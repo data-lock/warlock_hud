@@ -1164,11 +1164,11 @@ end
 local allProfiles = false
 local allCheck = CreateFrame("CheckButton", nil, sharingPanel, "UICheckButtonTemplate")
 allCheck:SetPoint("TOPLEFT", sharingPanel, "TOPLEFT", 20, -182)
-Text(sharingPanel, "All profiles (otherwise current profile)", 48, -187, "GameFontHighlight")
+Text(sharingPanel, "All profiles (import creates new profiles)", 48, -187, "GameFontHighlight")
 allCheck:SetScript("OnClick", function(self) allProfiles = self:GetChecked() and true or false end)
-Text(sharingPanel, "Importing one profile merges selected sections into the current profile.",
+Text(sharingPanel, "Import current merges selected sections into the active profile.",
     20, -213, "GameFontHighlightSmall")
-Text(sharingPanel, "Import all creates profiles; one is selected, or choose among multiple on Profiles.",
+Text(sharingPanel, "Import all creates new profiles; existing profiles are never overwritten.",
     20, -230, "GameFontHighlightSmall")
 Text(sharingPanel, "Share code", 20, -257, "GameFontNormal")
 local shareArea = CreateFrame("Frame", nil, sharingPanel)
