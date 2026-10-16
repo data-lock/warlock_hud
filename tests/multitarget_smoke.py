@@ -6,6 +6,7 @@ from lupa.lua51 import LuaRuntime
 lua = LuaRuntime(unpack_returned_tuples=True)
 lua.execute(r'''
 frames = {}
+topFrames = {}
 plates = {}
 mobTargets = {}
 dead = {}
@@ -109,6 +110,7 @@ portraitCalls = 0
 SetPortraitTexture = function(texture, unit)
     portraitCalls = portraitCalls + 1
     texture.portraitUnit = unit
+    texture.texture = 'portrait:' .. unit
 end
 raiding = false
 IsInRaid = function() return raiding end
@@ -143,6 +145,7 @@ function methods:SetTexture(value)
     self.texture = value
     if value == nil then self.portraitUnit = nil end
 end
+function methods:GetTexture() return rawget(self, 'texture') end
 function methods:SetTexCoord(...) self.texCoord = {...} end
 function methods:SetSize(w, h) self.width, self.height = w, h end
 function methods:SetHeight(h) self.height = h end
@@ -177,6 +180,13 @@ function methods:Hide() self.shown = false end
 function methods:Show() self.shown = true end
 function methods:SetDurationCooldown(value) self.cooldown = value end
 function methods:SetScript(key, value) self.scripts[key] = value end
+function methods:RegisterEvent(event)
+    self.registered = rawget(self, 'registered') or {}
+    self.registered[event] = true
+end
+function methods:RegisterUnitEvent(event)
+    self:RegisterEvent(event)
+end
 function methods:HookScript(key, value) self.scripts[key] = value end
 function methods:RegisterForClicks(...) self.clicks = {...} end
 function methods:EnableMouse(value) self.mouse = value end
@@ -199,7 +209,10 @@ function CreateFrame(kind, name, parent)
         parent.children[#parent.children + 1] = frame
     end
     if name then frames[name] = frame end
-    if kind == 'Frame' and not parent then eventFrame = frame end
+    if kind == 'Frame' and not parent then
+        eventFrame = frame
+        topFrames[#topFrames + 1] = frame
+    end
     return frame
 end
 CreateFont = function(name) return CreateFrame('Font', name) end
@@ -724,6 +737,99 @@ end
 for _, aura in ipairs(decimalsContainer.children) do
     assert(aura.cooldown.millisecondsThreshold == 10)
 end
+-- A lost nameplate keeps a separate grey row while its estimated DoT lasts.
+local damageDriver
+for _, frame in ipairs(topFrames) do
+    local registered = rawget(frame, 'registered')
+    if registered and registered.UNIT_SPELLCAST_SUCCEEDED then
+        damageDriver = frame
+    end
+end
+assert(damageDriver)
+C_Spell.GetSpellDescription = function(id)
+    if id == 172 then return 'Deals 223 Shadow damage over 18 sec' end
+end
+local clock = 0
+GetTime = function() return clock end
+plates.target = nil
+eventFrame.scripts.OnEvent(nil, 'PLAYER_TARGET_CHANGED')
+plates.nameplate2 = 'Lost Mob'
+dots.nameplate2 = 172
+guids.nameplate2 = 'Creature-lost-2'
+guids.target = 'Creature-lost-2'
+eventFrame.scripts.OnEvent(nil, 'NAME_PLATE_UNIT_ADDED', 'nameplate2')
+assert(decimalsViewport.scrollChild.children[2].children[12].text == 'Lost Mob')
+combat = true
+damageDriver.scripts.OnEvent(nil, 'UNIT_SPELLCAST_SUCCEEDED', 'player', nil, 172)
+assert(trace[#trace]:find('Multi-Target damage: Corruption', 1, true),
+    tostring(trace[#trace]))
+plates.nameplate2 = nil
+dots.nameplate2 = nil
+guids.nameplate2 = nil
+eventFrame.scripts.OnEvent(nil, 'NAME_PLATE_UNIT_REMOVED', 'nameplate2')
+local ghost = decimalsViewport.scrollChild.children[62]
+assert(ghost.alpha == 0.55 and ghost.children[12].text == 'Lost Mob',
+    tostring(ghost.alpha) .. '/' .. tostring(ghost.children[12].text)
+    .. '/' .. tostring(status.text))
+assert(ghost.children[7].text == '45 30% (DoT 223)')
+assert(ghost.children[5].value == 45 and ghost.children[5].maximum == 150)
+assert(ghost.children[2].texture == 'portrait:nameplate2')
+assert(ghost.children[3].alpha == 0)
+assert(ghost.children[13].children[1].shown == false)
+local activeSnapshotIcon = false
+for _, icon in ipairs(ghost.children[13].children) do
+    if icon.alpha == 0.9 then activeSnapshotIcon = true end
+end
+assert(activeSnapshotIcon)
+plates.target = 'Lost Mob'
+dots.target = 172
+targetUnit = 'target'
+eventFrame.scripts.OnEvent(nil, 'PLAYER_TARGET_CHANGED')
+assert(ghost.alpha == 0) -- live target token takes over
+plates.target = nil
+dots.target = nil
+guids.target = nil
+targetUnit = 'nameplate2'
+eventFrame.scripts.OnEvent(nil, 'PLAYER_TARGET_CHANGED')
+assert(ghost.alpha == 0.55) -- lost again
+clock = 19
+eventFrame.scripts.OnUpdate(nil, 0.21)
+assert(ghost.alpha == 0) -- estimate expired
+clock = 20
+plates.nameplate2 = 'Lost Mob'
+dots.nameplate2 = 172
+guids.nameplate2 = 'Creature-lost-2'
+guids.target = 'Creature-lost-2'
+eventFrame.scripts.OnEvent(nil, 'NAME_PLATE_UNIT_ADDED', 'nameplate2')
+assert(decimalsViewport.scrollChild.children[2].children[12].text == 'Lost Mob',
+    tostring(decimalsViewport.scrollChild.children[2].alpha) .. '/'
+    .. tostring(decimalsViewport.scrollChild.children[2].children[12].text))
+assert(guids.nameplate2 == 'Creature-lost-2')
+damageDriver.scripts.OnEvent(nil, 'UNIT_SPELLCAST_SUCCEEDED', 'player', nil, 172)
+plates.nameplate2 = nil
+dots.nameplate2 = nil
+guids.nameplate2 = nil
+eventFrame.scripts.OnEvent(nil, 'NAME_PLATE_UNIT_REMOVED', 'nameplate2')
+assert(ghost.alpha == 0.55, tostring(ghost.alpha) .. '/'
+    .. tostring(ghost.children[12].text) .. '/' .. tostring(status.text))
+plates.nameplate4 = 'Second Lost'
+mobTargets.nameplate4target = 'player'
+guids.nameplate4 = 'Creature-lost-4'
+guids.target = 'Creature-lost-4'
+eventFrame.scripts.OnEvent(nil, 'NAME_PLATE_UNIT_ADDED', 'nameplate4')
+damageDriver.scripts.OnEvent(nil, 'UNIT_SPELLCAST_SUCCEEDED', 'player', nil, 172)
+plates.nameplate4 = nil
+mobTargets.nameplate4target = nil
+guids.nameplate4 = nil
+eventFrame.scripts.OnEvent(nil, 'NAME_PLATE_UNIT_REMOVED', 'nameplate4')
+local secondGhost = decimalsViewport.scrollChild.children[63]
+assert(ghost.alpha == 0.55 and secondGhost.alpha == 0.55)
+assert(ghost.children[12].text == 'Lost Mob'
+    and secondGhost.children[12].text == 'Second Lost')
+combat = false
+eventFrame.scripts.OnEvent(nil, 'PLAYER_REGEN_ENABLED')
+assert(ghost.alpha == 0)
+assert(secondGhost.alpha == 0)
 ''')
 
 deferred = LuaRuntime(unpack_returned_tuples=True)

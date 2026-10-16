@@ -25,7 +25,7 @@ so you can see the full layout before choosing what to track. Open it from
 | Display | What it tracks |
 | --- | --- |
 | Main row | Corruption, Immolate, Siphon Life, Banes, Curses, Drain spells, and Demonic Brand when talented. Banes, Curses, and Drains each share an icon slot. Active target effects show a native countdown, with optional decimals near expiration. Brand also shows Blizzard's native application count. |
-| Multi-Target DoTs (optional) | Up to 16 view-only rows drawn from prebuilt nameplate, player-target, party-target, and raid-target tokens with native slots for your tracked effects, including Demonic Brand when talented and enabled in Target DoTs settings. Brand shows a native countdown and application count for each enemy. Mobs with confirmed group threat, a target in your group, a party/raid target, or a safely verified player effect appear; matching tokens are deduplicated by identity. Each shown row has the mob's target portrait, any assigned raid marker, a separate name and health bar with current/max and percent, a 20% health tick when the execute marker is enabled, and a slim gold accent when selected. Target through the world nameplates or Tab. The window is disabled by default; use `/whud mtd` to open or close it outside combat. Outside combat, drag the title to move the window or the lower-right grip to resize it while keeping the top-left corner fixed. Shorter windows keep fixed row spacing and show a scroll bar when needed. Toggling, moving, and resizing are unavailable during combat. Settings can hide it outside combat and adjust transparency. |
+| Multi-Target DoTs (optional) | Up to 16 view-only rows drawn from prebuilt nameplate, player-target, party-target, and raid-target tokens, plus grey last-seen rows for mobs with readable GUIDs and active estimated DoTs. Live rows have native slots for your tracked effects, including Demonic Brand when talented and enabled in Target DoTs settings. Brand shows a native countdown and application count. Mobs with confirmed group threat, a target in your group, a party/raid target, or a safely verified player effect appear; matching tokens are deduplicated by identity. Each live row has the mob's portrait, any assigned raid marker, a separate name and health bar with current HP and percent, a 20% health tick when the execute marker is enabled, and a slim gold accent when selected. Target through world nameplates or Tab. The window is disabled by default; use `/whud mtd` to open or close it outside combat. Outside combat, drag the title to move the window or the lower-right grip to resize it while keeping the top-left corner fixed. Shorter windows keep fixed row spacing and show a scroll bar when needed. Toggling, moving, and resizing are unavailable during combat. Settings can hide it outside combat and adjust transparency. |
 | Cooldown row | Healthstone, Soulstone, Fear, Conflagrate when learned, available racial abilities, and an optional flashing Sense Demons reminder when no demon or active Demonic Sacrifice is confirmed. Conflagrate shows its cooldown and pulses while your Immolate is active on the current target. |
 | Consumes row | Well Fed plus optional Flask of Supreme Power, Arcane Elixir family, Shadow Power, Greater Firepower, Mageblood family, and Wizard Oil family trackers. Aura effects use native countdowns; Wizard Oil reads temporary weapon-enchant state without a HUD countdown. Each category has its own tracking and missing-reminder choice. The row has its own position, icon size, visibility, and color settings. |
 | Buff row | Demon Armor / Demon Skin, Fortitude, Mark or Gift of the Wild, Intellect, Spirit, Kings, Salvation, Thorns, Demonic Sacrifice, Soul Link, and Unending Breath. Active buffs show colored icons with native countdowns when available; a setting reverses active and missing colors. Soul Link reminds when known, a demon is present, and its buff is confirmed missing. Thorns follows the same Druid-aware missing-buff reminder and active-buff formatting as Mark of the Wild. Unending Breath appears at the right end only while active. Visible buffs pack left to right. |
@@ -33,6 +33,13 @@ so you can see the full layout before choosing what to track. Open it from
 | Soul Shards | A separate icon near the Player Frame shows your shard count. It flashes red at or below the low warning threshold (default 4), or yellow at or above the high threshold (default 18) or when shards occupy regular bags alongside an equipped Soul Bag. Each click destroys one shard from a regular bag, stopping when those bags are clear or your configured minimum remains. The default minimum is 8. Shards cannot be destroyed in combat. |
 | Nameplates | A copper tick marks 20% health on attackable enemies' health bars. |
 | Stones | A Soulstone recipient label centered below the Utility row only while the aura is confirmed active; details and a Healthstone distribution list are on the Stones settings page. |
+
+Live Multi-Target rows show an approximate remaining DoT total next to HP and
+percent. Colored segments compare Corruption, Bane of Agony, Siphon Life, and
+Immolate against the mob's full health bar. The portrait pulses red when the
+estimate exceeds current health. A grey last-seen row retains the last available
+HP, health-bar fill, portrait, and estimated active DoT icons while its remaining
+damage estimate continues to decrease.
 
 Main row icons fade when there is no attackable target and turn red when the target
 is out of range. Demon Armor / Demon Skin and Well Fed have missing-buff reminders.
@@ -55,7 +62,18 @@ can reset addon settings to defaults after confirmation.
   before a pull.
 - The window is view-only. Select enemies with world nameplates or Tab.
 - It shows at most 16 mobs that the client exposes through nameplates or
-  player, party, and raid target tokens. An unexposed mob cannot be listed.
+  player, party, and raid target tokens, plus last-seen rows for previously
+  tracked mobs. A new mob needs a live token before it can be listed.
+- A grey row's HP, health-bar fill, and portrait are snapshots. It has no
+  native aura countdowns, raid marker, or lethal portrait pulse until a live
+  token returns. Unreadable snapshots fall back to a DoT estimate and generic
+  portrait.
+  It clears at combat end or when its estimated DoTs expire.
+- Last-seen tracking requires a readable GUID before the token disappears.
+  Client restrictions can prevent that. Live and grey rows share the 16-row
+  limit. An evade clears a DoT estimate only if reported for a tracked unit.
+- DoT damage is approximate. It can differ because of critical hits, resists,
+  damage modifiers, early aura removal, and Immolate's separate direct hit.
 
 ### Known Forever beta issue: Soul Link below level 30
 
@@ -300,8 +318,9 @@ The addon prints its version and the settings command in chat when it loads.
 For a one-time diagnostic snapshot, use `/whub debug`. It prints the active
 profile, configured rows and tracked spell IDs, target/range status when safe,
 and aura-tracker initialization without reading aura data.
-Multi-Target shows each mob's current HP, health percent, and remaining DoT
-estimate on its top line. `/whub dotdebug` hides or restores the DoT number. The header
+Live Multi-Target rows show each mob's current HP, health percent, and remaining
+DoT estimate on their top line. Grey rows show last-seen HP and percent.
+`/whub dotdebug` hides or restores the live DoT number. The header
 keeps the target count.
 `/whub dotsnapshot` writes the per-spell estimates to the copyable trace.
 The trace window also has **DoT Ratios** and **DoT Snapshot** buttons.

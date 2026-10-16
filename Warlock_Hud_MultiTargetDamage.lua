@@ -137,6 +137,24 @@ function WarlockHudMultiTargetDamage.New(getRows, readableGuid)
         return estimates
     end
 
+    local function RemainingForGuid(guid)
+        if type(guid) ~= "string" then return 0 end
+        local estimates = Estimates(casts[guid], curses[guid], GetTime())
+        return (estimates["Corruption"] or 0)
+            + (estimates["Bane of Agony"] or 0)
+            + (estimates["Siphon Life"] or 0)
+            + (estimates["Immolate"] or 0)
+    end
+
+    local function EstimatesForGuid(guid)
+        if type(guid) ~= "string" then return {} end
+        local now = GetTime()
+        local estimates = Estimates(casts[guid], curses[guid], now)
+        estimates["Curse of the Elements"] = curses[guid]
+            and now < curses[guid].ends and 1 or 0
+        return estimates
+    end
+
     local function DebugRow()
         local first
         for _, row in ipairs(getRows()) do
@@ -213,7 +231,8 @@ function WarlockHudMultiTargetDamage.New(getRows, readableGuid)
             local siphon = estimates["Siphon Life"] or 0
             local immolate = estimates["Immolate"] or 0
             local total = corruption + bane + siphon + immolate
-            if row.present and row.healthText and UnitHealth and UnitHealthPercent
+            if row.present and row.source ~= "ghost" and row.healthText
+                and UnitHealth and UnitHealthPercent
                 and CurveConstants and CurveConstants.ScaleTo100 then
                 local healthOK, health = pcall(UnitHealth, row.unit, true)
                 local percentOK, percent = pcall(UnitHealthPercent, row.unit,
@@ -357,6 +376,15 @@ function WarlockHudMultiTargetDamage.New(getRows, readableGuid)
     end
 
     local function Hit(unit, action, flag, amount, school)
+        if not (issecretvalue and (issecretvalue(action)
+                or issecretvalue(flag)))
+            and (action == "EVADE" or flag == "EVADE") then
+            local guid = readableGuid(unit)
+            if guid ~= "unavailable" then
+                casts[guid], curses[guid] = nil, nil
+            end
+            return
+        end
         if (issecretvalue and (issecretvalue(action) or issecretvalue(flag)
                 or issecretvalue(school) or issecretvalue(amount)))
             or action ~= "WOUND" or (school ~= 32 and school ~= 4)
@@ -422,6 +450,8 @@ function WarlockHudMultiTargetDamage.New(getRows, readableGuid)
     end)
 
     return { Update = Update, Clear = Clear,
+        RemainingForGuid = RemainingForGuid,
+        EstimatesForGuid = EstimatesForGuid,
         SetDebugEnabled = function(enabled)
             debugEnabled = enabled == true
             Update()

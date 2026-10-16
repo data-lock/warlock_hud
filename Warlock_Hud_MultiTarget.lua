@@ -18,6 +18,8 @@ for i = 1, ROWS do SOURCE_UNITS[#SOURCE_UNITS + 1] = "nameplate" .. i end
 SOURCE_UNITS[#SOURCE_UNITS + 1] = "target"
 for i = 1, 4 do SOURCE_UNITS[#SOURCE_UNITS + 1] = "party" .. i .. "target" end
 for i = 1, 40 do SOURCE_UNITS[#SOURCE_UNITS + 1] = "raid" .. i .. "target" end
+local LIVE_UNITS = #SOURCE_UNITS
+for i = 1, ROWS do SOURCE_UNITS[#SOURCE_UNITS + 1] = "ghost" .. i end
 local ICON_SIZE = 24
 local ROW_HEIGHT = 29
 local PORTRAIT_SIZE = 26
@@ -109,8 +111,16 @@ local function Position()
     end
 end
 
+local lastSeen = {}
+local damage
 local identity = WarlockHudMultiTargetIdentity.New(function() return rows end,
-    SPELLS, ROWS, Plain)
+    SPELLS, ROWS, Plain, function(guid, name, row)
+        lastSeen[guid] = { name = name, seen = GetTime(),
+            health = row.snapshotHealth, maximum = row.snapshotMaximum,
+            percent = row.snapshotPercent, portrait = row.snapshotPortrait }
+    end, function(guid)
+        return damage and damage.RemainingForGuid(guid) > 0
+    end)
 local ClearIdentity = identity.ClearIdentity
 local GroupThreat = identity.GroupThreat
 local TargetsGroup = identity.TargetsGroup
@@ -121,8 +131,93 @@ local ReadableGuid = identity.ReadableGuid
 local RaidMarkerFor = identity.RaidMarkerFor
 local UpdateIdentity = identity.UpdateIdentity
 local NormalizeRows = identity.NormalizeRows
-local damage = WarlockHudMultiTargetDamage.New(function() return rows end,
+damage = WarlockHudMultiTargetDamage.New(function() return rows end,
     ReadableGuid)
+
+local function UpdateGhostRows()
+    local ghostRows, liveGuids, liveCount = {}, {}, 0
+    local changed = false
+    for _, row in ipairs(rows) do
+        if row.source == "ghost" then
+            ghostRows[#ghostRows + 1] = row
+        elseif row.present then
+            liveCount = liveCount + 1
+            local guid = ReadableGuid(row.unit)
+            if guid == "unavailable" and row.source == "nameplate" then
+                guid = row.lastGuid
+            end
+            if guid then liveGuids[guid] = true end
+        end
+    end
+    local candidates = {}
+    if InCombatLockdown() then
+        for guid, seen in pairs(lastSeen) do
+            local remaining = damage.RemainingForGuid(guid)
+            if remaining <= 0 and not liveGuids[guid] then
+                lastSeen[guid] = nil
+            elseif remaining > 0 and not liveGuids[guid] then
+                candidates[#candidates + 1] = {
+                    guid = guid, name = seen.name, seen = seen.seen,
+                    remaining = remaining, health = seen.health,
+                    maximum = seen.maximum, percent = seen.percent,
+                    portrait = seen.portrait }
+            end
+        end
+    end
+    table.sort(candidates, function(a, b)
+        if a.seen == b.seen then return a.guid < b.guid end
+        return a.seen > b.seen
+    end)
+    for i, row in ipairs(ghostRows) do
+        local ghost = i <= ROWS - liveCount and candidates[i]
+        if ghost then
+            if row.ghostGuid ~= ghost.guid or not row.present then changed = true end
+            row.ghostGuid = ghost.guid
+            row.present = true
+            row.display:SetAlpha(0.55)
+            row.name:SetText(ghost.name)
+            row.name:SetTextColor(0.62, 0.62, 0.62)
+            local dotLabel = WarlockHudMultiTargetIdentity.FormatNumber(
+                ghost.remaining)
+            local healthLabel = WarlockHudMultiTargetIdentity.FormatNumber(
+                ghost.health)
+            local healthOK = ghost.maximum and ghost.health
+                and pcall(row.healthBar.SetMinMaxValues, row.healthBar,
+                    0, ghost.maximum)
+            healthOK = healthOK and pcall(row.healthBar.SetValue,
+                row.healthBar, ghost.health)
+            if not healthOK then row.healthBar:SetValue(0) end
+            row.healthBar:SetStatusBarColor(0.5, 0.5, 0.5, 0.8)
+            local textOK = healthLabel and ghost.percent and pcall(
+                row.healthText.SetFormattedText, row.healthText,
+                "%s %.0f%% (DoT %s)", healthLabel, ghost.percent, dotLabel)
+            if not textOK then
+                row.healthText:SetText("DoT " .. dotLabel .. " (last seen)")
+            end
+            row.icons:SetAlpha(0.65)
+            local estimates = damage.EstimatesForGuid(ghost.guid)
+            local byKey = {
+                corruption = estimates["Corruption"] or 0,
+                bane = estimates["Bane of Agony"] or 0,
+                siphonlife = estimates["Siphon Life"] or 0,
+                immolate = estimates["Immolate"] or 0,
+                curse = estimates["Curse of the Elements"] or 0,
+            }
+            for _, entry in ipairs(row.dotVisuals) do
+                entry.icon:SetAlpha((byKey[entry.key] or 0) > 0 and 0.9 or 0.18)
+                entry.icon:SetDesaturated(true)
+            end
+            row.portrait:SetTexture(ghost.portrait
+                or "Interface\\Icons\\INV_Misc_QuestionMark")
+            row.portraitCover:SetAlpha(0)
+        elseif row.present then
+            changed = true
+            row.ghostGuid = nil
+            ClearIdentity(row)
+        end
+    end
+    return changed
+end
 
 local function UpdateStatus()
     if not status then return end
@@ -223,7 +318,7 @@ local function RetireWindow()
     end
     visibilityDriver = false
     for _, row in ipairs(rows) do
-        row.auras:SetEnabled(false)
+        if row.source ~= "ghost" then row.auras:SetEnabled(false) end
         row.auras:Hide()
     end
     root:Hide()
@@ -482,12 +577,17 @@ local function Build()
         selection:SetSize(4, size + 5)
         selection:SetPoint("LEFT", display, "LEFT", 0, 0)
         selection:SetColorTexture(0.86, 0.66, 0.25, 0)
-        local auras = CreateFrame("AuraContainer", nil, iconHolder,
-            "CustomAuraContainerTemplate")
+        local source = i > LIVE_UNITS and "ghost" or (i <= ROWS and "nameplate" or
+            (i == ROWS + 1 and "target" or (i <= ROWS + 5 and "party" or "raid")))
+        local auras
+        if source == "ghost" then
+            auras = CreateFrame("Frame", nil, iconHolder)
+        else
+            auras = CreateFrame("AuraContainer", nil, iconHolder,
+                "CustomAuraContainerTemplate")
+        end
         auras:SetSize(math.max(1, DOT_SLOTS * (size + 3)), size)
         auras:SetPoint("LEFT", display, "RIGHT", 14, 0)
-        local source = i <= ROWS and "nameplate" or
-            (i == ROWS + 1 and "target" or (i <= ROWS + 5 and "party" or "raid"))
         local row = { unit = unit, source = source,
             display = display, icons = iconHolder, name = name,
             healthBar = healthBar, healthText = healthText,
@@ -524,19 +624,24 @@ local function Build()
                 idle:SetAlpha(0.38)
             end
         end
-        for _, spell in ipairs(SPELLS) do
-            if spell.group ~= 2 and active[SLOT_KEYS[spell.slot]]
-                and (not p.enabled or p.enabled[spell.name] ~= false) then
-                CreateAuraSlot(row, spell, positions[SLOT_KEYS[spell.slot]], size)
+        if source ~= "ghost" then
+            for _, spell in ipairs(SPELLS) do
+                if spell.group ~= 2 and active[SLOT_KEYS[spell.slot]]
+                    and (not p.enabled or p.enabled[spell.name] ~= false) then
+                    CreateAuraSlot(row, spell, positions[SLOT_KEYS[spell.slot]], size)
+                end
             end
+            auras:SetUnit(unit)
+            auras:Show()
+            auras:UpdateAllAuras()
+        else
+            auras:Hide()
         end
-        auras:SetUnit(unit)
-        auras:Show()
-        auras:UpdateAllAuras()
         ClearIdentity(row)
         UpdateIdentity(row)
     end
     NormalizeRows()
+    UpdateGhostRows()
     UpdateStatus()
     ApplyLayout(width, height)
     damage.SetDebugEnabled(damageDebug)
@@ -685,9 +790,11 @@ events:SetScript("OnEvent", function(_, event, unit)
         return
     end
     if event == "PLAYER_REGEN_ENABLED" then
+        lastSeen = {}
         ApplyAppearance()
         for _, row in ipairs(rows) do UpdateIdentity(row) end
         NormalizeRows()
+        UpdateGhostRows()
         UpdateStatus()
         ReflowRows()
         damage.Update()
@@ -720,6 +827,7 @@ events:SetScript("OnEvent", function(_, event, unit)
             end
         end
         NormalizeRows()
+        UpdateGhostRows()
         UpdateStatus()
         ReflowRows()
         damage.Update()
@@ -751,8 +859,20 @@ events:SetScript("OnEvent", function(_, event, unit)
             for _, row in ipairs(rows) do UpdateIdentity(row) end
         end
         NormalizeRows()
+        UpdateGhostRows()
         UpdateStatus()
         ReflowRows()
         damage.Update()
+    end
+end)
+local ghostElapsed = 0
+events:SetScript("OnUpdate", function(_, delta)
+    if not built then return end
+    ghostElapsed = ghostElapsed + delta
+    if ghostElapsed < 0.2 then return end
+    ghostElapsed = 0
+    if UpdateGhostRows() then
+        UpdateStatus()
+        ReflowRows()
     end
 end)

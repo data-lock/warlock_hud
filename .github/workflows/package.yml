@@ -28,6 +28,7 @@ jobs:
           uv run --with lupa python tests/sharing_smoke.py
           uv run --with lupa python tests/consumables_smoke.py
           uv run --with lupa python tests/multitarget_smoke.py
+          uv run --with lupa python tests/multitarget_damage_smoke.py
           uv run --with lupa python tests/debug_smoke.py
           uv run --with lupa python tests/shards_smoke.py
           uv run --with lupa python tests/anchor_widths_smoke.py

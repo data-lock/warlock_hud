@@ -34,13 +34,17 @@ Icons react to target availability and range, with configurable coloring for act
 
 ### Multi-Target DoTs (optional)
 
-Track your DoTs on up to 16 enemies in a compact, scrollable window. Each row shows a portrait, name, health bar, raid marker where available, a 20% health mark, and Blizzard-native DoT icons with countdowns. The tracker can find enemies through visible nameplates and player, party, or raid target tokens when it can confirm combat involvement or one of your DoTs.
+Track your DoTs on up to 16 enemies in a compact, scrollable window. Live rows show a portrait, name, health bar, raid marker where available, a 20% health mark, and Blizzard-native DoT icons with countdowns. The tracker can find enemies through visible nameplates and player, party, or raid target tokens when it can confirm combat involvement or one of your DoTs.
 
 When talented and enabled in Target DoTs settings, Demonic Brand can also appear on each tracked enemy with its own native countdown and application count.
 
-A colored line above each health bar estimates the remaining damage from your Corruption, Bane of Agony, Siphon Life, and Immolate. It begins from the spell description when available and adjusts from observed noncritical ticks. The line is an estimate and may differ from the final damage.
+A colored line above each health bar estimates the remaining damage from your Corruption, Bane of Agony, Siphon Life, and Immolate. Each live row also shows current HP, health percent, and the estimated DoT damage left. The portrait pulses red when that estimate exceeds current health. Spell descriptions provide the starting estimate when available; observed noncritical ticks can help when a description total is unavailable. The result is approximate.
 
-The window is **off by default**. Outside combat, type **`/whud mtd`** to open or close it. You can move and resize it, set its transparency, or choose to hide it outside combat. **Toggling and adjustments are available only outside combat.** The list is view-only; select enemies with world nameplates or Tab. Mobs the client does not expose through these unit tokens cannot appear.
+If a tracked mob loses its live unit token, a grey **last-seen** row can retain its last available HP, health-bar fill, portrait, and estimated active DoT icons. Its DoT estimate decreases as expected ticks pass. The row returns to live tracking if the mob becomes available again and clears when combat ends or the estimate expires.
+
+**Multi-Target limitations:** A grey row is a snapshot: its HP and portrait are no longer live, and it has no native aura countdowns, raid marker, or lethal portrait pulse. If the client does not provide a readable HP or portrait snapshot, the row shows the DoT estimate and a generic portrait. The mob must have had a readable GUID before it disappeared; client restrictions can prevent this, so some mobs may still drop from the list. The 16-row limit includes grey rows. Damage estimates can differ from actual damage because of critical hits, resists, modifiers, early aura removal, and Immolate's separate direct hit. An evade clears the estimate only when the client reports it for a tracked unit; otherwise the row clears when combat ends or the estimate expires.
+
+The window is **off by default**. Outside combat, type **`/whud mtd`** to open or close it. You can move and resize it, set its transparency, or choose to hide it outside combat. **Toggling and adjustments are available only outside combat.** The list is view-only; select enemies with world nameplates or Tab. New mobs need a live unit token before the tracker can identify them.
 
 ### Consumes, Buffs & Procs
 
@@ -250,8 +254,8 @@ Special thanks to:
 
 *   **Tiny** — for testing just about everything I've built.
 *   **Wheat** — for feedback and testing around the summon window and pending summon behavior.
-*   **stevegeoffmcgeofforington** — for recommending Demonic Brand tracking
-*   **GamaKatsu** — for recommending a DoT kill tracker on the Multi-Target DoTs window
+*   **stevegeoffmcgeofforington** — for recommending Demonic Brand tracking.
+*   **GamaKatsu** — for recommending a DoT kill tracker on the Multi-Target DoTs window.
 *   **Drugnanov** — for recommending a toggle for milliseconds or seconds.
 
 And thanks to everyone downloading, testing, and sharing feedback. It means a lot to see other Warlocks getting use out of something I originally built for myself!

@@ -1,5 +1,20 @@
 # Changelog
 
+## v0.42.46
+
+- Grey last-seen rows retain their last readable HP, health-bar fill, portrait,
+  and estimated active DoT icons. These are snapshots and do not update from
+  protected aura or health data after the live unit token disappears.
+- Release the Multi-Target tracking and layout changes from the 0.42 review
+  builds. See `releases/v0.42.46.md` for the user-facing notes and limitations.
+
+## v0.42.45 (in-game review)
+
+- Keep a grey last-seen Multi-Target row while the player remains in combat
+  and a mob's estimated DoT damage remains. Reattach to a live unit token when
+  it returns; clear the last-seen row on combat end or estimate expiry.
+- Last-seen rows show no live health, native aura timers, or lethal warning.
+
 ## v0.42.44 (in-game review)
 
 - Shorten and narrow the Multi-Target 20% health marker.

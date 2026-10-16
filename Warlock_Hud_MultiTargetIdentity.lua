@@ -17,7 +17,8 @@ function WarlockHudMultiTargetIdentity.FormatNumber(value)
     return string.format("%.0f", value)
 end
 
-function WarlockHudMultiTargetIdentity.New(getRows, spells, rowLimit, plain)
+function WarlockHudMultiTargetIdentity.New(getRows, spells, rowLimit, plain,
+    rememberSeen, hasTrackedDamage)
     local SPELLS, ROWS, Plain = spells, rowLimit, plain
     local healthColorCurve
     if C_CurveUtil and C_CurveUtil.CreateColorCurve and CreateColor
@@ -36,6 +37,11 @@ function WarlockHudMultiTargetIdentity.New(getRows, spells, rowLimit, plain)
         row.present = false
         row.eligible = false
         row.relevant = false
+        row.lastGuid = nil
+        row.snapshotHealth = nil
+        row.snapshotMaximum = nil
+        row.snapshotPercent = nil
+        row.snapshotPortrait = nil
         -- Alpha also hides native aura children without changing protected
         -- visibility or anchors during combat.
         row.display:SetAlpha(0)
@@ -80,6 +86,9 @@ function WarlockHudMultiTargetIdentity.New(getRows, spells, rowLimit, plain)
             row.healthText:SetText("")
             return
         end
+        row.snapshotHealth = health
+        row.snapshotMaximum = maximum
+        row.snapshotPercent = percent
         -- These values may be secret. Native widgets accept them directly; Lua
         -- never compares, divides, concatenates, or formats them.
         pcall(row.healthBar.SetMinMaxValues, row.healthBar, 0, maximum)
@@ -213,6 +222,13 @@ function WarlockHudMultiTargetIdentity.New(getRows, spells, rowLimit, plain)
     local function UpdatePortrait(row)
         if row.present and SetPortraitTexture then
             row.portraitReady = pcall(SetPortraitTexture, row.portrait, row.unit)
+            if row.portraitReady and row.portrait.GetTexture then
+                local ok, texture = pcall(row.portrait.GetTexture, row.portrait)
+                if ok and Plain(texture)
+                    and (type(texture) == "string" or type(texture) == "number") then
+                    row.snapshotPortrait = texture
+                end
+            end
             if row.portraitWarning then
                 row.portraitWarningReady = pcall(SetPortraitTexture,
                     row.portraitWarning, row.unit)
@@ -277,6 +293,7 @@ function WarlockHudMultiTargetIdentity.New(getRows, spells, rowLimit, plain)
     end
 
     local function UpdateIdentity(row)
+        if row.source == "ghost" then return end
         local unit = row.unit
         local source = row.source
         if source == "party" and (not IsInGroup or not IsInGroup()
@@ -306,10 +323,16 @@ function WarlockHudMultiTargetIdentity.New(getRows, spells, rowLimit, plain)
             local threat, dot = GroupThreat(unit), OwnDot(unit)
             local targetingGroup = TargetsGroup(unit)
             local groupTarget = TargetedByGroup(unit)
+            local tracked = false
+            if source == "target" and hasTrackedDamage then
+                local guid = ReadableGuid(unit)
+                tracked = guid ~= "unavailable" and hasTrackedDamage(guid)
+            end
             -- A row confirmed before combat stays visible while DoT evidence is
             -- restricted. New rows still need confirmation, and safe reads recheck it.
             local retainConfirmed = row.eligible and InCombatLockdown() and dot == nil
-            if threat ~= true and dot ~= true and not targetingGroup and not groupTarget
+            if threat ~= true and dot ~= true and not targetingGroup
+                and not groupTarget and not tracked
                 and not retainConfirmed then
                 ClearIdentity(row)
                 return
@@ -323,7 +346,16 @@ function WarlockHudMultiTargetIdentity.New(getRows, spells, rowLimit, plain)
         row.target:SetColorTexture(0.86, 0.66, 0.25, 0)
         if not row.portraitReady then UpdatePortrait(row) end
         local ok, name = pcall(UnitName, unit)
-        if ok then UpdateHealth(row, name) end
+        if ok then
+            UpdateHealth(row, name)
+            if rememberSeen and Plain(name) and type(name) == "string" then
+                local guid = ReadableGuid(unit)
+                if guid ~= "unavailable" then
+                    row.lastGuid = guid
+                    rememberSeen(guid, name, row)
+                end
+            end
+        end
         local index = RaidMarkerFor(unit)
         if index then
             local column = (index - 1) % 4
