@@ -36,6 +36,8 @@ Icons react to target availability and range, with configurable coloring for act
 
 Track your DoTs on up to 16 enemies in a compact, scrollable window. Live rows show a portrait, name, health bar, raid marker where available, a 20% health mark, and Blizzard-native DoT icons with countdowns. The tracker can find enemies through visible nameplates and player, party, or raid target tokens when it can confirm combat involvement or one of your DoTs.
 
+![Multi-Target DoTs in action](https://raw.githubusercontent.com/data-lock/warlock_hud/main/screenshots/warlock_hud_mtd.gif)
+
 ![Multi-Target DoTs tracking three mobs](https://raw.githubusercontent.com/data-lock/warlock_hud/main/screenshots/warlock_hud_mtd_overview.png)
 
 When talented and enabled in Target DoTs settings, Demonic Brand can also appear on each tracked enemy with its own native countdown and application count.
