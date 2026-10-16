@@ -36,9 +36,13 @@ Icons react to target availability and range, with configurable coloring for act
 
 Track your DoTs on up to 16 enemies in a compact, scrollable window. Live rows show a portrait, name, health bar, raid marker where available, a 20% health mark, and Blizzard-native DoT icons with countdowns. The tracker can find enemies through visible nameplates and player, party, or raid target tokens when it can confirm combat involvement or one of your DoTs.
 
+![Multi-Target DoTs tracking three mobs](https://raw.githubusercontent.com/data-lock/warlock_hud/main/screenshots/warlock_hud_mtd_overview.png)
+
 When talented and enabled in Target DoTs settings, Demonic Brand can also appear on each tracked enemy with its own native countdown and application count.
 
 A colored line above each health bar estimates the remaining damage from your Corruption, Bane of Agony, Siphon Life, and Immolate. Each live row also shows current HP, health percent, and the estimated DoT damage left. The portrait pulses red when that estimate exceeds current health. Spell descriptions provide the starting estimate when available; observed noncritical ticks can help when a description total is unavailable. The result is approximate.
+
+![Multi-Target DoTs with a portrait warning](https://raw.githubusercontent.com/data-lock/warlock_hud/main/screenshots/warlock_hud_mtd.png)
 
 If a tracked mob loses its live unit token, a grey **last-seen** row can retain its last available HP, health-bar fill, portrait, and estimated active DoT icons. Its DoT estimate decreases as expected ticks pass. The row returns to live tracking if the mob becomes available again and clears when combat ends or the estimate expires.
 

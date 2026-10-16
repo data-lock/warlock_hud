@@ -27,8 +27,8 @@ the share code is held by the user and is not stored in this repository.
 ## Visual references
 
 - `screenshots/warlock_hud_overview.png`: main HUD layout reference.
-- `screenshots/whud_multi_target_dots.png`: multi-target row layout reference.
-  This image predates the Brand icon; use live v0.41 behavior for Brand layout.
+- `screenshots/warlock_hud_mtd_overview.png`: current multi-target row layout
+  reference. `screenshots/warlock_hud_mtd.png` also shows a portrait warning.
 - `screenshots/whud_options_2_tracked_auras.png`: Tracked Auras page reference.
   This image also predates the Brand setting.
 

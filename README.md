@@ -41,6 +41,10 @@ estimate exceeds current health. A grey last-seen row retains the last available
 HP, health-bar fill, portrait, and estimated active DoT icons while its remaining
 damage estimate continues to decrease.
 
+![Multi-Target DoTs tracking three mobs](screenshots/warlock_hud_mtd_overview.png)
+
+![Multi-Target DoTs with a portrait warning](screenshots/warlock_hud_mtd.png)
+
 Main row icons fade when there is no attackable target and turn red when the target
 is out of range. Demon Armor / Demon Skin and Well Fed have missing-buff reminders.
 The Buffs row keeps its left edge where you placed it as icons appear or disappear.
