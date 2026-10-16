@@ -46,7 +46,7 @@ A colored line above each health bar estimates the remaining damage from your Co
 
 ![Multi-Target DoTs with a portrait warning](https://raw.githubusercontent.com/data-lock/warlock_hud/main/screenshots/warlock_hud_mtd.png)
 
-If a tracked mob loses its live unit token, a grey **last-seen** row can retain its last available HP, health-bar fill, portrait, and estimated active DoT icons. Its DoT estimate decreases as expected ticks pass. The row returns to live tracking if the mob becomes available again and clears when combat ends or the estimate expires.
+If a tracked mob loses its live unit token, a grey **last-seen** row can retain its last available HP, health-bar fill, portrait, and estimated active DoT icons. Its DoT estimate decreases as expected ticks pass. The row returns to live tracking if the mob becomes available again and clears when combat ends ora the estimate expires.
 
 **Multi-Target limitations:** A grey row is a snapshot: its HP and portrait are no longer live, and it has no native aura countdowns, raid marker, or lethal portrait pulse. If the client does not provide a readable HP or portrait snapshot, the row shows the DoT estimate and a generic portrait. The mob must have had a readable GUID before it disappeared; client restrictions can prevent this, so some mobs may still drop from the list. The 16-row limit includes grey rows. Damage estimates can differ from actual damage because of critical hits, resists, modifiers, early aura removal, and Immolate's separate direct hit. An evade clears the estimate only when the client reports it for a tracked unit; otherwise the row clears when combat ends or the estimate expires.
 
