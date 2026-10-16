@@ -38,13 +38,11 @@ Track your DoTs on up to 16 enemies in a compact, scrollable window. Live rows s
 
 ![Multi-Target DoTs in action](https://raw.githubusercontent.com/data-lock/warlock_hud/main/screenshots/warlock_hud_mtd.gif)
 
-![Multi-Target DoTs tracking three mobs](https://raw.githubusercontent.com/data-lock/warlock_hud/main/screenshots/warlock_hud_mtd_overview.png)
-
 When talented and enabled in Target DoTs settings, Demonic Brand can also appear on each tracked enemy with its own native countdown and application count.
 
 A colored line above each health bar estimates the remaining damage from your Corruption, Bane of Agony, Siphon Life, and Immolate. Each live row also shows current HP, health percent, and the estimated DoT damage left. The portrait pulses red when that estimate exceeds current health. Spell descriptions provide the starting estimate when available; observed noncritical ticks can help when a description total is unavailable. The result is approximate.
 
-![Multi-Target DoTs with a portrait warning](https://raw.githubusercontent.com/data-lock/warlock_hud/main/screenshots/warlock_hud_mtd.png)
+![Multi-Target DoTs tracking three mobs](https://raw.githubusercontent.com/data-lock/warlock_hud/main/screenshots/warlock_hud_mtd_overview.png)
 
 If a tracked mob loses its live unit token, a grey **last-seen** row can retain its last available HP, health-bar fill, portrait, and estimated active DoT icons. Its DoT estimate decreases as expected ticks pass. The row returns to live tracking if the mob becomes available again and clears when combat ends ora the estimate expires.
 
@@ -265,3 +263,11 @@ Special thanks to:
 *   **Drugnanov** — for recommending a toggle for milliseconds or seconds.
 
 And thanks to everyone downloading, testing, and sharing feedback. It means a lot to see other Warlocks getting use out of something I originally built for myself!
+
+### Acknowledgement — DoesItDie
+
+The lethal DoT indicator was inspired by [DoesItDie](https://www.curseforge.com/wow/addons/does-it-die), which demonstrated a clever way to work with WoW Forever's protected health values using native StatusBar rendering.
+
+Warlock HUD uses the same underlying technique but implements it differently, using an inverted health threshold and a pulsing portrait indicator.
+
+Thanks to the DoesItDie developer for sharing their work and helping make these kinds of solutions possible for the addon community.
