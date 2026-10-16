@@ -300,16 +300,15 @@ The addon prints its version and the settings command in chat when it loads.
 For a one-time diagnostic snapshot, use `/whub debug`. It prints the active
 profile, configured rows and tracked spell IDs, target/range status when safe,
 and aura-tracker initialization without reading aura data.
+Multi-Target shows each mob's current HP, health percent, and remaining DoT
+estimate on its top line. `/whub dotdebug` hides or restores the DoT number. The header
+keeps the target count.
+`/whub dotsnapshot` writes the per-spell estimates to the copyable trace.
+The trace window also has **DoT Ratios** and **DoT Snapshot** buttons.
+Protected combat health remains visible in each mob row but is omitted from
+trace text.
 
 ## Development
-
-### Future Multi-Target work
-
-- Flash a mob portrait when estimated remaining DoT damage exceeds its current
-  health. Attempts in review builds 0.42.15–0.42.19 did not flash in game:
-  the visible nameplate row reported protected health and rejected the tested
-  native curve paths. Revisit only with a verified client-supported way to
-  compare the estimate with protected health. Keep the health color gradient.
 
 The `.toc` file defines the addon version and Lua load order. Edit the Lua files
 directly and use `/reload` in game to test changes. The game stores profiles in

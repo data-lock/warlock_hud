@@ -2,6 +2,21 @@
 -- Native aura containers remain owned by Warlock_Hud_MultiTarget.lua.
 WarlockHudMultiTargetIdentity = {}
 
+function WarlockHudMultiTargetIdentity.FormatNumber(value)
+    if issecretvalue and issecretvalue(value) then
+        if AbbreviateNumbers then
+            local ok, abbreviated = pcall(AbbreviateNumbers, value)
+            if ok then return abbreviated end
+        end
+        return nil
+    end
+    if type(value) ~= "number" then return nil end
+    if value >= 1000000000 then return string.format("%.2fB", value / 1000000000) end
+    if value >= 1000000 then return string.format("%.2fM", value / 1000000) end
+    if value >= 1000 then return string.format("%.2fk", value / 1000) end
+    return string.format("%.0f", value)
+end
+
 function WarlockHudMultiTargetIdentity.New(getRows, spells, rowLimit, plain)
     local SPELLS, ROWS, Plain = spells, rowLimit, plain
     local healthColorCurve
@@ -33,6 +48,10 @@ function WarlockHudMultiTargetIdentity.New(getRows, spells, rowLimit, plain)
         row.name:SetTextColor(0.94, 0.94, 0.92)
         row.portrait:SetTexture(nil)
         row.portraitReady = false
+        if row.portraitWarning then row.portraitWarning:SetTexture(nil) end
+        row.portraitWarningReady = false
+        row.portraitCoverReady = false
+        if row.portraitWarning then row.portraitWarning:SetAlpha(0) end
         row.marker:Hide()
         row.markerMode = "none"
         row.target:SetColorTexture(0.86, 0.66, 0.25, 0)
@@ -78,8 +97,15 @@ function WarlockHudMultiTargetIdentity.New(getRows, spells, rowLimit, plain)
             row.healthBar:SetStatusBarColor(1 - 0.8 * fraction,
                 0.12 + 0.6 * fraction, 0.12 + 0.18 * fraction, 0.9)
         end
-        local formatted = pcall(row.healthText.SetFormattedText, row.healthText,
-            "%.0f / %.0f  %.0f%%", health, maximum, percent)
+        local healthLabel = WarlockHudMultiTargetIdentity.FormatNumber(health)
+        local formatted
+        if healthLabel then
+            formatted = pcall(row.healthText.SetFormattedText,
+                row.healthText, "%s %.0f%%", healthLabel, percent)
+        else
+            formatted = pcall(row.healthText.SetFormattedText,
+                row.healthText, "%.0f %.0f%%", health, percent)
+        end
         if not formatted then row.healthText:SetText("") end
     end
 
@@ -187,6 +213,14 @@ function WarlockHudMultiTargetIdentity.New(getRows, spells, rowLimit, plain)
     local function UpdatePortrait(row)
         if row.present and SetPortraitTexture then
             row.portraitReady = pcall(SetPortraitTexture, row.portrait, row.unit)
+            if row.portraitWarning then
+                row.portraitWarningReady = pcall(SetPortraitTexture,
+                    row.portraitWarning, row.unit)
+            end
+            if row.portraitCover then
+                row.portraitCoverReady = pcall(SetPortraitTexture,
+                    row.portraitCover:GetStatusBarTexture(), row.unit)
+            end
         end
     end
 

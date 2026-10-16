@@ -4,6 +4,7 @@ local api = WarlockHudAPI
 local rows = {}
 local root
 local status
+local damageDebug = true
 local mover
 local scrollFrame, scrollContent, scrollBar
 local visibilityController
@@ -34,7 +35,7 @@ local function ClampScale(value)
 end
 
 local function ClampWidth(value)
-    local minimum = math.max(390, DOT_SLOTS * (ICON_SIZE + 3) + 201)
+    local minimum = math.max(390, DOT_SLOTS * (ICON_SIZE + 3) + 248)
     return math.max(minimum, math.min(700, tonumber(value) or BASE_WIDTH))
 end
 
@@ -189,7 +190,7 @@ end
 local function PlaceDot(icon, display, index, size)
     icon:ClearAllPoints()
     icon:SetPoint("LEFT", display, "RIGHT",
-        8 + (index - 1) * (size + 3), 0)
+        15 + (index - 1) * (size + 3), 0)
 end
 
 local function ApplyDotOrder(profile)
@@ -216,6 +217,7 @@ local function SameEffects(current)
 end
 
 local function RetireWindow()
+    damage.SetDebugEnabled(false)
     if visibilityDriver and UnregisterStateDriver then
         UnregisterStateDriver(visibilityController, "mtdvisibility")
     end
@@ -386,14 +388,26 @@ local function Build()
         local portrait = display:CreateTexture(nil, "ARTWORK")
         portrait:SetSize(PORTRAIT_SIZE, PORTRAIT_SIZE)
         portrait:SetPoint("LEFT", display, "LEFT", 8, 0)
-        local marker = display:CreateTexture(nil, "OVERLAY")
+        local portraitWarning = display:CreateTexture(nil, "OVERLAY")
+        portraitWarning:SetAllPoints(portrait)
+        portraitWarning:SetVertexColor(1, 0.06, 0.06, 1)
+        portraitWarning:SetAlpha(0)
+        -- The native fill hides the warning while health exceeds the plain
+        -- damage estimate. No Lua comparison or position read is involved.
+        local portraitCover = CreateFrame("StatusBar", nil, display)
+        portraitCover:SetAllPoints(portrait)
+        portraitCover:SetFrameLevel(display:GetFrameLevel() + 1)
+        portraitCover:SetStatusBarTexture("Interface\\TargetingFrame\\UI-StatusBar")
+        portraitCover:SetMinMaxValues(0, 1)
+        portraitCover:SetValue(1)
+        local marker = portraitCover:CreateTexture(nil, "OVERLAY")
         marker:SetSize(16, 16)
         marker:SetPoint("TOPRIGHT", portrait, "TOPRIGHT", 2, 2)
         marker:SetTexture(RAID_ICONS)
         marker:Hide()
         local healthBar = CreateFrame("StatusBar", nil, display)
         healthBar:SetPoint("BOTTOMLEFT", display, "BOTTOMLEFT", 44, 3)
-        healthBar:SetPoint("BOTTOMRIGHT", display, "BOTTOMRIGHT", -4, 3)
+        healthBar:SetPoint("BOTTOMRIGHT", display, "BOTTOMRIGHT", 7, 3)
         healthBar:SetHeight(11)
         healthBar:SetFrameLevel(display:GetFrameLevel())
         healthBar:SetStatusBarTexture("Interface\\TargetingFrame\\UI-StatusBar")
@@ -405,25 +419,30 @@ local function Build()
         executeLayer:SetAllPoints(healthBar)
         executeLayer:SetFrameLevel(healthBar:GetFrameLevel() + 5)
         local executeOutline = executeLayer:CreateTexture(nil, "OVERLAY", nil, -2)
-        executeOutline:SetSize(5, 19)
+        executeOutline:SetSize(4, 15)
         executeOutline:SetColorTexture(0, 0, 0, 1)
         local executeLine = executeLayer:CreateTexture(nil, "OVERLAY", nil, -1)
-        executeLine:SetSize(3, 19)
+        executeLine:SetSize(2, 15)
         executeLine:SetColorTexture(0.78, 0.43, 0.20, 1)
         healthBar:SetMinMaxValues(0, 1)
         healthBar:SetValue(0)
         local healthText = display:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-        healthText:SetPoint("TOPRIGHT", display, "TOPRIGHT", -4, -2)
-        healthText:SetSize(76, 12)
+        healthText:SetPoint("TOPRIGHT", healthBar, "TOPRIGHT", 0, 13)
+        healthText:SetSize(128, 12)
         healthText:SetJustifyH("RIGHT")
         healthText:SetTextColor(0.96, 0.96, 0.94)
         healthText:SetShadowColor(0, 0, 0, 1)
         healthText:SetShadowOffset(1, -1)
         healthText:SetText("")
-        local function DamageSegment(level, red, green, blue)
+        local function DamageSegment(level, red, green, blue, previous)
             local bar = CreateFrame("StatusBar", nil, display)
-            bar:SetPoint("TOPLEFT", healthBar, "TOPLEFT", 0, 0)
-            bar:SetPoint("TOPRIGHT", healthBar, "TOPRIGHT", 0, 0)
+            if previous then
+                bar:SetPoint("TOPLEFT", previous:GetStatusBarTexture(),
+                    "TOPRIGHT", 0, 0)
+            else
+                bar:SetPoint("TOPLEFT", healthBar, "TOPLEFT", 0, 0)
+            end
+            bar:SetWidth(width - (DOT_SLOTS * (size + 3) + 75))
             bar:SetHeight(4)
             bar:SetFrameLevel(healthBar:GetFrameLevel() + level)
             bar:SetStatusBarTexture("Interface\\TargetingFrame\\UI-StatusBar")
@@ -433,12 +452,25 @@ local function Build()
             return bar
         end
         local damageMarker = DamageSegment(4, 1, 0.66, 0.2)
-        local baneMarker = DamageSegment(3, 0.7, 0.38, 0.9)
-        local siphonMarker = DamageSegment(2, 0.24, 0.75, 0.68)
-        local immolateMarker = DamageSegment(1, 1, 0.29, 0.13)
+        local baneMarker = DamageSegment(3, 0.7, 0.38, 0.9, damageMarker)
+        local siphonMarker = DamageSegment(2, 0.24, 0.75, 0.68, baneMarker)
+        local immolateMarker = DamageSegment(1, 1, 0.29, 0.13, siphonMarker)
+        -- Anchor these ticks once, while the row is built safely. The native
+        -- status bars move their fill textures as health and estimates change;
+        -- Lua never reads back their protected widths or positions.
+        local healthEdge = executeLayer:CreateTexture(nil, "OVERLAY", nil, 1)
+        healthEdge:SetSize(2, 11)
+        healthEdge:SetPoint("CENTER", healthBar:GetStatusBarTexture(), "RIGHT", 0, 0)
+        healthEdge:SetColorTexture(1, 1, 1, 1)
+        local damageEdge = executeLayer:CreateTexture(nil, "OVERLAY", nil, 2)
+        damageEdge:SetSize(3, 8)
+        damageEdge:SetPoint("CENTER", immolateMarker:GetStatusBarTexture(),
+            "RIGHT", 0, 0)
+        damageEdge:SetColorTexture(1, 0.93, 0.28, 1)
+        damageEdge:SetAlpha(0)
         local name = display:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
         name:SetPoint("TOPLEFT", display, "TOPLEFT", 45, -2)
-        name:SetWidth(math.max(50, width - (DOT_SLOTS * (size + 3) + 143)))
+        name:SetWidth(math.max(42, width - (DOT_SLOTS * (size + 3) + 206)))
         name:SetJustifyH("LEFT")
         name:SetTextColor(0.96, 0.96, 0.94)
         name:SetShadowColor(0, 0, 0, 1)
@@ -453,7 +485,7 @@ local function Build()
         local auras = CreateFrame("AuraContainer", nil, iconHolder,
             "CustomAuraContainerTemplate")
         auras:SetSize(math.max(1, DOT_SLOTS * (size + 3)), size)
-        auras:SetPoint("LEFT", display, "RIGHT", 7, 0)
+        auras:SetPoint("LEFT", display, "RIGHT", 14, 0)
         local source = i <= ROWS and "nameplate" or
             (i == ROWS + 1 and "target" or (i <= ROWS + 5 and "party" or "raid"))
         local row = { unit = unit, source = source,
@@ -461,8 +493,11 @@ local function Build()
             healthBar = healthBar, healthText = healthText,
             damageMarker = damageMarker, baneMarker = baneMarker,
             siphonMarker = siphonMarker, immolateMarker = immolateMarker,
+            healthEdge = healthEdge, damageEdge = damageEdge,
             executeOutline = executeOutline, executeLine = executeLine,
-            portrait = portrait, marker = marker, target = selection, auras = auras,
+            portrait = portrait, portraitWarning = portraitWarning,
+            portraitCover = portraitCover, marker = marker,
+            target = selection, auras = auras,
             dotVisuals = {} }
         rows[i] = row
         local positions = DotOrder(p)
@@ -504,6 +539,7 @@ local function Build()
     NormalizeRows()
     UpdateStatus()
     ApplyLayout(width, height)
+    damage.SetDebugEnabled(damageDebug)
     builtTimerMilliseconds = p.dotTimerMilliseconds ~= false
     built, pending = true, false
     ApplyAppearance()
@@ -556,6 +592,24 @@ WarlockHudMultiTarget = {
     end,
     ProbeRunning = probe.IsRunning,
     Probe = probe.Command,
+    DamageDebugRunning = function() return damageDebug end,
+    DamageSnapshot = function()
+        if WarlockHudOpenDebugTrace then WarlockHudOpenDebugTrace() end
+        if WarlockHudTraceHUD then
+            WarlockHudTraceHUD("Multi-Target ratios: "
+                .. damage.DebugSnapshot())
+        end
+    end,
+    ToggleDamageDebug = function()
+        damageDebug = not damageDebug
+        if damageDebug and not built then GuardedRefresh() end
+        damage.SetDebugEnabled(damageDebug)
+        if damageDebug then
+            WarlockHudMultiTarget.DamageSnapshot()
+        end
+        print("Warlock HUD: Multi-Target ratio debug "
+            .. (damageDebug and "on" or "off") .. ".")
+    end,
     PrintTargets = function()
         if WarlockHudOpenDebugTrace then WarlockHudOpenDebugTrace() end
         if not WarlockHudTraceHUD then return end

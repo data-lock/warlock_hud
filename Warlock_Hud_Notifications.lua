@@ -339,7 +339,7 @@ end
 local tradeLines = {}
 local tradeWindow, tradeText, tradeScroll, tradeStatus
 local tradeToggle, soulstoneToggle, summonToggle, assignmentToggle, channelToggle
-local unitProbeToggle
+local unitProbeToggle, dotDebugToggle
 
 local function RefreshTradeWindow()
     if not tradeWindow then return end
@@ -368,6 +368,12 @@ local function RefreshTradeWindow()
             and WarlockHudMultiTarget.ProbeRunning()
         unitProbeToggle:SetText("Unit Probe: " .. (running and "On" or "Off"))
     end
+    if dotDebugToggle then
+        local running = WarlockHudMultiTarget
+            and WarlockHudMultiTarget.DamageDebugRunning
+            and WarlockHudMultiTarget.DamageDebugRunning()
+        dotDebugToggle:SetText("DoT Ratios: " .. (running and "On" or "Off"))
+    end
     tradeText:SetText(table.concat(tradeLines, "\n"))
     tradeText:SetHeight(math.max(330, #tradeLines * 16 + 20))
     tradeScroll:UpdateScrollChildRect()
@@ -377,7 +383,7 @@ end
 local function OpenTradeWindow()
     if not tradeWindow then
         local frame = CreateFrame("Frame", "WarlockHudTradeDebugWindow", UIParent)
-        frame:SetSize(680, 470)
+        frame:SetSize(680, 500)
         frame:SetPoint("CENTER")
         frame:SetFrameStrata("DIALOG")
         frame:SetMovable(true)
@@ -401,7 +407,7 @@ local function OpenTradeWindow()
         hint:SetText("Choose what to record below. Select All, then press Ctrl+C to copy.")
         local scroll = CreateFrame("ScrollFrame", nil, frame, "UIPanelScrollFrameTemplate")
         scroll:SetPoint("TOPLEFT", 16, -68)
-        scroll:SetPoint("BOTTOMRIGHT", -34, 78)
+        scroll:SetPoint("BOTTOMRIGHT", -34, 110)
         local edit = CreateFrame("EditBox", nil, scroll)
         edit:SetMultiLine(true)
         edit:SetAutoFocus(false)
@@ -483,6 +489,24 @@ local function OpenTradeWindow()
                 WarlockHudMultiTarget.Probe("toggle")
             end
             RefreshTradeWindow()
+        end)
+        dotDebugToggle = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate")
+        dotDebugToggle:SetSize(135, 24)
+        dotDebugToggle:SetPoint("BOTTOMLEFT", 16, 72)
+        dotDebugToggle:SetScript("OnClick", function()
+            if WarlockHudMultiTarget and WarlockHudMultiTarget.ToggleDamageDebug then
+                WarlockHudMultiTarget.ToggleDamageDebug()
+            end
+            RefreshTradeWindow()
+        end)
+        local dotSnapshot = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate")
+        dotSnapshot:SetSize(135, 24)
+        dotSnapshot:SetPoint("LEFT", dotDebugToggle, "RIGHT", 8, 0)
+        dotSnapshot:SetText("DoT Snapshot")
+        dotSnapshot:SetScript("OnClick", function()
+            if WarlockHudMultiTarget and WarlockHudMultiTarget.DamageSnapshot then
+                WarlockHudMultiTarget.DamageSnapshot()
+            end
         end)
         tradeWindow, tradeText, tradeScroll = frame, edit, scroll
     end

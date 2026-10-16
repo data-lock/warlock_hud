@@ -2369,6 +2369,16 @@ SlashCmdList.WARLOCKHUD = function(message)
         WarlockHudMultiTarget.Toggle()
         return
     end
+    if message == "dotdebug" and WarlockHudMultiTarget
+        and WarlockHudMultiTarget.ToggleDamageDebug then
+        WarlockHudMultiTarget.ToggleDamageDebug()
+        return
+    end
+    if message == "dotsnapshot" and WarlockHudMultiTarget
+        and WarlockHudMultiTarget.DamageSnapshot then
+        WarlockHudMultiTarget.DamageSnapshot()
+        return
+    end
     if (message == "unitprobe" or message == "unitprobe off")
         and WarlockHudMultiTarget and WarlockHudMultiTarget.Probe then
         WarlockHudMultiTarget.Probe(message == "unitprobe off" and "off" or "on")

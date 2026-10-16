@@ -1,5 +1,127 @@
 # Changelog
 
+## v0.42.44 (in-game review)
+
+- Shorten and narrow the Multi-Target 20% health marker.
+
+## v0.42.43 (in-game review)
+
+- Abbreviate Multi-Target mob HP and remaining DoT damage. Values of at least
+  1,000 use two decimal places, such as `9.00k` and `1.00M`. Protected HP uses
+  the client's native abbreviation API during combat.
+
+## v0.42.42 (in-game review)
+
+- Restore current mob HP to the left of health percent and `(DoT X)` on each
+  Multi-Target row, with room for the wider label.
+
+## v0.42.41 (in-game review)
+
+- Replace numeric mob HP with health percent and `(DoT X)` on the row's top
+  line. Remove the separate damage badge from the health bar and keep enough
+  minimum width for the name and new label.
+
+## v0.42.40 (in-game review)
+
+- Align the Multi-Target HP/percent text's right edge with the health bar's
+  right edge while keeping the text on the row's top line.
+
+## v0.42.39 (in-game review)
+
+- Show each mob's remaining DoT damage by default in a clearer badge on its
+  health bar. The trace-window DoT Ratios button can hide or restore it.
+
+## v0.42.38 (in-game review)
+
+- Show the remaining estimated DoT damage on each Multi-Target mob's health
+  bar while DoT Ratios is enabled. Restore the window header's engaged/dotted
+  target count.
+
+## v0.42.37 (in-game review)
+
+- Keep a cast DoT estimate through its expected duration even when nearby
+  Shadow ticks cannot be matched to a specific spell. Use observed ticks only
+  when no description-based estimate was available, avoiding sudden refills.
+- Remove a duplicate prefix from the empty DoT snapshot trace.
+
+## v0.42.36 (in-game review)
+
+- Keep Bane of Agony's remaining damage on its spell-description average.
+  Late ramped ticks no longer inflate every remaining tick and suddenly refill
+  the Multi-Target damage bar.
+
+## v0.42.35 (in-game review)
+
+- Add DoT Ratios and DoT Snapshot buttons to the debug trace window, with the
+  toggle button showing its current state.
+
+## v0.42.34 (in-game review)
+
+- Add `/whub dotdebug` to show the selected mob's native HP, max HP,
+  percentage, and total remaining DoT estimate in the Multi-Target header.
+  `/whub dotsnapshot` writes each spell estimate to the copyable trace at any
+  point. The trace includes percent of max HP when the client exposes max HP
+  to Lua.
+
+## v0.42.33 (in-game review)
+
+- Draw Multi-Target DoT damage as end-to-end per-spell fills. Casting Immolate
+  now adds only its own red segment instead of extending a cumulative fill
+  beneath all the existing colors.
+
+## v0.42.32 (in-game review)
+
+- Apply an estimated Curse of the Elements bonus to remaining Multi-Target DoT
+  damage as soon as the player's Curse is cast. Use the spell description's
+  percentage when available and a conservative 4% fallback otherwise. Avoid
+  applying the bonus twice after an observed tick already includes it.
+
+## v0.42.31 (in-game review)
+
+- Increase the Multi-Target portrait warning's red tint and pulse contrast.
+
+## v0.42.30 (in-game review)
+
+- Flash a red-tinted copy of the mob portrait instead of a flat red layer in
+  the Multi-Target lethal DoT warning.
+
+## v0.42.29 (in-game review)
+
+- Keep the last Multi-Target DoT icon six pixels inside the scroll viewport
+  and extend the HP bar into the space before the icons.
+
+## v0.42.28 (in-game review)
+
+- Move the Multi-Target DoT icon group to the scroll window's right gutter.
+  The group remains aligned there as the window width changes.
+
+## v0.42.27 (in-game review)
+
+- Nudge the Multi-Target HP and health-percent label 10 pixels right while
+  retaining its wider text field.
+
+## v0.42.26 (in-game review)
+
+- Give the Multi-Target health label more room and show current HP with health
+  percent, so the percent does not truncate at the minimum window width.
+
+## v0.42.25 (in-game review)
+
+- Move the Multi-Target health and health-percent text 20 pixels left and
+  shorten the adjacent name field by the same amount.
+
+## v0.42.24 (in-game review)
+
+- Pulse the Multi-Target portrait red when the estimated remaining DoT damage
+  exceeds current health. A native portrait cover receives protected health
+  directly, so Lua does not read or compare that value.
+
+## v0.42.23 (in-game review)
+
+- Add a white current-health edge and a gold estimated-DoT edge to each
+  Multi-Target bar. Both follow native status-bar fills, letting players
+  compare their positions visually without reading protected geometry.
+
 ## v0.42.22
 
 - Release the Multi-Target DoT damage estimate and layout changes from the
