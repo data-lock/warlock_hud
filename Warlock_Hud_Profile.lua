@@ -55,7 +55,8 @@ function WarlockHudProfile.CreateNormalizer(keys)
         end
         p.shardSize = math.max(16, math.min(64, tonumber(p.shardSize) or 32))
         p.buffSize = math.max(16, math.min(64, tonumber(p.buffSize) or 24))
-        p.multiDotEnabled = p.multiDotEnabled == true
+        -- New profiles show MTD; an explicit saved off choice stays off.
+        p.multiDotEnabled = p.multiDotEnabled ~= false
         p.multiDotHideOutOfCombat = p.multiDotHideOutOfCombat == true
         p.multiDotAlpha = math.max(0.3, math.min(1, tonumber(p.multiDotAlpha) or 1))
         p.multiDotScale = math.max(0.7, math.min(1.6, tonumber(p.multiDotScale) or 1))

@@ -8,7 +8,7 @@ function WarlockHudOptionsMultiTarget.Build(context)
 
     Text(multiDotPanel, "Up to 16 mobs from nameplates and group targets. Target through world nameplates or Tab.",
         20, -54, "GameFontHighlight")
-    Text(multiDotPanel, "Off by default. Use /whud mtd to open or close it outside combat.",
+    Text(multiDotPanel, "On by default for new profiles. Use /whud mtd to open or close it outside combat.",
         20, -81, "GameFontHighlightSmall")
     Text(multiDotPanel, "This view is read-only; target enemies through world nameplates or Tab.",
         20, -106, "GameFontHighlightSmall")

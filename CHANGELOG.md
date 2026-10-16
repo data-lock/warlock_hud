@@ -1,12 +1,17 @@
 # Changelog
 
-## v0.42.46
+## v0.43.0
+
+- Enable Multi-Target DoTs by default for new profiles while preserving an
+  explicit off choice in existing profiles.
+- Release the Multi-Target tracking and layout changes from the 0.42 review
+  builds. See `releases/v0.43.0.md` for the user-facing notes and limitations.
+
+## v0.42.46 (in-game review)
 
 - Grey last-seen rows retain their last readable HP, health-bar fill, portrait,
   and estimated active DoT icons. These are snapshots and do not update from
   protected aura or health data after the live unit token disappears.
-- Release the Multi-Target tracking and layout changes from the 0.42 review
-  builds. See `releases/v0.42.46.md` for the user-facing notes and limitations.
 
 ## v0.42.45 (in-game review)
 

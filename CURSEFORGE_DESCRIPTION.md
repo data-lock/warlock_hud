@@ -48,7 +48,7 @@ If a tracked mob loses its live unit token, a grey **last-seen** row can retain 
 
 **Multi-Target limitations:** A grey row is a snapshot: its HP and portrait are no longer live, and it has no native aura countdowns, raid marker, or lethal portrait pulse. If the client does not provide a readable HP or portrait snapshot, the row shows the DoT estimate and a generic portrait. The mob must have had a readable GUID before it disappeared; client restrictions can prevent this, so some mobs may still drop from the list. The 16-row limit includes grey rows. Damage estimates can differ from actual damage because of critical hits, resists, modifiers, early aura removal, and Immolate's separate direct hit. An evade clears the estimate only when the client reports it for a tracked unit; otherwise the row clears when combat ends or the estimate expires.
 
-The window is **off by default**. Outside combat, type **`/whud mtd`** to open or close it. You can move and resize it, set its transparency, or choose to hide it outside combat. **Toggling and adjustments are available only outside combat.** The list is view-only; select enemies with world nameplates or Tab. New mobs need a live unit token before the tracker can identify them.
+The window is **on by default for new profiles**. Existing profiles that turned it off stay off. Outside combat, type **`/whud mtd`** to open or close it. You can move and resize it, set its transparency, or choose to hide it outside combat. **Toggling and adjustments are available only outside combat.** The list is view-only; select enemies with world nameplates or Tab. New mobs need a live unit token before the tracker can identify them.
 
 ### Consumes, Buffs & Procs
 
