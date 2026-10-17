@@ -4,6 +4,14 @@
 
 Warlock HUD is a World of Warcraft: Forever beta addon. The `.toc` file defines the interface version, addon version, saved variable, and Lua load order. There is no build step. Use `/reload` in game to test edits.
 
+## Feature branches and releases
+
+- Start each new feature on its own branch from the current `main`. Keep feature commits off `main` until the work is ready to merge.
+- Use the feature branch for implementation, source checks, and in-game review builds. Give each review build an identifiable `.toc` version.
+- When the feature is ready for release, update the `.toc` to the final version and write the changelog and release notes on the feature branch. Verify the package and inspect `git status` before merging.
+- Merge the feature branch back into `main`, then create and push the matching `vX.Y.Z` release tag from the merge result. The tag triggers the release package workflow.
+- After the release workflow succeeds, remove the local and remote feature branch and clean up temporary review artifacts. Keep the release tag and published files.
+
 ## Preserve the working HUD
 
 - Keep the secure/native aura mechanism for target DoTs and player buffs.
