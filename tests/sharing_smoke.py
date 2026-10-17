@@ -8,6 +8,7 @@ lua = LuaRuntime(unpack_returned_tuples=True)
 lua.execute("""
 local db = { activeProfile = 'Default', profiles = {
     Default = { mainSize = 48, dotTimerMilliseconds = true, multiDotEnabled = true,
+        multiDotThreatIndicator = false,
         multiDotHideOutOfCombat = true, multiDotAlpha = 0.65,
         multiDotScale = 1.25,
         multiDotWidth = 370, multiDotHeight = 410,
@@ -52,6 +53,7 @@ assert(parsed, err)
 assert(parsed.version and parsed.available.bars and parsed.available.shards)
 assert(parsed.profiles.Default.bars.consumeSize == 35)
 assert(parsed.profiles.Default.bars.multiDotEnabled == true)
+assert(parsed.profiles.Default.bars.multiDotThreatIndicator == false)
 assert(parsed.profiles.Default.bars.dotTimerMilliseconds == true)
 assert(parsed.profiles.Default.bars.mainOrder[1] == 'corruption')
 assert(parsed.profiles.Default.bars.mainOrder[2] == 'immolate')
@@ -82,6 +84,7 @@ local count, result = WarlockHudSharing.Import(parsed, { bars=true, notification
 assert(count == 1, result)
 assert(db.profiles.Default.mainSize == 48 and db.profiles.Default.x == 0.8)
 assert(db.profiles.Default.dotTimerMilliseconds == true)
+assert(db.profiles.Default.multiDotThreatIndicator == false)
 assert(db.profiles.Default.mainOrder[1] == 'corruption')
 assert(db.profiles.Default.mainOrder[2] == 'immolate')
 assert(db.profiles.Default.enabled.notifySummon == false)

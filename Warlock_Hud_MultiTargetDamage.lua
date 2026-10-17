@@ -450,6 +450,11 @@ function WarlockHudMultiTargetDamage.New(getRows, readableGuid)
     end)
 
     return { Update = Update, Clear = Clear,
+        ForgetGuid = function(guid)
+            if type(guid) == "string" then
+                casts[guid], curses[guid] = nil, nil
+            end
+        end,
         RemainingForGuid = RemainingForGuid,
         EstimatesForGuid = EstimatesForGuid,
         SetDebugEnabled = function(enabled)

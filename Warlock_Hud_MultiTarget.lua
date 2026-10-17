@@ -37,7 +37,7 @@ local function ClampScale(value)
 end
 
 local function ClampWidth(value)
-    local minimum = math.max(390, DOT_SLOTS * (ICON_SIZE + 3) + 248)
+    local minimum = math.max(390, DOT_SLOTS * (ICON_SIZE + 3) + 305)
     return math.max(minimum, math.min(700, tonumber(value) or BASE_WIDTH))
 end
 
@@ -64,6 +64,15 @@ local function ApplyAppearance()
     local p = Profile()
     if not p then return false end
     root:SetAlpha(math.max(0.3, math.min(1, tonumber(p.multiDotAlpha) or 1)))
+    if Safe() then
+        local showThreat = p.multiDotThreatIndicator ~= false
+        for _, row in ipairs(rows) do
+            row.threatLabel:SetShown(showThreat)
+            row.threatDot:SetShown(showThreat)
+            row.name:SetWidth(math.max(42, row.display:GetWidth()
+                - (showThreat and 223 or 168)))
+        end
+    end
     local wantsDriver = p.multiDotEnabled and p.multiDotHideOutOfCombat
         and api.IsAddonEnabled()
     if wantsDriver ~= visibilityDriver then
@@ -120,6 +129,12 @@ local identity = WarlockHudMultiTargetIdentity.New(function() return rows end,
             percent = row.snapshotPercent, portrait = row.snapshotPortrait }
     end, function(guid)
         return damage and damage.RemainingForGuid(guid) > 0
+    end, function(unit)
+        if not UnitGUID then return end
+        local ok, guid = pcall(UnitGUID, unit)
+        if not ok or not Plain(guid) or type(guid) ~= "string" then return end
+        lastSeen[guid] = nil
+        if damage then damage.ForgetGuid(guid) end
     end)
 local ClearIdentity = identity.ClearIdentity
 local GroupThreat = identity.GroupThreat
@@ -176,6 +191,7 @@ local function UpdateGhostRows()
             row.present = true
             row.display:SetAlpha(0.55)
             row.name:SetText(ghost.name)
+            if row.SetThreat then row:SetThreat("UNKNOWN") end
             row.name:SetTextColor(0.62, 0.62, 0.62)
             local dotLabel = WarlockHudMultiTargetIdentity.FormatNumber(
                 ghost.remaining)
@@ -565,12 +581,20 @@ local function Build()
         damageEdge:SetAlpha(0)
         local name = display:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
         name:SetPoint("TOPLEFT", display, "TOPLEFT", 45, -2)
-        name:SetWidth(math.max(42, width - (DOT_SLOTS * (size + 3) + 206)))
+        name:SetWidth(math.max(42, width - (DOT_SLOTS * (size + 3) + 261)))
         name:SetJustifyH("LEFT")
         name:SetTextColor(0.96, 0.96, 0.94)
         name:SetShadowColor(0, 0, 0, 1)
         name:SetShadowOffset(1, -1)
         if name.SetWordWrap then name:SetWordWrap(false) end
+        local threatLabel = display:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+        threatLabel:SetPoint("RIGHT", healthText, "LEFT", -4, 0)
+        threatLabel:SetWidth(38)
+        threatLabel:SetJustifyH("RIGHT")
+        local threatDot = display:CreateTexture(nil, "OVERLAY")
+        threatDot:SetPoint("RIGHT", threatLabel, "LEFT", -3, 0)
+        threatDot:SetSize(8, 8)
+        threatDot:SetTexture("Interface\\AddOns\\Warlock_Hud\\Textures\\ThreatDot")
         local iconHolder = CreateFrame("Frame", nil, display)
         iconHolder:SetAllPoints(display)
         local selection = display:CreateTexture(nil, "OVERLAY")
@@ -590,6 +614,7 @@ local function Build()
         auras:SetPoint("LEFT", display, "RIGHT", 14, 0)
         local row = { unit = unit, source = source,
             display = display, icons = iconHolder, name = name,
+            threatLabel = threatLabel, threatDot = threatDot,
             healthBar = healthBar, healthText = healthText,
             damageMarker = damageMarker, baneMarker = baneMarker,
             siphonMarker = siphonMarker, immolateMarker = immolateMarker,
@@ -599,6 +624,21 @@ local function Build()
             portraitCover = portraitCover, marker = marker,
             target = selection, auras = auras,
             dotVisuals = {} }
+        function row:SetThreat(state)
+            if self.threatState == state then return end
+            self.threatState = state
+            local colors = {
+                LOW = { 0.259, 0.651, 0.416 },
+                MED = { 0.843, 0.682, 0.259 },
+                HIGH = { 0.878, 0.322, 0.322 },
+                UNKNOWN = { 0.55, 0.55, 0.55 },
+            }
+            local color = colors[state] or colors.UNKNOWN
+            self.threatLabel:SetText(state == "UNKNOWN" and "—" or state)
+            self.threatLabel:SetTextColor(color[1], color[2], color[3])
+            self.threatDot:SetVertexColor(color[1], color[2], color[3])
+        end
+        row:SetThreat("UNKNOWN")
         rows[i] = row
         local positions = DotOrder(p)
         for _, key in ipairs(DOT_KEYS) do
@@ -751,6 +791,7 @@ WarlockHudMultiTarget = {
     Debug = function()
         local output = WarlockHudTraceHUD
         if not output then return end
+        probe.EnableThreatDebug()
         output("Multi-Target: " .. (built and "built" or "not built")
             .. "; read-only; combat: " .. tostring(InCombatLockdown()))
         for _, row in ipairs(rows) do
@@ -779,6 +820,14 @@ for _, event in ipairs({ "PLAYER_LOGIN", "PLAYER_REGEN_ENABLED",
     events:RegisterEvent(event)
 end
 events:SetScript("OnEvent", function(_, event, unit)
+    if event == "UNIT_THREAT_LIST_UPDATE"
+        or event == "UNIT_THREAT_SITUATION_UPDATE"
+        or event == "PLAYER_TARGET_CHANGED"
+        or event == "NAME_PLATE_UNIT_ADDED"
+        or event == "NAME_PLATE_UNIT_REMOVED"
+        or event == "UNIT_TARGET" or event == "GROUP_ROSTER_UPDATE" then
+        probe.ThreatEvent(event)
+    end
     if event == "PLAYER_LOGIN" or event == "PLAYER_REGEN_ENABLED"
         or event == "ACTIVE_TALENT_GROUP_CHANGED"
         or event == "PLAYER_TALENT_UPDATE" or event == "SPELLS_CHANGED" then

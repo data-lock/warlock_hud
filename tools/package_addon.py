@@ -18,7 +18,7 @@ def manifest():
         if path.is_absolute() or ".." in path.parts:
             raise ValueError(f"Invalid TOC path: {name}")
         entries.append(path)
-    entries.extend((Path("README.md"), Path("LICENSE")))
+    entries.extend((Path("Textures/ThreatDot.tga"), Path("README.md"), Path("LICENSE")))
     return entries
 
 

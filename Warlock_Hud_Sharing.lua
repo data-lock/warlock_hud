@@ -5,7 +5,7 @@ local sharing = {}
 local alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
 local sections = {
     bars = { mainSize="number", cooldownSize="number", dotTimerMilliseconds="boolean",
-        multiDotEnabled="boolean",
+        multiDotEnabled="boolean", multiDotThreatIndicator="boolean",
         multiDotHideOutOfCombat="boolean", multiDotAlpha="number",
         multiDotScale="number", multiDotWidth="number", multiDotHeight="number",
         consumesSchemaVersion="number",

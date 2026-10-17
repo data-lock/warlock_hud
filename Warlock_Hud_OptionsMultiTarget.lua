@@ -27,22 +27,30 @@ function WarlockHudOptionsMultiTarget.Build(context)
             if WarlockHudMultiTarget then WarlockHudMultiTarget.UpdateAppearance() end
         end,
         "Show the window only during combat while it is enabled. Saved immediately.", false)
-    Button(multiDotPanel, "Reset position", 20, -229, 130, function()
+    Check(multiDotPanel, 20, -211, "Show Threat Indicator",
+        function() return Profile().multiDotThreatIndicator ~= false end,
+        function(value)
+            if InCombatLockdown() then return end
+            Profile().multiDotThreatIndicator = value
+            if WarlockHudMultiTarget then WarlockHudMultiTarget.UpdateAppearance() end
+        end,
+        "Personal LOW / MED / HIGH threat; a grey dash means unavailable. Saved immediately; the view updates when combat and aura protection allow.", false)
+    Button(multiDotPanel, "Reset position", 20, -249, 130, function()
         if InCombatLockdown() then return end
         Profile().multiDotX, Profile().multiDotY = nil, nil
         if WarlockHudMultiTarget then WarlockHudMultiTarget.Refresh() end
     end)
-    Button(multiDotPanel, "Reset size", 163, -229, 110, function()
+    Button(multiDotPanel, "Reset size", 163, -249, 110, function()
         if InCombatLockdown() then return end
         Profile().multiDotScale = 1
         Profile().multiDotWidth, Profile().multiDotHeight = 430, 548
         if WarlockHudMultiTarget then WarlockHudMultiTarget.Refresh() end
     end)
-    Text(multiDotPanel, "Transparency", 20, -275, "GameFontHighlight")
-    local alphaValue = Text(multiDotPanel, "100%", 400, -275, "GameFontHighlight")
+    Text(multiDotPanel, "Transparency", 20, -295, "GameFontHighlight")
+    local alphaValue = Text(multiDotPanel, "100%", 400, -295, "GameFontHighlight")
     local alphaSlider = CreateFrame("Slider", nil, multiDotPanel, "OptionsSliderTemplate")
     alphaSlider:SetSize(165, 17)
-    alphaSlider:SetPoint("TOPLEFT", multiDotPanel, "TOPLEFT", 203, -272)
+    alphaSlider:SetPoint("TOPLEFT", multiDotPanel, "TOPLEFT", 203, -292)
     alphaSlider:SetMinMaxValues(30, 100)
     alphaSlider:SetValueStep(5)
     alphaSlider:SetScript("OnValueChanged", function(_, value)
@@ -63,15 +71,15 @@ function WarlockHudOptionsMultiTarget.Build(context)
         alphaSlider:SetValue(math.floor(((Profile().multiDotAlpha or 1) * 100) / 5 + 0.5) * 5)
     end
     Text(multiDotPanel, "Toggle and adjust outside combat. Drag the title to move or the lower-right grip to resize; scroll when needed.",
-        20, -318, "GameFontHighlightSmall")
+        20, -338, "GameFontHighlightSmall")
     Text(multiDotPanel, "A nameplate token can be reused; its old label is cleared on removal.",
-        20, -349, "GameFontHighlightSmall")
+        20, -369, "GameFontHighlightSmall")
     Text(multiDotPanel, "Native aura slots show tracked effects. Brand follows Target DoTs settings.",
-        20, -374, "GameFontHighlightSmall")
+        20, -394, "GameFontHighlightSmall")
     Text(multiDotPanel, "Each row shows a portrait, name, health bar, and 20% health mark.",
-        20, -399, "GameFontHighlightSmall")
+        20, -419, "GameFontHighlightSmall")
     Text(multiDotPanel, "Damage: amber Corruption, violet Bane, teal Siphon, red Immolate.",
-        20, -449, "GameFontHighlightSmall")
+        20, -469, "GameFontHighlightSmall")
     Text(multiDotPanel, "Timer decimals follow the setting on Tracked Auras.",
-        20, -424, "GameFontHighlightSmall")
+        20, -444, "GameFontHighlightSmall")
 end

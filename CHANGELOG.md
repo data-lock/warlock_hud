@@ -1,5 +1,15 @@
 # Changelog
 
+## v0.44.0
+
+- Add an optional personal threat indicator to live Multi-Target rows: green LOW,
+  yellow MED, red HIGH, or a grey dash when the status is unavailable.
+- Add Show Threat Indicator under Multi-Target DoTs, enabled by default and
+  saved per profile. Profile share codes include the setting.
+- Clear last-seen rows and DoT estimates when the client confirms a mob died.
+- Keep enemy names, HP text, and native DoT timers separate from the indicator.
+  See `releases/v0.44.0.md` for Forever API details and limitations.
+
 ## v0.43.0
 
 - Enable Multi-Target DoTs by default for new profiles while preserving an

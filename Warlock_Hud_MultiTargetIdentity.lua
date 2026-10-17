@@ -18,7 +18,7 @@ function WarlockHudMultiTargetIdentity.FormatNumber(value)
 end
 
 function WarlockHudMultiTargetIdentity.New(getRows, spells, rowLimit, plain,
-    rememberSeen, hasTrackedDamage)
+    rememberSeen, hasTrackedDamage, forgetDead)
     local SPELLS, ROWS, Plain = spells, rowLimit, plain
     local healthColorCurve
     if C_CurveUtil and C_CurveUtil.CreateColorCurve and CreateColor
@@ -46,6 +46,7 @@ function WarlockHudMultiTargetIdentity.New(getRows, spells, rowLimit, plain,
         -- visibility or anchors during combat.
         row.display:SetAlpha(0)
         row.name:SetText("")
+        if row.SetThreat then row:SetThreat("UNKNOWN") end
         if row.healthBar then
             pcall(row.healthBar.SetMinMaxValues, row.healthBar, 0, 1)
             pcall(row.healthBar.SetValue, row.healthBar, 0)
@@ -61,6 +62,19 @@ function WarlockHudMultiTargetIdentity.New(getRows, spells, rowLimit, plain,
         row.marker:Hide()
         row.markerMode = "none"
         row.target:SetColorTexture(0.86, 0.66, 0.25, 0)
+    end
+
+    local function UpdateThreat(row)
+        local state = "UNKNOWN"
+        if UnitThreatSituation then
+            local ok, status = pcall(UnitThreatSituation, "player", row.unit)
+            if ok and not (issecretvalue and issecretvalue(status)) then
+                if status == 0 then state = "LOW"
+                elseif status == 1 then state = "MED"
+                elseif status == 2 or status == 3 then state = "HIGH" end
+            end
+        end
+        if row.SetThreat then row:SetThreat(state) end
     end
 
     local function UpdateHealth(row, name)
@@ -309,6 +323,7 @@ function WarlockHudMultiTargetIdentity.New(getRows, spells, rowLimit, plain,
         if UnitIsDeadOrGhost then
             local deadOK, dead = pcall(UnitIsDeadOrGhost, unit)
             if deadOK and Plain(dead) and dead then
+                if forgetDead then forgetDead(unit) end
                 ClearIdentity(row)
                 return
             end
@@ -342,6 +357,7 @@ function WarlockHudMultiTargetIdentity.New(getRows, spells, rowLimit, plain,
         row.eligible = true
         row.relevant = true
         row.display:SetAlpha(1)
+        UpdateThreat(row)
         row.name:SetTextColor(0.96, 0.96, 0.94)
         row.target:SetColorTexture(0.86, 0.66, 0.25, 0)
         if not row.portraitReady then UpdatePortrait(row) end

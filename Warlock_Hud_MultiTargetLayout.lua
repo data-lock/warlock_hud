@@ -61,7 +61,9 @@ function WarlockHudMultiTargetLayout.New(getRows, dotSlots, iconSize, rowHeight,
                 end
             end
             if not positionsOnly then
-                row.name:SetWidth(math.max(42, displayWidth - 168))
+                row.name:SetWidth(math.max(42, displayWidth
+                    - (profile and profile.multiDotThreatIndicator == false
+                        and 168 or 223)))
                 for _, segment in ipairs({ row.damageMarker, row.baneMarker,
                     row.siphonMarker, row.immolateMarker }) do
                     segment:SetWidth(healthWidth)

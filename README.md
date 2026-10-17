@@ -41,6 +41,13 @@ estimate exceeds current health. A grey last-seen row retains the last available
 HP, health-bar fill, portrait, and estimated active DoT icons while its remaining
 damage estimate continues to decrease.
 
+Live rows can also show your personal threat as a small dot and LOW (green),
+MED (yellow), or HIGH (red). A grey dash means the client did not provide a
+readable status; it does not mean low threat. This is a category, not a threat
+percentage. Use **Multi-Target DoTs → Show Threat Indicator** to turn it off for
+the current profile. The choice is included in profile sharing. Last-seen rows
+always show a grey dash, and confirmed dead mobs clear promptly.
+
 ![Multi-Target DoTs tracking three mobs](screenshots/warlock_hud_mtd_overview.png)
 
 ![Multi-Target DoTs with a portrait warning](screenshots/warlock_hud_mtd.png)
@@ -72,7 +79,12 @@ can reset addon settings to defaults after confirmation.
   native aura countdowns, raid marker, or lethal portrait pulse until a live
   token returns. Unreadable snapshots fall back to a DoT estimate and generic
   portrait.
-  It clears at combat end or when its estimated DoTs expire.
+  It clears at combat end, when its estimated DoTs expire, or when the client
+  confirms the mob died.
+- Forever returned readable personal threat statuses for target and nameplate
+  tokens in solo combat testing. Other token types can return unavailable or
+  restricted data, which the indicator shows as a grey dash. Group combat
+  token behavior still needs in-game testing.
 - Last-seen tracking requires a readable GUID before the token disappears.
   Client restrictions can prevent that. Live and grey rows share the 16-row
   limit. An evade clears a DoT estimate only if reported for a tracked unit.

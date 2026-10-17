@@ -12,7 +12,42 @@ function WarlockHudMultiTargetProbe.New(getRows, rowLimit, plain,
     local probeFrame = CreateFrame("Frame")
     local probeRunning, probeElapsed = false, 0
     local probePrevious = {}
-    local function ProbeValue(fn, unit)
+    local ProbeValue
+    local threatDebug, threatPrevious = false, nil
+    local threatEventsSeen = {}
+    local function ThreatSnapshot(reason, force)
+        if not WarlockHudTraceHUD then return end
+        local tokens = { "target", "nameplate1", "nameplate2" }
+        if IsInRaid and IsInRaid() then
+            for i = 1, 40 do tokens[#tokens + 1] = "raid" .. i .. "target" end
+        elseif IsInGroup and IsInGroup() then
+            for i = 1, 4 do tokens[#tokens + 1] = "party" .. i .. "target" end
+        end
+        local results = {}
+        for _, unit in ipairs(tokens) do
+            if ProbeValue(UnitExists, unit) then
+                local status = "API absent"
+                if UnitThreatSituation then
+                    local ok, value = pcall(UnitThreatSituation, "player", unit)
+                    if not ok then status = "ERROR"
+                    elseif issecretvalue and issecretvalue(value) then status = "SECRET"
+                    elseif value == nil then status = "nil"
+                    elseif type(value) ~= "number" then status = "non-number"
+                    elseif value == 0 or value == 1 or value == 2 or value == 3 then
+                        status = tostring(value)
+                    else status = "other-number" end
+                end
+                results[#results + 1] = unit .. "=" .. status
+            end
+        end
+        local state = "combat=" .. tostring(InCombatLockdown()) .. " "
+            .. (#results > 0 and table.concat(results, " ") or "no sampled units")
+        if force or state ~= threatPrevious then
+            WarlockHudTraceHUD("Threat probe " .. reason .. ": " .. state)
+            threatPrevious = state
+        end
+    end
+    ProbeValue = function(fn, unit)
         if not fn then return nil end
         local ok, value = pcall(fn, unit)
         if not ok or not Plain(value) then return nil end
@@ -113,5 +148,16 @@ function WarlockHudMultiTargetProbe.New(getRows, rowLimit, plain,
     return {
         IsRunning = function() return probeRunning end,
         Command = Command,
+        EnableThreatDebug = function()
+            threatDebug = true
+            ThreatSnapshot("/whud debug", true)
+        end,
+        ThreatEvent = function(event)
+            if threatDebug then
+                local first = not threatEventsSeen[event]
+                threatEventsSeen[event] = true
+                ThreatSnapshot(event, first)
+            end
+        end,
     }
 end
