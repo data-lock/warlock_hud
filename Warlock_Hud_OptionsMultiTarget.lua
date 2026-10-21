@@ -35,6 +35,13 @@ function WarlockHudOptionsMultiTarget.Build(context)
             if WarlockHudMultiTarget then WarlockHudMultiTarget.UpdateAppearance() end
         end,
         "Personal LOW / MED / HIGH threat; a grey dash means unavailable. Saved immediately; the view updates when combat and aura protection allow.", false)
+    Check(multiDotPanel, 300, -211, "Show predicted DoT damage",
+        function() return Profile().multiDotDamageEnabled ~= false end,
+        function(value)
+            Profile().multiDotDamageEnabled = value
+            if WarlockHudMultiTarget then WarlockHudMultiTarget.Refresh() end
+        end,
+        "Show approximate remaining DoT damage on Multi-Target rows.", false)
     Button(multiDotPanel, "Reset position", 20, -249, 130, function()
         if InCombatLockdown() then return end
         Profile().multiDotX, Profile().multiDotY = nil, nil

@@ -9,18 +9,20 @@ function WarlockHudOptionsShards.Build(context)
     local refreshers = context.refreshers
 
     local shards = Panel("Warlock HUD - Soul Shards")
-    Text(shards, "Move the shard icon in Edit Mode; it snaps to the grid.",
+    Text(shards, "Hidden until Drain Soul is learned by default. Enable it early to arrange in Edit Mode.",
         20, -50, "GameFontHighlightSmall")
     Text(shards, "Shard icon", 20, -80, "GameFontNormal")
     Check(shards, 20, -105, "Show Soul Shards icon",
-        function() return Profile().enabled.soulshards ~= false end,
+        function()
+            local enabled = Profile().enabled.soulshards
+            if enabled ~= nil then return enabled == true end
+            return api.FeatureSpellLearned
+                and api.FeatureSpellLearned("soulshards") == true
+        end,
         function(value)
-            if value then
-                Profile().enabled.soulshards = nil
-            else
-                Profile().enabled.soulshards = false
-            end
-        end)
+            Profile().enabled.soulshards = value and true or false
+        end,
+        "Appears automatically after Drain Soul is learned unless disabled. Enable early to show it before then.")
     SizeSlider(shards, "Shard icon size", "shardSize", 16, 64, 20, -140)
     local function ShardNumberSlider(label, key, y, limits, onChange)
         Text(shards, label, 20, y - 5, "GameFontHighlight")

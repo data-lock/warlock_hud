@@ -41,6 +41,15 @@ function WarlockHudOptionsGeneral.Build(context)
             "Show this HUD row outside combat. The row is always visible in combat and Edit Mode.",
             false)
     end
+    Text(general, "Getting Started", 315, -85, "GameFontNormal")
+    Button(general, "Reopen Welcome & Setup", 315, -128, 220, function()
+        if WarlockHudOpenGettingStarted then WarlockHudOpenGettingStarted() end
+    end)
+    local help = Text(general,
+        "Compare presets for this profile.\nSaved positions stay in place.",
+        315, -165, "GameFontHighlightSmall")
+    help:SetWidth(240)
+    help:SetJustifyH("LEFT")
     Text(general, "If you /reload during combat, the HUD loads after combat ends.",
         20, -520, "GameFontHighlightSmall")
 end

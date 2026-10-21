@@ -19,6 +19,32 @@ local function NormalizeOrder(order, defaults)
     return result
 end
 
+local function NormalizeTargetAndUtility(mainOrder, utilityOrder, mainDefaults, utilityDefaults)
+    local valid, seen, main, utility = {}, {}, {}, {}
+    for _, key in ipairs(mainDefaults) do valid[key] = true end
+    for _, key in ipairs(utilityDefaults) do valid[key] = true end
+    local function Append(source, result)
+        if type(source) ~= "table" then return end
+        for _, key in ipairs(source) do
+            if valid[key] and not seen[key] then
+                result[#result + 1] = key
+                seen[key] = true
+            end
+        end
+    end
+    Append(mainOrder, main)
+    Append(utilityOrder, utility)
+    Append(mainDefaults, main)
+    Append(utilityDefaults, utility)
+    return main, utility
+end
+
+local function OptionalFontSize(value, minimum, maximum)
+    value = tonumber(value)
+    if not value or value ~= value then return nil end
+    return math.max(minimum, math.min(maximum, math.floor(value + 0.5)))
+end
+
 function WarlockHudProfile.NormalizeSummonKeywords(value)
     if type(value) ~= "string" or #value > 142 or value:match("^%s*,")
         or value:match(",%s*,") or value:match(",%s*$") then return nil end
@@ -58,6 +84,7 @@ function WarlockHudProfile.CreateNormalizer(keys)
         -- New profiles show MTD; an explicit saved off choice stays off.
         p.multiDotEnabled = p.multiDotEnabled ~= false
         p.multiDotThreatIndicator = p.multiDotThreatIndicator ~= false
+        p.multiDotDamageEnabled = p.multiDotDamageEnabled ~= false
         p.multiDotHideOutOfCombat = p.multiDotHideOutOfCombat == true
         p.multiDotAlpha = math.max(0.3, math.min(1, tonumber(p.multiDotAlpha) or 1))
         p.multiDotScale = math.max(0.7, math.min(1.6, tonumber(p.multiDotScale) or 1))
@@ -93,6 +120,14 @@ function WarlockHudProfile.CreateNormalizer(keys)
         if p.consumeReminders.wellfed == nil then p.consumeReminders.wellfed = true end
         p.consumeSize = math.max(16, math.min(64, tonumber(p.consumeSize) or 24))
         p.procSize = math.max(20, math.min(64, tonumber(p.procSize) or 32))
+        local validFonts = { friz = true, arial = true, morpheus = true,
+            nimrod = true, skurri = true }
+        if not validFonts[p.fontFace] then p.fontFace = nil end
+        if not validFonts[p.multiTargetFontFace] then p.multiTargetFontFace = nil end
+        p.fontIconSize = OptionalFontSize(p.fontIconSize, 8, 24)
+        p.fontTimerSize = OptionalFontSize(p.fontTimerSize, 8, 30)
+        p.fontMultiTargetSize = OptionalFontSize(p.fontMultiTargetSize, 8, 18)
+        p.fontMultiTargetTimerSize = OptionalFontSize(p.fontMultiTargetTimerSize, 8, 24)
         p.shardDestroyCount = nil
         p.shardKeepCount = math.max(0, math.min(64, math.floor(tonumber(p.shardKeepCount) or 8)))
         p.shardWarningsEnabled = p.shardWarningsEnabled ~= false
@@ -107,8 +142,8 @@ function WarlockHudProfile.CreateNormalizer(keys)
             math.floor(tonumber(p.shardLowThreshold) or 4)))
         p.shardHighThreshold = math.max(p.shardLowThreshold + 1, math.min(64,
             math.floor(tonumber(p.shardHighThreshold) or 18)))
-        p.mainOrder = NormalizeOrder(p.mainOrder, effects.MainKeys)
-        p.cooldownOrder = NormalizeOrder(p.cooldownOrder, keys.cooldown)
+        p.mainOrder, p.cooldownOrder = NormalizeTargetAndUtility(
+            p.mainOrder, p.cooldownOrder, effects.MainKeys, keys.cooldown)
         p.buffOrder = NormalizeOrder(p.buffOrder, keys.buff)
         p.consumeOrder = NormalizeOrder(p.consumeOrder, keys.consume)
         if type(p.showOutOfCombat) ~= "table" then p.showOutOfCombat = {} end

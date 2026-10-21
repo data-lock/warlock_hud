@@ -11,6 +11,7 @@ local visibilityController
 local visibilityDriver = false
 local built, pending, auraWarning, failed = false, false, false, false
 local builtTimerMilliseconds
+local builtFontFace, builtFontSize, builtTimerFontSize
 local buildCount = 0
 local ROWS = 16
 local SOURCE_UNITS = {}
@@ -165,7 +166,7 @@ local function UpdateGhostRows()
         end
     end
     local candidates = {}
-    if InCombatLockdown() then
+    if InCombatLockdown() and Profile().multiDotDamageEnabled ~= false then
         for guid, seen in pairs(lastSeen) do
             local remaining = damage.RemainingForGuid(guid)
             if remaining <= 0 and not liveGuids[guid] then
@@ -356,12 +357,14 @@ local function Build()
         local loaded = C_AddOns.LoadAddOn("Blizzard_AuraContainer")
         if not loaded then return false end
     end
-    if CreateFont and not countdownFontReady then
-        local font = CreateFont(COUNTDOWN_FONT)
+    if CreateFont then
+        local font = _G[COUNTDOWN_FONT] or CreateFont(COUNTDOWN_FONT)
         if font then
             font:SetFont(STANDARD_TEXT_FONT or "Fonts\\FRIZQT__.TTF", 10, "OUTLINE")
             font:SetShadowColor(0, 0, 0, 1)
             font:SetShadowOffset(1, -1)
+            WarlockHudFonts.ConfigureCountdown(COUNTDOWN_FONT, p,
+                "fontMultiTargetTimerSize", 10, "multiTargetFontFace")
             countdownFontReady = true
         end
     end
@@ -390,11 +393,13 @@ local function Build()
     bg:SetAllPoints(root)
     bg:SetColorTexture(0.035, 0.035, 0.045, 0.88)
     local title = root:CreateFontString(nil, "ARTWORK", "GameFontNormalSmall")
+    WarlockHudFonts.Apply(title, p, "fontMultiTargetSize", 10, "multiTargetFontFace")
     title:SetPoint("TOPLEFT", root, "TOPLEFT", 9, -8)
     title:SetText("Multi-Target DoTs (view only)")
     title:SetShadowColor(0, 0, 0, 1)
     title:SetShadowOffset(1, -1)
     status = root:CreateFontString(nil, "ARTWORK", "GameFontDisableSmall")
+    WarlockHudFonts.Apply(status, p, "fontMultiTargetSize", 10, "multiTargetFontFace")
     status:SetPoint("TOPLEFT", root, "TOPLEFT", 10, -30)
     status:SetText("No engaged or dotted targets")
     status:SetShadowColor(0, 0, 0, 1)
@@ -538,8 +543,10 @@ local function Build()
         healthBar:SetMinMaxValues(0, 1)
         healthBar:SetValue(0)
         local healthText = display:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+        WarlockHudFonts.Apply(healthText, p, "fontMultiTargetSize", 10,
+            "multiTargetFontFace")
         healthText:SetPoint("TOPRIGHT", healthBar, "TOPRIGHT", 0, 13)
-        healthText:SetSize(128, 12)
+        healthText:SetSize(128, math.max(12, p.fontMultiTargetSize or 10))
         healthText:SetJustifyH("RIGHT")
         healthText:SetTextColor(0.96, 0.96, 0.94)
         healthText:SetShadowColor(0, 0, 0, 1)
@@ -580,6 +587,8 @@ local function Build()
         damageEdge:SetColorTexture(1, 0.93, 0.28, 1)
         damageEdge:SetAlpha(0)
         local name = display:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+        WarlockHudFonts.Apply(name, p, "fontMultiTargetSize", 10,
+            "multiTargetFontFace")
         name:SetPoint("TOPLEFT", display, "TOPLEFT", 45, -2)
         name:SetWidth(math.max(42, width - (DOT_SLOTS * (size + 3) + 261)))
         name:SetJustifyH("LEFT")
@@ -588,6 +597,8 @@ local function Build()
         name:SetShadowOffset(1, -1)
         if name.SetWordWrap then name:SetWordWrap(false) end
         local threatLabel = display:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+        WarlockHudFonts.Apply(threatLabel, p, "fontMultiTargetSize", 10,
+            "multiTargetFontFace")
         threatLabel:SetPoint("RIGHT", healthText, "LEFT", -4, 0)
         threatLabel:SetWidth(38)
         threatLabel:SetJustifyH("RIGHT")
@@ -686,6 +697,8 @@ local function Build()
     ApplyLayout(width, height)
     damage.SetDebugEnabled(damageDebug)
     builtTimerMilliseconds = p.dotTimerMilliseconds ~= false
+    builtFontFace, builtFontSize, builtTimerFontSize =
+        p.multiTargetFontFace, p.fontMultiTargetSize, p.fontMultiTargetTimerSize
     built, pending = true, false
     ApplyAppearance()
     return true
@@ -696,7 +709,10 @@ local function Refresh()
     if not p then return false end
     if not Safe() then pending = true; return false end
     if built and (not SameEffects(api.GetMultiTargetEffectOrder())
-        or builtTimerMilliseconds ~= (p.dotTimerMilliseconds ~= false)) then
+        or builtTimerMilliseconds ~= (p.dotTimerMilliseconds ~= false)
+        or builtFontFace ~= p.multiTargetFontFace
+        or builtFontSize ~= p.fontMultiTargetSize
+        or builtTimerFontSize ~= p.fontMultiTargetTimerSize) then
         RetireWindow()
     end
     if not built then return Build() end

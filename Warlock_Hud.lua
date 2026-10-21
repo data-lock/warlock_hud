@@ -8,8 +8,9 @@ local consumeState = { size = 24, keys = {
     "wellfed", "flask", "spelldamage", "shadow", "fire", "wizardoil", "manaregen",
 }, glows = {} }
 local PROC_ICON_SIZE = 32
-local ICON_SPACING = 4
-local BORDER_SIZE = 2
+-- Adjacent one-pixel borders overlap to form one shared divider.
+local ICON_SPACING = 1
+local BORDER_SIZE = 1
 local ICON_CROP = (1 - 1 / 1.3) / 2
 local IN_RANGE_COLOR = CreateColor(1, 1, 1, 1)
 local OUT_OF_RANGE_COLOR = CreateColor(1, 0.2, 0.2, 1)
@@ -50,11 +51,13 @@ local BUFF_KEYS = WarlockHudPlayerEffects.BuffKeys
 local PROC_KEYS = WarlockHudPlayerEffects.ProcKeys
 local PROCS = WarlockHudPlayerEffects.Procs
 local BUFFS = WarlockHudPlayerEffects.Buffs
+local STONES = WarlockHudPlayerEffects.Stones
 local SACRIFICE_BUFF = BUFFS[#BUFFS - 1]
 local profile
 local wellFedIDs = WarlockHudPlayerEffects.WellFedIDs
 consumeState.effects = WarlockHudPlayerEffects.Consumables
 consumeState.oilEnchantIDs = WarlockHudPlayerEffects.OilEnchantIDs
+consumeState.firestoneEnchantIDs = WarlockHudPlayerEffects.FirestoneEnchantIDs
 local buffIDs = {}
 local buffSlotCreated = {}
 
@@ -166,6 +169,7 @@ end
 
 local function InitializeProfiles()
     if type(WarlockHudDB) ~= "table" then WarlockHudDB = {} end
+    WarlockHudOnboarding.Migrate(WarlockHudDB)
     if type(WarlockHudDB.wellFedIDs) == "table" then
         for spellID, known in pairs(WarlockHudDB.wellFedIDs) do
             if type(spellID) == "number" and known then wellFedIDs[spellID] = true end
@@ -266,9 +270,28 @@ end
 local CastSpellTexture = WarlockHudSpellbook.CastSpellTexture
 local KnownSpellID = WarlockHudSpellbook.KnownSpellID
 local KnownSpell = WarlockHudSpellbook.KnownSpell
+local LearnedAnySpell = WarlockHudSpellbook.LearnedAnySpell
 local KnowsDemonicBrand = WarlockHudSpellbook.KnowsDemonicBrand
+local DRAIN_SOUL_SPELL
+for _, spell in ipairs(SPELLS) do
+    if spell.name == "Drain Soul" then DRAIN_SOUL_SPELL = spell; break end
+end
 WarlockHudRowVisibility.KnowsDemonicBrand = KnowsDemonicBrand
 WarlockHudRowVisibility.ConflagrateSpellID = WarlockHudSpellbook.ConflagrateSpellID
+
+local function FeatureSpellLearned(key)
+    if key == "soulshards" then
+        return DRAIN_SOUL_SPELL ~= nil
+            and LearnedAnySpell({ DRAIN_SOUL_SPELL.name }, DRAIN_SOUL_SPELL.ids)
+    end
+    for _, stone in ipairs(STONES) do
+        local stoneKey = stone.name == "Healthstone" and "healthstone" or "soulstone"
+        if stoneKey == key then
+            return LearnedAnySpell(stone.learnNames, stone.learnIDs)
+        end
+    end
+    return true
+end
 
 function WarlockHudRowVisibility.RefreshConflagrate()
     local entry = groupBuffIcons.conflagrate
@@ -312,6 +335,8 @@ local function VisibleOrder(order)
                     break
                 end
             end
+        elseif key == "healthstone" or key == "soulstone" then
+            hasSpell = FeatureSpellLearned(key) or profile.enabled[key] == true
         elseif key == "armor" then
             hasSpell = KnownSpell(ARMOR_SPELL)
         elseif key == "soullink" then
@@ -337,11 +362,13 @@ local function Position(order, key, size)
     end
 end
 
-local STONES = WarlockHudPlayerEffects.Stones
 local RACIALS = WarlockHudPlayerEffects.Racials
 
-local function CooldownX(key)
-    return Position(VisibleOrder(profile.cooldownOrder), key, COOLDOWN_ICON_SIZE)
+local function RowPlacement(key, mainOrder, utilityOrder)
+    local x = Position(mainOrder, key, ICON_SIZE)
+    if x then return rowFrames.hudAnchor, x, ICON_SIZE, true end
+    x = Position(utilityOrder, key, COOLDOWN_ICON_SIZE)
+    if x then return rowFrames.cooldownAnchor, x, COOLDOWN_ICON_SIZE, false end
 end
 
 local function MakeBorder(anchor, x, iconSize)
@@ -368,10 +395,10 @@ end
 
 local function MakeNativeButtonBorder(button, iconSize)
     local edges = {
-        { "TOP", iconSize + 4, 2, 0, 2 },
-        { "BOTTOM", iconSize + 4, 2, 0, -2 },
-        { "LEFT", 2, iconSize + 4, -2, 0 },
-        { "RIGHT", 2, iconSize + 4, 2, 0 },
+        { "TOP", iconSize + 2 * BORDER_SIZE, BORDER_SIZE, 0, BORDER_SIZE },
+        { "BOTTOM", iconSize + 2 * BORDER_SIZE, BORDER_SIZE, 0, -BORDER_SIZE },
+        { "LEFT", BORDER_SIZE, iconSize + 2 * BORDER_SIZE, -BORDER_SIZE, 0 },
+        { "RIGHT", BORDER_SIZE, iconSize + 2 * BORDER_SIZE, BORDER_SIZE, 0 },
     }
     for _, edgeInfo in ipairs(edges) do
         local edge = button:CreateTexture(nil, "OVERLAY")
@@ -673,29 +700,39 @@ local function ReadConsumableEffect(effect)
     return false
 end
 
-local function ReadWizardOil()
-    -- Oils are temporary weapon enchants, not UNIT_AURA buffs. Never inspect
-    -- or calculate their protected remaining time in Lua.
+local function ReadWeaponCoating()
+    -- Oils and Firestone are temporary weapon enchants, not UNIT_AURA buffs.
+    -- Read their remaining time only when the client exposes a plain value.
     if InCombatLockdown() or not C_Item or not C_Item.GetWeaponEnchantInfo
         or (C_Secrets and C_Secrets.ShouldAurasBeSecret
             and C_Secrets.ShouldAurasBeSecret()) then return nil end
-    local ok, status = pcall(function()
+    local ok, status, remainingMs = pcall(function()
         local enchants = C_Item.GetWeaponEnchantInfo(0)
         if (issecretvalue and issecretvalue(enchants))
             or type(enchants) ~= "table" then return nil end
+        local oilFound = false
         for _, enchant in ipairs(enchants) do
-            if type(enchant) ~= "table" then return nil end
+            if (issecretvalue and issecretvalue(enchant))
+                or type(enchant) ~= "table" then return nil end
             local present, enchantType, id = enchant.hasEnchant,
                 enchant.enchantType, enchant.enchantID
             if issecretvalue and (issecretvalue(present)
                 or issecretvalue(enchantType) or issecretvalue(id)) then return nil end
             if present and type(id) ~= "number" then return nil end
-            if present and consumeState.oilEnchantIDs[id] then return true end
+            if present and consumeState.firestoneEnchantIDs[id] then
+                local timeLeft = enchant.timeLeft
+                if issecretvalue and issecretvalue(timeLeft) then
+                    return "firestone"
+                end
+                return "firestone", type(timeLeft) == "number" and timeLeft or nil
+            end
+            if present and consumeState.oilEnchantIDs[id] then oilFound = true end
         end
-        return false
+        return oilFound and "oil" or false
     end)
     if not ok or (issecretvalue and issecretvalue(status)) then return nil end
-    return status
+    if issecretvalue and issecretvalue(remainingMs) then remainingMs = nil end
+    return status, remainingMs
 end
 
 local function UpdateConsumableGlows()
@@ -713,7 +750,29 @@ local function UpdateConsumableGlows()
     end
     local oilGlow = consumeState.glows.wizardoil
     if oilGlow then
-        SetMissingGlow(oilGlow, ReadWizardOil(), profile.colorActiveConsumes)
+        local coating, remainingMs = ReadWeaponCoating()
+        SetMissingGlow(oilGlow, coating == "firestone" and true
+            or coating == "oil" and true or coating,
+            profile.colorActiveConsumes)
+        if coating ~= nil and consumeState.oilIcon then
+            consumeState.coating = coating
+            consumeState.oilIcon:SetTexture(coating == "firestone"
+                and consumeState.firestoneTexture or consumeState.oilTexture)
+            if coating == "firestone" and type(remainingMs) == "number"
+                and remainingMs > 0 and consumeState.coatingCooldown then
+                local seconds = math.min(7200, remainingMs / 1000)
+                local now = GetTime()
+                consumeState.coatingExpiresAt = now + seconds
+                local shown = pcall(consumeState.coatingCooldown.SetCooldown,
+                    consumeState.coatingCooldown, now - (7200 - seconds), 7200)
+                consumeState.coatingCooldown:SetShown(shown)
+            elseif coating ~= "firestone" then
+                consumeState.coatingExpiresAt = nil
+                if consumeState.coatingCooldown then
+                    consumeState.coatingCooldown:Hide()
+                end
+            end
+        end
         if not profile.consumeReminders.wizardoil then
             oilGlow:Hide()
             oilGlow.pulseIcon:SetAlpha(1)
@@ -788,7 +847,9 @@ local function UpdateDemonology()
     if not profile then return end
     local pet = DemonPresence()
     local sacrifice = ReadDemonologyBuff(SACRIFICE_BUFF)
-    sacrificeState = sacrifice
+    -- Combat aura reads can be unavailable. Keep the last readable result so
+    -- an unknown state cannot insert an empty buff slot during combat.
+    if sacrifice ~= nil then sacrificeState = sacrifice end
     local demonReminder = groupBuffIcons.demonReminder
     if demonReminder then
         local missing = pet == false and sacrifice == false
@@ -809,10 +870,12 @@ local function UpdateDemonology()
         soulLinkReminder.border:SetShown(missing)
         soulLinkReminder.glow:SetShown(missing)
         if not missing then soulLinkReminder.icon:SetAlpha(1) end
-        soulLinkReminder.holder:SetShown(pet == true or active ~= false)
+        if active ~= nil then groupBuffIcons.soulLinkState = active end
+        soulLinkReminder.holder:SetShown(pet == true
+            or groupBuffIcons.soulLinkState == true)
     end
     if groupBuffIcons.holders and groupBuffIcons.holders.sacrifice then
-        groupBuffIcons.holders.sacrifice:SetShown(sacrificeState ~= false)
+        groupBuffIcons.holders.sacrifice:SetShown(sacrificeState == true)
     end
 end
 
@@ -870,7 +933,7 @@ local function UpdateGroupBuffs()
                 breathHolder = holder
             else
                 local shown = key == "armor"
-                    or (key == "sacrifice" and sacrificeState ~= false)
+                    or (key == "sacrifice" and sacrificeState == true)
                     or (key == "soullink" and groupBuffIcons.soulLinkReminder
                         and groupBuffIcons.soulLinkReminder.holder:IsShown())
                 if not shown then
@@ -970,7 +1033,9 @@ function WarlockHudPrepareAssignmentFlash(root, size)
     end
 end
 local function BuildShardRow(saved)
-    if profile.enabled.soulshards ~= false then
+    if profile.enabled.soulshards ~= false
+        and (FeatureSpellLearned("soulshards")
+            or profile.enabled.soulshards == true) then
         local shardSize = profile.shardSize
         local shardAnchor = CreateFrame("Frame", nil, WarlockHudRowVisibility.masks.shards)
         shardState.anchor = shardAnchor
@@ -1037,6 +1102,7 @@ local function BuildShardRow(saved)
         shardState.countText = shardCountText
         shardCountText:SetPoint("BOTTOMRIGHT", shardButton, "BOTTOMRIGHT", -2, 2)
         shardCountText:SetTextColor(1, 1, 1)
+        WarlockHudFonts.Apply(shardCountText, profile, "fontIconSize", 12)
         shardButton:SetScript("OnClick", shardState.click)
         shardButton:SetScript("OnEnter", function(self)
             GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
@@ -1348,9 +1414,11 @@ local function BuildMainAnchor(saved, mainOrder)
     return rowWidth
 end
 
-local function BuildTargetAuraSlots(auraContainer, utilityAuras, mainOrder, rowWidth)
+local function BuildTargetAuraSlots(auraContainer, utilityAuras, mainOrder, utilityOrder, rowWidth)
     auraContainer:SetSize(rowWidth, ICON_SIZE)
     auraContainer:SetPoint("CENTER", rowFrames.hudAnchor, "CENTER")
+    local countdownFontReady = WarlockHudFonts.ConfigureCountdown(
+        "WarlockHudTargetCountdownFont", profile, "fontTimerSize", 14)
 
     local baseCreated = {}
     for _, spell in ipairs(SPELLS) do
@@ -1364,13 +1432,10 @@ local function BuildTargetAuraSlots(auraContainer, utilityAuras, mainOrder, rowW
             includeSpellIDs[currentSpellID] = true
         end
         local groupKey = spell.group == 2 and "fear" or MAIN_KEYS[spell.slot]
-        local x = spell.group == 2 and CooldownX(groupKey)
-            or Position(mainOrder, groupKey, ICON_SIZE)
+        local anchor, x, iconSize, inMain = RowPlacement(groupKey, mainOrder, utilityOrder)
         if x and Enabled(spell.name)
             and (spell.talentEffect and KnowsDemonicBrand() or KnownSpell(spell))
             and next(includeSpellIDs) then
-            local anchor = spell.group == 2 and rowFrames.cooldownAnchor or rowFrames.hudAnchor
-            local iconSize = spell.group == 2 and COOLDOWN_ICON_SIZE or ICON_SIZE
             if not baseCreated[groupKey] then
                 local assigned = WarlockHudAssignmentSpell
                     and WarlockHudAssignmentSpell(groupKey)
@@ -1407,7 +1472,7 @@ local function BuildTargetAuraSlots(auraContainer, utilityAuras, mainOrder, rowW
                 baseCreated[groupKey] = true
             end
 
-            (spell.group == 2 and utilityAuras or auraContainer):AddAuraSlot(
+            (inMain and auraContainer or utilityAuras):AddAuraSlot(
                 spell.name, "HARMFUL|PLAYER", {
                 candidateFilters = {
                     includeSpellIDs = includeSpellIDs,
@@ -1454,6 +1519,9 @@ local function BuildTargetAuraSlots(auraContainer, utilityAuras, mainOrder, rowW
                         cooldown:SetCountdownMillisecondsThreshold(
                             profile.dotTimerMilliseconds and 10 or 0)
                         cooldown:SetReverse(true)
+                        if countdownFontReady and cooldown.SetCountdownFont then
+                            cooldown:SetCountdownFont("WarlockHudTargetCountdownFont")
+                        end
                     end
                     button:SetDurationCooldown(cooldown)
                     if spell.talentEffect and button.SetApplicationCount then
@@ -1461,6 +1529,7 @@ local function BuildTargetAuraSlots(auraContainer, utilityAuras, mainOrder, rowW
                         -- FontString, including while aura data is secret.
                         local count = button:CreateFontString(nil, "OVERLAY", "NumberFontNormal")
                         count:SetPoint("BOTTOMRIGHT", button, "BOTTOMRIGHT", -2, 2)
+                        WarlockHudFonts.Apply(count, profile, "fontIconSize", 14)
                         button:SetApplicationCount(count, {})
                     end
                 end,
@@ -1576,28 +1645,31 @@ local function Build()
     BuildProcAnchor(saved, procOrder)
 
     for _, stone in ipairs(STONES) do
-        local x = CooldownX(stone.name == "Healthstone" and "healthstone" or "soulstone")
+        local anchor, x, iconSize = RowPlacement(
+            stone.name == "Healthstone" and "healthstone" or "soulstone",
+            mainOrder, cooldownOrder)
         if x then
-        local icon = rowFrames.cooldownAnchor:CreateTexture(nil, "ARTWORK")
-        icon:SetSize(COOLDOWN_ICON_SIZE, COOLDOWN_ICON_SIZE)
-        icon:SetPoint("CENTER", rowFrames.cooldownAnchor, "CENTER", x, 0)
+        local icon = anchor:CreateTexture(nil, "ARTWORK")
+        icon:SetSize(iconSize, iconSize)
+        icon:SetPoint("CENTER", anchor, "CENTER", x, 0)
         icon:SetTexture(C_Item and C_Item.GetItemIconByID and C_Item.GetItemIconByID(stone.defaultID))
         icon:SetTexCoord(ICON_CROP, 1 - ICON_CROP, ICON_CROP, 1 - ICON_CROP)
         if stone.name == "Soulstone" then
-            soulstoneLabel = rowFrames.cooldownAnchor:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-            soulstoneLabel:SetPoint("TOP", rowFrames.cooldownAnchor, "BOTTOM", 0, -5)
+            soulstoneLabel = anchor:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+            soulstoneLabel:SetPoint("TOP", anchor, "BOTTOM", 0, -5)
             soulstoneLabel:SetWidth(220)
             soulstoneLabel:SetJustifyH("CENTER")
+            WarlockHudFonts.Apply(soulstoneLabel, profile, "fontIconSize", 10)
         end
-        local cooldown = CreateFrame("Cooldown", nil, rowFrames.cooldownAnchor, "CooldownFrameTemplate")
+        local cooldown = CreateFrame("Cooldown", nil, anchor, "CooldownFrameTemplate")
         cooldown:SetAllPoints(icon)
         cooldown:SetDrawBling(false)
         cooldown:SetDrawEdge(false)
         cooldown:SetHideCountdownNumbers(true)
-        local border = MakeBorder(rowFrames.cooldownAnchor, x, COOLDOWN_ICON_SIZE)
+        local border = MakeBorder(anchor, x, iconSize)
         local glow
         if stone.name == "Soulstone" then
-            glow = MakeReminderGlow(rowFrames.cooldownAnchor, x, border, COOLDOWN_ICON_SIZE, true)
+            glow = MakeReminderGlow(anchor, x, border, iconSize, true)
             glow.pulseIcon = icon
         end
         itemIcons[#itemIcons + 1] = {
@@ -1609,44 +1681,45 @@ local function Build()
 
     local _, _, raceID = UnitRace("player")
     for index, racial in ipairs(RACIALS[raceID] or {}) do
-        local x = CooldownX("racial" .. index)
+        local anchor, x, iconSize = RowPlacement("racial" .. index, mainOrder, cooldownOrder)
         if x then
-        local icon = rowFrames.cooldownAnchor:CreateTexture(nil, "ARTWORK")
-        icon:SetSize(COOLDOWN_ICON_SIZE, COOLDOWN_ICON_SIZE)
-        icon:SetPoint("CENTER", rowFrames.cooldownAnchor, "CENTER", x, 0)
+        local icon = anchor:CreateTexture(nil, "ARTWORK")
+        icon:SetSize(iconSize, iconSize)
+        icon:SetPoint("CENTER", anchor, "CENTER", x, 0)
         icon:SetTexture(C_Spell.GetSpellTexture(racial[2]))
         icon:SetTexCoord(ICON_CROP, 1 - ICON_CROP, ICON_CROP, 1 - ICON_CROP)
-        local cooldown = CreateFrame("Cooldown", nil, rowFrames.cooldownAnchor, "CooldownFrameTemplate")
+        local cooldown = CreateFrame("Cooldown", nil, anchor, "CooldownFrameTemplate")
         cooldown:SetAllPoints(icon)
         cooldown:SetDrawBling(false)
         cooldown:SetDrawEdge(false)
         cooldown:SetHideCountdownNumbers(true)
         spellCooldownIcons[#spellCooldownIcons + 1] = {
             spellID = racial[2], cooldown = cooldown,
-            border = MakeBorder(rowFrames.cooldownAnchor, x, COOLDOWN_ICON_SIZE),
+            border = MakeBorder(anchor, x, iconSize),
         }
         end
     end
 
     local conflagrateID = WarlockHudRowVisibility.ConflagrateSpellID()
-    local conflagrateX = CooldownX("conflagrate")
+    local conflagrateAnchor, conflagrateX, conflagrateSize = RowPlacement(
+        "conflagrate", mainOrder, cooldownOrder)
     if conflagrateID and conflagrateX then
-        local icon = rowFrames.cooldownAnchor:CreateTexture(nil, "ARTWORK")
-        icon:SetSize(COOLDOWN_ICON_SIZE, COOLDOWN_ICON_SIZE)
-        icon:SetPoint("CENTER", rowFrames.cooldownAnchor, "CENTER", conflagrateX, 0)
+        local icon = conflagrateAnchor:CreateTexture(nil, "ARTWORK")
+        icon:SetSize(conflagrateSize, conflagrateSize)
+        icon:SetPoint("CENTER", conflagrateAnchor, "CENTER", conflagrateX, 0)
         icon:SetTexture(C_Spell.GetSpellTexture(conflagrateID))
         icon:SetTexCoord(ICON_CROP, 1 - ICON_CROP, ICON_CROP, 1 - ICON_CROP)
-        local cooldown = CreateFrame("Cooldown", nil, rowFrames.cooldownAnchor, "CooldownFrameTemplate")
+        local cooldown = CreateFrame("Cooldown", nil, conflagrateAnchor, "CooldownFrameTemplate")
         cooldown:SetAllPoints(icon)
         cooldown:SetDrawBling(false)
         cooldown:SetDrawEdge(false)
         cooldown:SetHideCountdownNumbers(false)
         spellCooldownIcons[#spellCooldownIcons + 1] = {
             spellID = conflagrateID, cooldown = cooldown,
-            border = MakeBorder(rowFrames.cooldownAnchor, conflagrateX, COOLDOWN_ICON_SIZE),
+            border = MakeBorder(conflagrateAnchor, conflagrateX, conflagrateSize),
         }
-        local glow = MakeReminderGlow(rowFrames.cooldownAnchor, conflagrateX, nil,
-            COOLDOWN_ICON_SIZE)
+        local glow = MakeReminderGlow(conflagrateAnchor, conflagrateX, nil,
+            conflagrateSize)
         glow.pulseIcon = icon
         groupBuffIcons.conflagrate = {
             icon = icon, glow = glow, immolateButtons = {},
@@ -1654,17 +1727,17 @@ local function Build()
         icon:SetDesaturated(true)
     end
 
-    local demonX = CooldownX("demon")
+    local demonAnchor, demonX, demonSize = RowPlacement("demon", mainOrder, cooldownOrder)
     if demonX then
-        local icon = rowFrames.cooldownAnchor:CreateTexture(nil, "ARTWORK")
-        icon:SetSize(COOLDOWN_ICON_SIZE, COOLDOWN_ICON_SIZE)
-        icon:SetPoint("CENTER", rowFrames.cooldownAnchor, "CENTER", demonX, 0)
+        local icon = demonAnchor:CreateTexture(nil, "ARTWORK")
+        icon:SetSize(demonSize, demonSize)
+        icon:SetPoint("CENTER", demonAnchor, "CENTER", demonX, 0)
         icon:SetTexture(C_Spell.GetSpellTexture(5500))
         icon:SetTexCoord(ICON_CROP, 1 - ICON_CROP, ICON_CROP, 1 - ICON_CROP)
         icon:SetVertexColor(1, 0.3, 0.3, 1)
-        local border = MakeBorder(rowFrames.cooldownAnchor, demonX, COOLDOWN_ICON_SIZE)
-        local glow = MakeReminderGlow(rowFrames.cooldownAnchor, demonX, border,
-            COOLDOWN_ICON_SIZE, true)
+        local border = MakeBorder(demonAnchor, demonX, demonSize)
+        local glow = MakeReminderGlow(demonAnchor, demonX, border,
+            demonSize, true)
         glow.pulseIcon = icon
         groupBuffIcons.demonReminder = { icon = icon, border = border, glow = glow }
         icon:Hide()
@@ -1673,7 +1746,7 @@ local function Build()
 
     BuildShardRow(saved)
 
-    BuildTargetAuraSlots(auraContainer, utilityAuras, mainOrder, rowWidth)
+    BuildTargetAuraSlots(auraContainer, utilityAuras, mainOrder, cooldownOrder, rowWidth)
 
     for _, key in ipairs(buffOrder) do
         local holder = CreateFrame("Frame", nil, rowFrames.buffAnchor)
@@ -1821,15 +1894,35 @@ local function Build()
         end
     end
     local oilHolder = consumeHolders.wizardoil
+    consumeState.oilIcon, consumeState.oilTexture = nil, nil
+    consumeState.firestoneTexture, consumeState.coating = nil, nil
+    consumeState.coatingCooldown, consumeState.coatingExpiresAt = nil, nil
     if oilHolder then
         oilHolder:EnableMouse(true)
         oilHolder:SetScript("OnEnter", function(self)
             GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-            GameTooltip:SetText("Wizard Oil")
-            GameTooltip:AddLine("Tracks Minor, Lesser, regular, or Brilliant Wizard Oil on your main-hand weapon.",
+            GameTooltip:SetText(consumeState.coating == "firestone"
+                and "Firestone" or "Wizard Oil / Firestone")
+            GameTooltip:AddLine("Tracks Wizard Oil or Firestone on your weapon.",
                 1, 1, 1, true)
-            GameTooltip:AddLine("No HUD timer is shown for temporary weapon enchants.",
-                1, 1, 1, true)
+            if consumeState.coating == "firestone" then
+                if consumeState.coatingExpiresAt then
+                    local seconds = math.max(0, math.floor(
+                        consumeState.coatingExpiresAt - GetTime()))
+                    local hours = math.floor(seconds / 3600)
+                    local minutes = math.floor((seconds % 3600) / 60)
+                    local label = hours > 0 and (hours .. "h " .. minutes .. "m")
+                        or (minutes .. "m " .. (seconds % 60) .. "s")
+                    GameTooltip:AddLine("Remaining: about " .. label,
+                        1, 1, 1, true)
+                else
+                    GameTooltip:AddLine("Remaining time unavailable.",
+                        1, 1, 1, true)
+                end
+            else
+                GameTooltip:AddLine("No HUD timer is shown for Wizard Oil.",
+                    1, 1, 1, true)
+            end
             GameTooltip:Show()
         end)
         oilHolder:SetScript("OnLeave", function() GameTooltip:Hide() end)
@@ -1838,8 +1931,21 @@ local function Build()
         oilIcon:SetTexture(C_Item and C_Item.GetItemIconByID
             and C_Item.GetItemIconByID(20749)
             or "Interface\\Icons\\INV_Potion_104")
+        consumeState.oilIcon = oilIcon
+        consumeState.oilTexture = oilIcon:GetTexture()
+        consumeState.firestoneTexture = 134085
         oilIcon:SetTexCoord(ICON_CROP, 1 - ICON_CROP, ICON_CROP, 1 - ICON_CROP)
         oilIcon:SetDesaturated(profile.colorActiveConsumes ~= false)
+        local coatingCooldown = CreateFrame("Cooldown", nil, oilHolder,
+            "CooldownFrameTemplate")
+        coatingCooldown:SetAllPoints(oilHolder)
+        coatingCooldown:SetDrawSwipe(true)
+        coatingCooldown:SetDrawBling(false)
+        coatingCooldown:SetDrawEdge(false)
+        coatingCooldown:SetHideCountdownNumbers(true)
+        coatingCooldown:SetReverse(true)
+        coatingCooldown:Hide()
+        consumeState.coatingCooldown = coatingCooldown
         local oilBorder = MakeBorder(oilHolder, 0, consumeState.size)
         local oilGlow = MakeReminderGlow(oilHolder, 0, oilBorder,
             consumeState.size, true)
@@ -2251,6 +2357,43 @@ SLASH_WARLOCKHUD2 = "/whub"
 local function DebugState()
     local db = WarlockHudDB
     local output = WarlockHudTraceHUD or Report
+    if not C_Item or not C_Item.GetWeaponEnchantInfo then
+        output("Weapon enchant probe: API unavailable.")
+    else
+        local ok, enchants = pcall(C_Item.GetWeaponEnchantInfo, 0)
+        if not ok or (issecretvalue and issecretvalue(enchants))
+            or type(enchants) ~= "table" then
+            output("Weapon enchant probe: unavailable or restricted.")
+        else
+            local found = false
+            for index, enchant in ipairs(enchants) do
+                if issecretvalue and issecretvalue(enchant) then
+                    output("Weapon enchant probe: entry " .. index .. " restricted.")
+                elseif type(enchant) == "table" then
+                    local present, enchantType, id, timeLeft = enchant.hasEnchant,
+                        enchant.enchantType, enchant.enchantID, enchant.timeLeft
+                    if issecretvalue and issecretvalue(present) then
+                        output("Weapon enchant probe: entry " .. index .. " restricted.")
+                    elseif present then
+                        local function Field(value)
+                            if issecretvalue and issecretvalue(value) then
+                                return "restricted"
+                            end
+                            return type(value) == "number" and tostring(value)
+                                or "unavailable"
+                        end
+                        output("Weapon enchant probe: entry " .. index
+                            .. " type=" .. Field(enchantType)
+                            .. " ID=" .. Field(id)
+                            .. " timeLeft=" .. Field(timeLeft)
+                            .. " combat=" .. tostring(InCombatLockdown()))
+                        found = true
+                    end
+                end
+            end
+            if not found then output("Weapon enchant probe: no readable active enchant.") end
+        end
+    end
     if WarlockHudMultiTarget and WarlockHudMultiTarget.Debug then
         WarlockHudMultiTarget.Debug()
     end
@@ -2407,13 +2550,21 @@ end
 
 WarlockHudAPI = {
     Stones = STONES,
+    FeatureSpellLearned = FeatureSpellLearned,
     IsAddonEnabled = IsAddonEnabled,
     SetAddonEnabled = SetAddonEnabled,
     InitializeProfiles = InitializeProfiles,
     ActiveTalentGroup = ActiveTalentGroup,
     MainKeys = MAIN_KEYS,
     GetMultiTargetEffectOrder = function()
-        return profile and VisibleOrder(profile.mainOrder) or {}
+        if not profile then return {} end
+        local order = {}
+        for _, row in ipairs({ profile.mainOrder, profile.cooldownOrder }) do
+            for _, key in ipairs(VisibleOrder(row)) do
+                if MAIN_KEY_SET[key] then order[#order + 1] = key end
+            end
+        end
+        return order
     end,
     CooldownKeys = COOLDOWN_KEYS,
     BuffKeys = BUFF_KEYS,

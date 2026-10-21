@@ -26,6 +26,30 @@ local function KnownSpell(spell)
     return not checked
 end
 
+local function LearnedAnySpell(names, spellIDs)
+    local checker = C_SpellBook and C_SpellBook.IsSpellKnown or IsPlayerSpell
+    if not checker then return false end
+    local function IsKnown(spellID)
+        if type(spellID) ~= "number"
+            or (issecretvalue and issecretvalue(spellID)) then return false end
+        return KnownSpellID(spellID) == true
+    end
+    if type(names) == "table" and C_Spell
+        and C_Spell.GetSpellIDForSpellIdentifier then
+        for _, name in ipairs(names) do
+            local ok, spellID = pcall(C_Spell.GetSpellIDForSpellIdentifier, name)
+            if ok and IsKnown(spellID) then return true end
+        end
+    end
+    if type(spellIDs) == "table" then
+        for _, spellID in ipairs(spellIDs) do
+            if IsKnown(spellID) then return true end
+        end
+    end
+    -- Unknown or unavailable spellbook results stay hidden until confirmed.
+    return false
+end
+
 local function KnowsDemonicBrand()
     -- Passive talents may not be reported as known spellbook spells. Prefer
     -- the active talent group's learned rank when the talent API is present.
@@ -71,6 +95,7 @@ end
 
 WarlockHudSpellbook.KnownSpellID = KnownSpellID
 WarlockHudSpellbook.KnownSpell = KnownSpell
+WarlockHudSpellbook.LearnedAnySpell = LearnedAnySpell
 WarlockHudSpellbook.KnowsDemonicBrand = KnowsDemonicBrand
 WarlockHudSpellbook.ConflagrateSpellID = ConflagrateSpellID
 WarlockHudSpellbook.CastSpellTexture = CastSpellTexture

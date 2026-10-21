@@ -74,8 +74,15 @@ function WarlockHudMultiTargetAuras.New(plain, profile, placeDot, slotKeys,
                 button:SetDurationCooldown(cooldown)
                 if spell.talentEffect and button.SetApplicationCount then
                     local count = button:CreateFontString(nil, "OVERLAY", "NumberFontNormal")
-                    count:SetFont(STANDARD_TEXT_FONT or "Fonts\\FRIZQT__.TTF", 8, "OUTLINE")
-                    count:SetSize(10, 9)
+                    if not (Profile().multiTargetFontFace
+                        or Profile().fontMultiTargetSize) then
+                        count:SetFont(STANDARD_TEXT_FONT or "Fonts\\FRIZQT__.TTF", 8, "OUTLINE")
+                    else
+                        WarlockHudFonts.Apply(count, Profile(),
+                            "fontMultiTargetSize", 8, "multiTargetFontFace")
+                    end
+                    local countSize = Profile().fontMultiTargetSize or 8
+                    count:SetSize(math.max(10, countSize + 2), math.max(9, countSize + 1))
                     count:SetJustifyH("LEFT")
                     count:SetPoint("TOPLEFT", button, "TOPLEFT", 1, 0)
                     button:SetApplicationCount(count, {})

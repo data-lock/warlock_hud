@@ -11,6 +11,7 @@ issecretvalue = function(value) return value == 'SECRET' end
 C_SpellBook = { IsSpellKnown = function(id) return known[id] end }
 C_Spell = { GetSpellIDForSpellIdentifier = function(name)
     if name == 'Conflagrate' then return 1293817 end
+    if name == 'Create Healthstone' then return 6201 end
 end }
 GetNumTalents = function(tab) assert(tab == 2); return 1 end
 GetTalentInfo = function(tab, index)
@@ -34,6 +35,10 @@ assert(WarlockHudSpellbook.KnownSpellID(1293695) == nil)
 known[1293817] = true
 assert(WarlockHudSpellbook.ConflagrateSpellID() == 1293817)
 assert(WarlockHudSpellbook.KnownSpell({name='Known', ids={1293817}}) == true)
+known[6201] = true
+assert(WarlockHudSpellbook.LearnedAnySpell({'Create Healthstone'}, {6201}) == true)
+known[6201] = false
+assert(WarlockHudSpellbook.LearnedAnySpell({'Create Healthstone'}, {6201}) == false)
 known[1293817] = false
 assert(WarlockHudSpellbook.KnownSpell({name='Unknown', ids={1293817}}) == false)
 known[999999] = 'SECRET'

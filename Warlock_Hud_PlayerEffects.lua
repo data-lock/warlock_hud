@@ -4,9 +4,18 @@ WarlockHudPlayerEffects = {
     CooldownKeys = { "healthstone", "soulstone", "fear", "conflagrate", "racial1", "racial2", "demon" },
     Stones = {
         { name = "Healthstone", defaultID = 5512,
+            learnNames = { "Create Healthstone", "Create Healthstone (Minor)",
+                "Create Healthstone (Lesser)", "Create Healthstone (Greater)",
+                "Create Healthstone (Major)", "Create Healthstone (Master)",
+                "Create Master Healthstone" },
+            learnIDs = { 6201, 6202, 5699, 11729, 11730, 27230 },
             ids = { 9421, 19012, 19013, 5510, 19010, 19011, 5509, 19008, 19009,
                 5511, 19006, 19007, 5512, 19004, 19005 } },
         { name = "Soulstone", defaultID = 5232,
+            learnNames = { "Create Soulstone", "Create Soulstone (Minor)",
+                "Create Soulstone (Lesser)", "Create Greater Soulstone",
+                "Create Major Soulstone", "Create Master Soulstone" },
+            learnIDs = { 693, 20752, 20755, 20756, 20757, 27239 },
             ids = { 16896, 16895, 16893, 16892, 5232 } },
     },
     -- Only active racials have a cooldown to display. These are the five
@@ -79,4 +88,6 @@ WarlockHudPlayerEffects = {
     },
     OilEnchantIDs = { [2623] = true, [2626] = true,
         [2627] = true, [2628] = true },
+    -- Confirmed from C_Item.GetWeaponEnchantInfo(0) in Forever.
+    FirestoneEnchantIDs = { [1803] = true },
 }

@@ -4,6 +4,21 @@ A configurable HUD for Warlocks in **World of Warcraft: Forever beta**. It keeps
 target effects, cooldowns, buffs, procs, and Soul Shards visible without opening
 other panels.
 
+## First-run setup
+
+A new installation opens a short welcome window after login when combat is over.
+Choose **Basic** for the essential combat HUD with secondary windows initially
+hidden, or **Advanced** for Multi-Target DoTs, predicted damage, personal threat,
+and the summon request queue. Both choices are presets for the current profile:
+every feature remains available in Settings. The completion screen points to
+`/whud`, Edit Mode, and profile sharing.
+
+Reopen the choices from **General → Getting Started → Reopen Welcome & Setup**.
+Applying a preset again asks for confirmation and changes only its listed
+settings in the current profile. Other profiles and saved positions remain in
+place. Existing beta installations keep their settings and do not receive the
+automatic welcome or an automatic preset.
+
 ### HUD in play
 
 ![Warlock HUD with its live icon rows](screenshots/warlock_hud_overview.png)
@@ -25,9 +40,9 @@ so you can see the full layout before choosing what to track. Open it from
 | Display | What it tracks |
 | --- | --- |
 | Main row | Corruption, Immolate, Siphon Life, Banes, Curses, Drain spells, and Demonic Brand when talented. Banes, Curses, and Drains each share an icon slot. Active target effects show a native countdown, with optional decimals near expiration. Brand also shows Blizzard's native application count. |
-| Multi-Target DoTs (optional) | Up to 16 view-only rows drawn from prebuilt nameplate, player-target, party-target, and raid-target tokens, plus grey last-seen rows for mobs with readable GUIDs and active estimated DoTs. Live rows have native slots for your tracked effects, including Demonic Brand when talented and enabled in Target DoTs settings. Brand shows a native countdown and application count. Mobs with confirmed group threat, a target in your group, a party/raid target, or a safely verified player effect appear; matching tokens are deduplicated by identity. Each live row has the mob's portrait, any assigned raid marker, a separate name and health bar with current HP and percent, a 20% health tick when the execute marker is enabled, and a slim gold accent when selected. Target through world nameplates or Tab. The window is enabled by default for new profiles; an existing off choice stays off. Use `/whud mtd` to open or close it outside combat. Outside combat, drag the title to move the window or the lower-right grip to resize it while keeping the top-left corner fixed. Shorter windows keep fixed row spacing and show a scroll bar when needed. Toggling, moving, and resizing are unavailable during combat. Settings can hide it outside combat and adjust transparency. |
+| Multi-Target DoTs (optional) | Up to 16 view-only rows drawn from prebuilt nameplate, player-target, party-target, and raid-target tokens, plus grey last-seen rows for mobs with readable GUIDs and active estimated DoTs. Live rows have native slots for your tracked effects, including Demonic Brand when talented and enabled in Target DoTs settings. Brand shows a native countdown and application count. Mobs with confirmed group threat, a target in your group, a party/raid target, or a safely verified player effect appear; matching tokens are deduplicated by identity. Each live row has the mob's portrait, any assigned raid marker, a separate name and health bar with current HP and percent, a 20% health tick when the execute marker is enabled, and a slim gold accent when selected. Target through world nameplates or Tab. New standalone profiles enable the window by default; the first-run Basic preset hides it, and an existing off choice stays off. Use `/whud mtd` to open or close it outside combat. Outside combat, drag the title to move the window or the lower-right grip to resize it while keeping the top-left corner fixed. Shorter windows keep fixed row spacing and show a scroll bar when needed. Toggling, moving, and resizing are unavailable during combat. Settings can hide it outside combat and adjust transparency. |
 | Cooldown row | Healthstone, Soulstone, Fear, Conflagrate when learned, available racial abilities, and an optional flashing Sense Demons reminder when no demon or active Demonic Sacrifice is confirmed. Conflagrate shows its cooldown and pulses while your Immolate is active on the current target. |
-| Consumes row | Well Fed plus optional Flask of Supreme Power, Arcane Elixir family, Shadow Power, Greater Firepower, Mageblood family, and Wizard Oil family trackers. Aura effects use native countdowns; Wizard Oil reads temporary weapon-enchant state without a HUD countdown. Each category has its own tracking and missing-reminder choice. The row has its own position, icon size, visibility, and color settings. |
+| Consumes row | Well Fed plus optional Flask of Supreme Power, Arcane Elixir family, Shadow Power, Greater Firepower, Mageblood family, and Wizard Oil or Firestone tracking. Aura effects use native countdowns. Firestone shows remaining time when the client exposes it; Wizard Oil has no HUD timer. Each category has its own tracking and missing-reminder choice. The row has its own position, icon size, visibility, and color settings. |
 | Buff row | Demon Armor / Demon Skin, Fortitude, Mark or Gift of the Wild, Intellect, Spirit, Kings, Salvation, Thorns, Demonic Sacrifice, Soul Link, and Unending Breath. Active buffs show colored icons with native countdowns when available; a setting reverses active and missing colors. Soul Link reminds when known, a demon is present, and its buff is confirmed missing. Thorns follows the same Druid-aware missing-buff reminder and active-buff formatting as Mark of the Wild. Unending Breath appears at the right end only while active. Visible buffs pack left to right. |
 | Proc row | Power Infusion and Nightfall appear only while active, with a pulsing glow and countdown. |
 | Soul Shards | A separate icon near the Player Frame shows your shard count. It flashes red at or below the low warning threshold (default 4), or yellow at or above the high threshold (default 18) or when shards occupy regular bags alongside an equipped Soul Bag. Each click destroys one shard from a regular bag, stopping when those bags are clear or your configured minimum remains. The default minimum is 8. Shards cannot be destroyed in combat. |
@@ -47,6 +62,8 @@ readable status; it does not mean low threat. This is a category, not a threat
 percentage. Use **Multi-Target DoTs → Show Threat Indicator** to turn it off for
 the current profile. The choice is included in profile sharing. Last-seen rows
 always show a grey dash, and confirmed dead mobs clear promptly.
+Predicted damage can be turned off independently under **Multi-Target DoTs → Show
+predicted DoT damage**.
 
 ![Multi-Target DoTs tracking three mobs](screenshots/warlock_hud_mtd_overview.png)
 
@@ -192,8 +209,9 @@ addon and interface versions.
 <details>
 <summary>General</summary>
 
-Enable Warlock HUD for this character and start the temporary on-screen demo
-of every HUD bar. Choose whether each HUD row shows out of combat.
+Enable Warlock HUD for this character, reopen Getting Started, and start the
+temporary on-screen demo of every HUD bar. Choose whether each HUD row shows
+out of combat.
 
 ![General settings](screenshots/whud_options_1_general.png)
 

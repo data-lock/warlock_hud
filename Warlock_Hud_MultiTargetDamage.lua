@@ -209,6 +209,11 @@ function WarlockHudMultiTargetDamage.New(getRows, readableGuid)
     end
 
     local function Update()
+        local profile = WarlockHudAPI and WarlockHudAPI.GetProfile()
+        if profile and profile.multiDotDamageEnabled == false then
+            for _, row in ipairs(getRows()) do Clear(row) end
+            return
+        end
         local now = GetTime()
         for guid, curse in pairs(curses) do
             if now >= curse.ends then curses[guid] = nil end

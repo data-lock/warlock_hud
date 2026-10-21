@@ -18,7 +18,7 @@ local LABELS = {
     armor = "Armor / Skin", wellfed = "Well Fed",
     flask = "Flask", spelldamage = "Spell Damage Elixir",
     shadow = "Shadow Damage Elixir", fire = "Fire Damage Elixir",
-    wizardoil = "Wizard Oil", manaregen = "Mana Regeneration",
+    wizardoil = "Wizard Oil / Firestone", manaregen = "Mana Regeneration",
     racial1 = "Racial ability 1", racial2 = "Racial ability 2",
     fort = "Fortitude", motw = "Mark of the Wild", int = "Intellect",
     spirit = "Spirit", kings = "Kings", salv = "Salvation",
@@ -37,9 +37,10 @@ local ICON_HELP = {
     drain = "Drains share one Target DoTs icon slot. Choose its idle image on Tracked Auras.",
     siphonlife = "Siphon Life appears when talented and tracks its target DoT.",
     demonicbrand = "Tracks the Demonic Brand target effect when talented. Blizzard renders its duration; remaining attack counts need in-game verification.",
-    healthstone = "Shows your Healthstone and its item cooldown.",
-    soulstone = "Shows your Soulstone and its item cooldown.",
-    fear = "Shows Fear in the Utility row when available.",
+    healthstone = "Hidden until Create Healthstone is learned by default. Enable it early to arrange the icon; shows its item cooldown.",
+    soulstone = "Hidden until Create Soulstone is learned by default. Enable it early to arrange the icon; shows its item cooldown.",
+    soulshards = "Hidden until Drain Soul is learned by default. Enable it early to arrange the icon.",
+    fear = "Shows Fear on the current target when available.",
     conflagrate = "Shows Conflagrate and its cooldown when learned. The icon pulses when your Immolate is active on the current target.",
     demon = "Flash a warning when no demon is summoned and no active Demonic Sacrifice is detected.",
     sacrifice = "Shows an active Demonic Sacrifice effect with its native duration.",
@@ -52,7 +53,7 @@ local ICON_HELP = {
     spelldamage = "Lesser, regular, or Greater Arcane Elixir effect. Native aura countdown.",
     shadow = "Shadow Power elixir effect. Native aura countdown.",
     fire = "Fire Power or Greater Firepower elixir effect. Native aura countdown.",
-    wizardoil = "Wizard Oil family on your main-hand weapon. No HUD timer; status is unknown during protected aura states.",
+    wizardoil = "Wizard Oil or Firestone on your weapon. Firestone shows its remaining time when readable; Wizard Oil has no HUD timer. Protected states may delay updates.",
     manaregen = "Mageblood family effects, including Mana Regeneration. Native aura countdown.",
     fort = "Includes Power Word: Fortitude and Prayer of Fortitude.",
     motw = "Includes Mark of the Wild and Gift of the Wild.",
@@ -68,6 +69,15 @@ local ICON_HELP = {
 
 local function Profile()
     return api.GetProfile()
+end
+
+local function IsFeatureEnabled(key)
+    local enabled = Profile().enabled[key]
+    if enabled ~= nil then return enabled == true end
+    if key == "healthstone" or key == "soulstone" or key == "soulshards" then
+        return api.FeatureSpellLearned and api.FeatureSpellLearned(key) == true
+    end
+    return true
 end
 
 local function RefreshAll()
@@ -299,7 +309,7 @@ local function ShowIconDemo()
         local function DemoRow(title, keys, orderKey, sizeKey, anchor)
             local order = orderKey and Profile()[orderKey] or keys
             local size = Profile()[sizeKey]
-            local width = #order * size + math.max(0, #order - 1) * 4 + 8
+            local width = #order * size + math.max(0, #order - 1) + 8
             local row = CreateFrame("Frame", nil, demo)
             row:SetSize(width, size + 8)
             if orderKey == "buffOrder" or orderKey == "consumeOrder" then
@@ -328,7 +338,7 @@ local function ShowIconDemo()
                 local button = CreateFrame("Button", nil, row)
                 button:SetSize(size, size)
                 button:SetPoint("CENTER", row, "CENTER",
-                    (index - (#order + 1) / 2) * (size + 4), 0)
+                    (index - (#order + 1) / 2) * (size + 1), 0)
                 local icon = button:CreateTexture(nil, "ARTWORK")
                 icon:SetAllPoints(button)
                 icon:SetTexture(IconForKey(key) or "Interface\\Icons\\INV_Misc_QuestionMark")
@@ -490,11 +500,148 @@ local function OrderSection(parent, title, orderKey, defaults, y, columns, onRes
     end
 end
 
-local function DefaultProfile()
+local DefaultProfile, ResetRowValues
+
+local function LinkedTargetUtilityRows(parent)
+    local keys = { "mainOrder", "cooldownOrder" }
+    local titles = { "Target DoTs", "Utility" }
+    local strips = {}
+    local allKeys = #api.MainKeys + #api.CooldownKeys
+    local columns, cellWidth, cellHeight = 7, 78, 51
+
+    local function ResetBoth()
+        local defaults = DefaultProfile()
+        ResetRowValues("mainSize", "mainOrder", api.MainKeys, defaults)
+        ResetRowValues("cooldownSize", "cooldownOrder", api.CooldownKeys, defaults)
+        MarkChanged()
+    end
+
+    for rowIndex, orderKey in ipairs(keys) do
+        local y = rowIndex == 1 and -180 or -315
+        Text(parent, titles[rowIndex], 20, y, "GameFontNormal")
+        if rowIndex == 1 then
+            Button(parent, "Reset Both Rows", 460, y + 8, 140, ResetBoth)
+        end
+        local strip = CreateFrame("Frame", nil, parent)
+        strip:SetSize(columns * cellWidth, 2 * cellHeight)
+        strip:SetPoint("TOPLEFT", parent, "TOPLEFT", 24, y - 25)
+        strips[rowIndex] = strip
+        local tiles = {}
+        for index = 1, allKeys do
+            local tile = CreateFrame("Button", nil, strip)
+            tile:SetSize(34, 34)
+            tile:SetMovable(true)
+            tile:EnableMouse(true)
+            tile:RegisterForDrag("LeftButton")
+            local border = tile:CreateTexture(nil, "BACKGROUND")
+            border:SetAllPoints(tile)
+            border:SetColorTexture(0, 0, 0, 1)
+            local icon = tile:CreateTexture(nil, "ARTWORK")
+            icon:SetPoint("TOPLEFT", tile, "TOPLEFT", 1, -1)
+            icon:SetPoint("BOTTOMRIGHT", tile, "BOTTOMRIGHT", -1, 1)
+            icon:SetTexCoord(0.115, 0.885, 0.115, 0.885)
+            tile.icon = icon
+            local label = tile:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
+            label:SetSize(70, 14)
+            label:SetPoint("TOP", tile, "BOTTOM", 0, 0)
+            local check = CreateFrame("CheckButton", nil, tile, "UICheckButtonTemplate")
+            check:SetSize(20, 20)
+            check:SetPoint("TOPRIGHT", tile, "TOPRIGHT", 8, 8)
+            check:SetScript("OnClick", function(self)
+                if not tile.key then return end
+                local key = tile.key
+                if self:GetChecked() then
+                    Profile().enabled[key] = (key == "healthstone"
+                        or key == "soulstone") and true or nil
+                else
+                    Profile().enabled[key] = false
+                end
+                MarkChanged()
+            end)
+            tile:SetScript("OnEnter", function(self)
+                GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+                GameTooltip:SetText(DisplayName(self.key))
+                if ICON_HELP[self.key] then
+                    GameTooltip:AddLine(ICON_HELP[self.key], 1, 1, 1, true)
+                end
+                GameTooltip:AddLine("Drag within or between Target DoTs and Utility.",
+                    1, 1, 1, true)
+                GameTooltip:Show()
+            end)
+            tile:SetScript("OnLeave", function() GameTooltip:Hide() end)
+            tile:SetScript("OnDragStart", function(self)
+                self:StartMoving()
+                self:SetFrameStrata("DIALOG")
+                GameTooltip:Hide()
+            end)
+            tile:SetScript("OnDragStop", function(self)
+                self:StopMovingOrSizing()
+                self:SetFrameStrata("MEDIUM")
+                local cursorX, cursorY = GetCursorPosition()
+                local scale = UIParent:GetEffectiveScale()
+                cursorX, cursorY = cursorX / scale, cursorY / scale
+                for destinationRow, target in ipairs(strips) do
+                    local left, right = target:GetLeft(), target:GetRight()
+                    local bottom, top = target:GetBottom(), target:GetTop()
+                    if left and right and bottom and top
+                        and cursorX >= left - 8 and cursorX <= right + 8
+                        and cursorY >= bottom - 8 and cursorY <= top + 8 then
+                        local source = Profile()[orderKey]
+                        local sourceIndex
+                        for i, key in ipairs(source) do
+                            if key == self.key then sourceIndex = i; break end
+                        end
+                        if sourceIndex then
+                            local destination = Profile()[keys[destinationRow]]
+                            local column = math.max(1, math.min(columns,
+                                math.floor((cursorX - left) / cellWidth) + 1))
+                            local row = math.max(1, math.min(2,
+                                math.floor((top - cursorY) / cellHeight) + 1))
+                            local slot = (row - 1) * columns + column
+                            table.remove(source, sourceIndex)
+                            if source == destination and slot > sourceIndex then
+                                slot = slot - 1
+                            end
+                            table.insert(destination, math.min(slot, #destination + 1), self.key)
+                            MarkChanged()
+                            return
+                        end
+                    end
+                end
+                RefreshAll()
+            end)
+            tiles[index] = { frame = tile, label = label, check = check }
+        end
+        refreshers[#refreshers + 1] = function()
+            local order = Profile()[orderKey]
+            for index, entry in ipairs(tiles) do
+                local key = order[index]
+                local tile = entry.frame
+                tile:SetShown(key ~= nil)
+                if key then
+                    tile.key = key
+                    tile:ClearAllPoints()
+                    tile:SetPoint("TOPLEFT", strip, "TOPLEFT",
+                        ((index - 1) % columns) * cellWidth,
+                        -math.floor((index - 1) / columns) * cellHeight)
+                    tile.icon:SetTexture(IconForKey(key)
+                        or "Interface\\Icons\\INV_Misc_QuestionMark")
+                    local enabled = IsFeatureEnabled(key)
+                    tile.icon:SetDesaturated(not enabled)
+                    tile:SetAlpha(enabled and 1 or 0.5)
+                    entry.label:SetText(TILE_LABELS[key] or DisplayName(key))
+                    entry.check:SetChecked(enabled)
+                end
+            end
+        end
+    end
+end
+
+DefaultProfile = function()
     return api.NormalizeProfile({})
 end
 
-local function ResetRowValues(sizeKey, orderKey, keys, defaults)
+ResetRowValues = function(sizeKey, orderKey, keys, defaults)
     local profile = Profile()
     profile[sizeKey] = defaults[sizeKey]
     profile[orderKey] = {}
@@ -522,6 +669,93 @@ end
 
 local layout = Panel("Warlock HUD - Rows & Layout")
 local general = Panel("Warlock HUD - General", false)
+local fonts = Panel("Warlock HUD - Fonts")
+Text(fonts, "Choose a built-in font and set sizes for HUD text.",
+    20, -50, "GameFontHighlightSmall")
+local function FontSelector(label, key, y, sizeKey)
+    Text(fonts, label, 20, y, "GameFontNormal")
+    local menu = CreateFrame("Frame", nil, fonts, "UIDropDownMenuTemplate")
+    menu:SetPoint("TOPLEFT", fonts, "TOPLEFT", 190, y + 16)
+    UIDropDownMenu_SetWidth(menu, 175)
+    UIDropDownMenu_Initialize(menu, function(_, level)
+        for _, choice in ipairs(WarlockHudFonts.Choices) do
+            local info = UIDropDownMenu_CreateInfo()
+            info.text = choice.label
+            local current = Profile()
+            info.checked = ((current and current[key]) or "default") == choice.key
+            info.func = function()
+                Profile()[key] = choice.key ~= "default" and choice.key or nil
+                MarkChanged()
+            end
+            UIDropDownMenu_AddButton(info, level)
+        end
+    end)
+    local preview = Text(fonts, "", 445, y, "GameFontHighlight")
+    refreshers[#refreshers + 1] = function()
+        local selected = Profile()[key] or "default"
+        for _, choice in ipairs(WarlockHudFonts.Choices) do
+            if choice.key == selected then
+                UIDropDownMenu_SetText(menu, choice.label)
+                preview:SetText(choice.label)
+                break
+            end
+        end
+        local path, size, flags = GameFontHighlight:GetFont()
+        preview:SetFont(path, size, flags)
+        WarlockHudFonts.Apply(preview, Profile(), sizeKey, 16, key)
+    end
+end
+FontSelector("Main HUD font", "fontFace", -85, "fontIconSize")
+FontSelector("Multi-Target font", "multiTargetFontFace", -145, "fontMultiTargetSize")
+local function FontSizeControl(label, key, y, minimum, maximum, suggested)
+    Text(fonts, label, 20, y, "GameFontNormal")
+    local slider = CreateFrame("Slider", nil, fonts, "OptionsSliderTemplate")
+    slider:SetSize(165, 17)
+    slider:SetPoint("TOPLEFT", fonts, "TOPLEFT", 220, y + 2)
+    slider:SetMinMaxValues(minimum, maximum)
+    slider:SetValueStep(1)
+    local valueText = Text(fonts, "", 440, y, "GameFontHighlight")
+    local function Commit(value)
+        value = math.max(minimum, math.min(maximum, math.floor(value + 0.5)))
+        if Profile()[key] ~= value then
+            Profile()[key] = value
+            MarkChanged()
+        end
+    end
+    slider:SetScript("OnValueChanged", function(_, value)
+        valueText:SetText(math.floor(value + 0.5) .. " px")
+    end)
+    slider:SetScript("OnMouseUp", function(self) Commit(self:GetValue()) end)
+    Button(fonts, "-", 185, y + 4, 24, function()
+        Commit((Profile()[key] or suggested) - 1)
+    end)
+    Button(fonts, "+", 395, y + 4, 24, function()
+        Commit((Profile()[key] or suggested) + 1)
+    end)
+    Button(fonts, "Default", 535, y + 4, 90, function()
+        if Profile()[key] ~= nil then
+            Profile()[key] = nil
+            MarkChanged()
+        end
+    end)
+    refreshers[#refreshers + 1] = function()
+        slider:SetValue(Profile()[key] or suggested)
+        valueText:SetText(Profile()[key] and (Profile()[key] .. " px") or "Default")
+    end
+end
+FontSizeControl("Icon counts and Soulstone", "fontIconSize", -220, 8, 24, 12)
+FontSizeControl("Target aura countdowns", "fontTimerSize", -285, 8, 30, 14)
+FontSizeControl("Multi-Target labels", "fontMultiTargetSize", -350, 8, 18, 10)
+FontSizeControl("Multi-Target countdowns", "fontMultiTargetTimerSize", -415, 8, 24, 10)
+Text(fonts, "Changes save immediately. HUD visuals update when combat and aura state allow it.",
+    20, -470, "GameFontHighlightSmall")
+ResetPageButton(fonts, "Fonts", function()
+    local p = Profile()
+    p.fontFace, p.fontIconSize, p.fontTimerSize = nil, nil, nil
+    p.multiTargetFontFace = nil
+    p.fontMultiTargetSize, p.fontMultiTargetTimerSize = nil, nil
+    MarkChanged()
+end)
 local multiDotPanel = Panel("Warlock HUD - Multi-Target DoTs", false)
 WarlockHudOptionsMultiTarget.Build({
     multiDotPanel = multiDotPanel,
@@ -549,6 +783,7 @@ WarlockHudOptionsRows.BuildLayout({
     Check = Check,
     SizeSlider = SizeSlider,
     OrderSection = OrderSection,
+    LinkedTargetUtilityRows = LinkedTargetUtilityRows,
     ResetRowValues = ResetRowValues,
     ResetPageButton = ResetPageButton,
     DefaultProfile = DefaultProfile,
@@ -707,6 +942,7 @@ registration:SetScript("OnEvent", function(_, event)
     category = Settings.RegisterCanvasLayoutCategory(layout, "Warlock HUD")
     Settings.RegisterAddOnCategory(category)
     Settings.RegisterCanvasLayoutSubcategory(category, general, "General")
+    Settings.RegisterCanvasLayoutSubcategory(category, fonts, "Fonts")
     Settings.RegisterCanvasLayoutSubcategory(category, multiDotPanel, "Multi-Target DoTs")
     Settings.RegisterCanvasLayoutSubcategory(category, spells, "Tracked Auras")
     Settings.RegisterCanvasLayoutSubcategory(category, consumeLayout, "Consumes")
