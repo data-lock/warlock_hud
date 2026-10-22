@@ -273,6 +273,8 @@ When your assigned Soulstone target is confirmed missing the buff and your
 Soulstone is ready, its Utility icon pulses red. An unknown aura state does not
 trigger the reminder.
 
+![Tracked Auras settings](screenshots/whud_options_4_tracked_auras.png)
+
 ### Group Assignments
 
 ![Curse and Bane assignments](screenshots/assigned_main_screen.png)
@@ -294,7 +296,7 @@ target changes, or the assignment changes.
 Enable the view-only tracker, set its out-of-combat visibility, choose threat
 and damage indicators, and adjust its size, position, and transparency.
 
-![Multi-Target DoTs settings](screenshots/whud_options_4_multi_target_dots.png)
+![Multi-Target DoTs settings](screenshots/whud_options_5_multi_target_dots.png)
 
 </details>
 
@@ -305,7 +307,7 @@ Choose tracked consumables, reorder and hide their icons, set missing reminders,
 and adjust active and missing colors. Weapon enchant reminders use the general
 **Weapon Buff** label.
 
-![Consumes settings](screenshots/whud_options_5_consumes.png)
+![Consumes settings](screenshots/whud_options_6_consumes.png)
 
 </details>
 
@@ -315,7 +317,7 @@ and adjust active and missing colors. Weapon enchant reminders use the general
 Size, reorder, or hide buff slots. Choose active versus missing icon colors.
 The page also explains group buff reminders.
 
-![Buff settings](screenshots/whud_options_6_buffs.png)
+![Buff settings](screenshots/whud_options_7_buffs.png)
 
 </details>
 
@@ -325,7 +327,7 @@ The page also explains group buff reminders.
 Size and arrange the Power Infusion and Nightfall slots. These icons appear in
 the live HUD only while their procs are active.
 
-![Proc settings](screenshots/whud_options_7_procs.png)
+![Proc settings](screenshots/whud_options_8_procs.png)
 
 </details>
 
@@ -335,7 +337,7 @@ the live HUD only while their procs are active.
 Set the shard icon size, deletion reserve, red and yellow warning thresholds,
 and optional Soul Bag overflow warning.
 
-![Soul Shards settings](screenshots/whud_options_8_soul_shards.png)
+![Soul Shards settings](screenshots/whud_options_9_soul_shards.png)
 
 </details>
 
@@ -345,7 +347,7 @@ and optional Soul Bag overflow warning.
 Configure the Soulstone tracker, Healthstone trade records, automatic placement
 for group members, and the supplied-player list.
 
-![Stones settings](screenshots/whud_options_9_stones.png)
+![Stones settings](screenshots/whud_options_10_stones.png)
 
 </details>
 
@@ -355,7 +357,7 @@ for group members, and the supplied-player list.
 Set request keywords and accepted chat sources, enable nearby removal, and
 open or preview the summon queue window.
 
-![Summons settings](screenshots/whud_options_10_summons.png)
+![Summons settings](screenshots/whud_options_11_summons.png)
 
 ![Summon request window](screenshots/whud_summon_window.png)
 
@@ -367,7 +369,7 @@ open or preview the summon queue window.
 Choose summon, Soulstone, and completed Healthstone trade notices and where
 eligible notices are sent.
 
-![Notification settings](screenshots/whud_options_11_notifications.png)
+![Notification settings](screenshots/whud_options_12_notifications.png)
 
 </details>
 
@@ -377,7 +379,7 @@ eligible notices are sent.
 Choose the built-in HUD and Multi-Target fonts, then adjust text and timer
 sizes.
 
-![Fonts settings](screenshots/whud_options_12_fonts.png)
+![Fonts settings](screenshots/whud_options_13_fonts.png)
 
 </details>
 
@@ -388,7 +390,7 @@ Choose, copy, rename, or delete profiles, and optionally assign them to dual
 specs. The summary shows enabled slots and row sizes. **Copy** starts with the
 current profile name and adds a duplicate suffix when clicked.
 
-![Profile settings](screenshots/whud_options_13_profiles.png)
+![Profile settings](screenshots/whud_options_14_profiles.png)
 
 </details>
 
@@ -398,7 +400,7 @@ current profile name and adds a duplicate suffix when clicked.
 Select profile sections to export, preview an import, and confirm which
 sections to merge or which profiles to add.
 
-![Share Settings page](screenshots/whud_options_14_share_settings.png)
+![Share Settings page](screenshots/whud_options_15_share_settings.png)
 
 </details>
 

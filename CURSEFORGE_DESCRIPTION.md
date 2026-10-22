@@ -81,11 +81,11 @@ Each Consumes category can be selected independently, with optional missing remi
 
 Share selected profile settings with a copyable code. Preview and choose which sections to import before confirming. A separate reset button restores addon defaults after confirmation.
 
-![Share Settings](https://raw.githubusercontent.com/data-lock/warlock_hud/main/screenshots/whud_options_14_share_settings.png)
+![Share Settings](https://raw.githubusercontent.com/data-lock/warlock_hud/main/screenshots/whud_options_15_share_settings.png)
 
 Profiles can be copied, renamed, and assigned to talent specializations. Clicking **Copy** adds a duplicate suffix to the current profile name by default.
 
-![Profile settings](https://raw.githubusercontent.com/data-lock/warlock_hud/main/screenshots/whud_options_13_profiles.png)
+![Profile settings](https://raw.githubusercontent.com/data-lock/warlock_hud/main/screenshots/whud_options_14_profiles.png)
 
 ### Utility & Combat Awareness
 
@@ -107,9 +107,9 @@ trackers, and configure reminders from dedicated pages.
 
 ![Rows and Layout settings](https://raw.githubusercontent.com/data-lock/warlock_hud/main/screenshots/whud_options_3_rows_and_layouts.png)
 
-![Consumes settings](https://raw.githubusercontent.com/data-lock/warlock_hud/main/screenshots/whud_options_5_consumes.png)
+![Consumes settings](https://raw.githubusercontent.com/data-lock/warlock_hud/main/screenshots/whud_options_6_consumes.png)
 
-![Buffs settings](https://raw.githubusercontent.com/data-lock/warlock_hud/main/screenshots/whud_options_6_buffs.png)
+![Buffs settings](https://raw.githubusercontent.com/data-lock/warlock_hud/main/screenshots/whud_options_7_buffs.png)
 
 ## Raid Assignments — PallyPower for Warlocks!
 
