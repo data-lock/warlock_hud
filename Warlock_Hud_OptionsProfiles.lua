@@ -62,16 +62,15 @@ function WarlockHudOptionsProfiles.Build(context)
     nameInput:SetPoint("TOPLEFT", profiles, "TOPLEFT", 150, -182)
     nameInput:SetAutoFocus(false)
     nameInput:SetMaxLetters(40)
-    local suggestedName = ((api.GetDB() and api.GetDB().activeProfile) or "Default") .. " Copy"
-    nameInput:SetText(suggestedName)
+    local displayedProfile = ((api.GetDB() and api.GetDB().activeProfile) or "Default")
+    nameInput:SetText(displayedProfile)
     nameInput:SetScript("OnEditFocusGained", function(self) self:HighlightText() end)
     local nameStatus = Text(profiles, "", 400, -190, "GameFontHighlightSmall")
     refreshers[#refreshers + 1] = function()
-        if not nameInput:HasFocus()
-            and (nameInput:GetText() == "" or nameInput:GetText() == suggestedName) then
-            local db = api.GetDB()
-            suggestedName = (db and db.activeProfile or "Default") .. " Copy"
-            nameInput:SetText(suggestedName)
+        local db = api.GetDB()
+        if db and not nameInput:HasFocus() and db.activeProfile ~= displayedProfile then
+            displayedProfile = db.activeProfile
+            nameInput:SetText(displayedProfile)
         end
     end
 
@@ -79,8 +78,8 @@ function WarlockHudOptionsProfiles.Build(context)
         return (nameInput:GetText() or ""):match("^%s*(.-)%s*$")
     end
 
-    local function ValidProfileName()
-        local name = EnteredName()
+    local function ValidProfileName(candidate)
+        local name = candidate or EnteredName()
         if name == "" then return nil, "Enter a profile name." end
         if name:find("%c") or name:lower() == "none" then
             return nil, "Choose another name."
@@ -94,13 +93,33 @@ function WarlockHudOptionsProfiles.Build(context)
         return name
     end
 
+    local function CopyProfileName()
+        local db = api.GetDB()
+        local entered = EnteredName()
+        if not db or entered ~= db.activeProfile then
+            return ValidProfileName(entered)
+        end
+        local base = db.activeProfile .. " Copy"
+        local candidate, suffix = base, 2
+        while not ValidProfileName(candidate) do
+            candidate = base .. " " .. suffix
+            suffix = suffix + 1
+        end
+        return candidate
+    end
+
     local createButton, renameButton, deleteButton
     local function UpdateNameActions()
+        local db = api.GetDB()
         local name, reason = ValidProfileName()
-        if createButton then createButton:SetEnabled(name ~= nil) end
-        if renameButton then renameButton:SetEnabled(name ~= nil) end
-        nameStatus:SetText(name and "Name is available." or reason)
-        nameStatus:SetTextColor(name and 0.4 or 1, name and 1 or 0.55, 0.4)
+        local copyName = CopyProfileName()
+        local isCurrentName = db and EnteredName() == db.activeProfile
+        if createButton then createButton:SetEnabled(copyName ~= nil) end
+        if renameButton then renameButton:SetEnabled(name ~= nil and not isCurrentName) end
+        nameStatus:SetText(isCurrentName and "Copy adds a duplicate of this profile."
+            or name and "Name is available." or reason)
+        local valid = isCurrentName or name ~= nil
+        nameStatus:SetTextColor(valid and 0.4 or 1, valid and 1 or 0.55, 0.4)
     end
 
     local function CopyProfile(source)
@@ -116,8 +135,8 @@ function WarlockHudOptionsProfiles.Build(context)
         return copy
     end
 
-    createButton = Button(profiles, "Create Copy", 20, -225, 120, function()
-        local name = ValidProfileName()
+    createButton = Button(profiles, "Copy", 20, -225, 120, function()
+        local name = CopyProfileName()
         if not name then return end
         api.GetDB().profiles[name] = api.NormalizeProfile(CopyProfile(Profile()))
         api.GetDB().activeProfile = name
@@ -130,7 +149,8 @@ function WarlockHudOptionsProfiles.Build(context)
             end
         end
         api.InitializeProfiles()
-        nameInput:SetText("")
+        displayedProfile = name
+        nameInput:SetText(name)
         MarkChanged()
     end)
 
@@ -147,7 +167,8 @@ function WarlockHudOptionsProfiles.Build(context)
         db.profiles[db.activeProfile] = nil
         db.activeProfile = name
         api.InitializeProfiles()
-        nameInput:SetText("")
+        displayedProfile = name
+        nameInput:SetText(name)
         MarkChanged()
     end)
 

@@ -11,6 +11,7 @@ local LABELS = {
     corruption = "Corruption", bane = "Banes", curse = "Curses", drain = "Drains",
     immolate = "Immolate", siphonlife = "Siphon Life", demonicbrand = "Demonic Brand",
     healthstone = "Healthstone", soulstone = "Soulstone", fear = "Fear",
+    banish = "Banish",
     conflagrate = "Conflagrate",
     demon = "Missing Demon Reminder", sacrifice = "Demonic Sacrifice",
     soullink = "Soul Link",
@@ -27,7 +28,8 @@ local LABELS = {
 }
 local TILE_LABELS = { motw = "Wild", breath = "Breath",
     spelldamage = "Spell Dmg", shadow = "Shadow", fire = "Fire",
-    wizardoil = "Oil", manaregen = "Mana" }
+    wizardoil = "Oil", manaregen = "Mana",
+    demonicbrand = "Brand", demon = "Missing Demon" }
 
 local ICON_HELP = {
     corruption = "Target DoT. Shows its active aura countdown.",
@@ -41,6 +43,7 @@ local ICON_HELP = {
     soulstone = "Hidden until Create Soulstone is learned by default. Enable it early to arrange the icon; shows its item cooldown.",
     soulshards = "Hidden until Drain Soul is learned by default. Enable it early to arrange the icon.",
     fear = "Shows Fear on the current target when available.",
+    banish = "Shows Banish on the current target when available.",
     conflagrate = "Shows Conflagrate and its cooldown when learned. The icon pulses when your Immolate is active on the current target.",
     demon = "Flash a warning when no demon is summoned and no active Demonic Sacrifice is detected.",
     sacrifice = "Shows an active Demonic Sacrifice effect with its native duration.",
@@ -117,10 +120,15 @@ local function Button(parent, label, x, y, width, onClick)
     return button
 end
 
-local function Check(parent, x, y, label, getValue, setValue, tooltip, needsRebuild)
+local function Check(parent, x, y, label, getValue, setValue, tooltip, needsRebuild,
+    checkSize, labelGap)
+    checkSize = checkSize or 22
+    labelGap = labelGap or 5
     local check = CreateFrame("CheckButton", nil, parent, "UICheckButtonTemplate")
     check:SetPoint("TOPLEFT", parent, "TOPLEFT", x, y)
-    Text(parent, label, x + 28, y - 5, "GameFontHighlight")
+    check:SetSize(checkSize, checkSize)
+    local textOffset = checkSize + labelGap
+    Text(parent, label, x + textOffset, y - 5, "GameFontHighlight")
     check:SetScript("OnClick", function(self)
         setValue(self:GetChecked() and true or false)
         MarkChanged(needsRebuild)
@@ -155,9 +163,10 @@ local function ApplyFooter(parent)
     local status = Text(parent, "", 20, -530, "GameFontHighlightSmall")
     local button = Button(parent, "Retry HUD Update", 430, -520, 150, RetryHudUpdate)
     local function RefreshFooter()
+        button:SetShown(dirty)
         button:SetEnabled(dirty and CanRebuild())
         if not dirty then
-            status:SetText("Saved automatically.")
+            status:SetText("")
         elseif InCombatLockdown() then
             status:SetText("Saved; HUD updates after combat.")
         elseif not CanRebuild() then
@@ -247,7 +256,7 @@ local function IconForKey(key)
         end
     end
     local spellIDs = {
-        fear = 5782, conflagrate = 1293817,
+        fear = 5782, banish = 710, conflagrate = 1293817,
         armor = 706, wellfed = 19705, flask = 17628,
         spelldamage = 16889, shadow = 11474, fire = 26276,
         manaregen = 24363,
@@ -306,20 +315,22 @@ local function ShowIconDemo()
         close:ClearAllPoints()
         close:SetPoint("TOP", UIParent, "TOP", 0, -45)
 
+        local demoIcons = {}
         local function DemoRow(title, keys, orderKey, sizeKey, anchor)
-            local order = orderKey and Profile()[orderKey] or keys
-            local size = Profile()[sizeKey]
-            local width = #order * size + math.max(0, #order - 1) + 8
+            local profile = Profile()
+            local order = orderKey and profile[orderKey] or keys
+            local size = profile[sizeKey]
+            local iconSpacing = 1
+            local iconCrop = (1 - 1 / 1.3) / 2
+            local width = math.max(1, #order * size
+                + math.max(0, #order - 1) * iconSpacing)
             local row = CreateFrame("Frame", nil, demo)
-            row:SetSize(width, size + 8)
+            row:SetSize(width, size)
             if orderKey == "buffOrder" or orderKey == "consumeOrder" then
-                row:SetPoint("LEFT", anchor, "LEFT", -4, 0)
+                row:SetPoint("LEFT", anchor, "LEFT")
             else
                 row:SetPoint("CENTER", anchor, "CENTER")
             end
-            local background = row:CreateTexture(nil, "BACKGROUND")
-            background:SetAllPoints(row)
-            background:SetColorTexture(0, 0, 0, 0.9)
             local rowLabel = row:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
             rowLabel:SetSize(95, 18)
             local rowLeft = (orderKey == "buffOrder" or orderKey == "consumeOrder")
@@ -338,11 +349,37 @@ local function ShowIconDemo()
                 local button = CreateFrame("Button", nil, row)
                 button:SetSize(size, size)
                 button:SetPoint("CENTER", row, "CENTER",
-                    (index - (#order + 1) / 2) * (size + 1), 0)
+                    (index - (#order + 1) / 2) * (size + iconSpacing), 0)
                 local icon = button:CreateTexture(nil, "ARTWORK")
                 icon:SetAllPoints(button)
-                icon:SetTexture(IconForKey(key) or "Interface\\Icons\\INV_Misc_QuestionMark")
-                icon:SetTexCoord(0.115, 0.885, 0.115, 0.885)
+                local texture = api.GetDemoIconTexture
+                    and api.GetDemoIconTexture(key)
+                icon:SetTexture(texture or IconForKey(key)
+                    or "Interface\\Icons\\INV_Misc_QuestionMark")
+                demoIcons[#demoIcons + 1] = { icon = icon, key = key }
+                icon:SetTexCoord(iconCrop, 1 - iconCrop, iconCrop, 1 - iconCrop)
+                if (orderKey == "mainOrder" or orderKey == "cooldownOrder")
+                    and key ~= "fear" then
+                    icon:SetDesaturated(profile.colorActiveDoTs ~= false)
+                elseif orderKey == "buffOrder" then
+                    icon:SetDesaturated(profile.colorActiveBuffs ~= false)
+                elseif orderKey == "consumeOrder" then
+                    icon:SetDesaturated(profile.colorActiveConsumes ~= false)
+                end
+
+                local border = CreateFrame("Frame", nil, button)
+                border:SetSize(size + 2, size + 2)
+                border:SetPoint("CENTER", button, "CENTER")
+                local edges = {
+                    { "TOP", size + 2, 1 }, { "BOTTOM", size + 2, 1 },
+                    { "LEFT", 1, size + 2 }, { "RIGHT", 1, size + 2 },
+                }
+                for _, edgeInfo in ipairs(edges) do
+                    local edge = border:CreateTexture(nil, "OVERLAY")
+                    edge:SetSize(edgeInfo[2], edgeInfo[3])
+                    edge:SetPoint(edgeInfo[1], border, edgeInfo[1])
+                    edge:SetColorTexture(0, 0, 0, 1)
+                end
                 button:SetScript("OnEnter", function(self)
                     GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
                     GameTooltip:SetText(DisplayName(key))
@@ -375,6 +412,17 @@ local function ShowIconDemo()
             end
         end
         DemoRow("Soul Shards", { "soulshards" }, nil, "shardSize", shardAnchor)
+        local textureRefresh = 0
+        demo:SetScript("OnUpdate", function(self, elapsed)
+            textureRefresh = textureRefresh + elapsed
+            if textureRefresh < 0.5 then return end
+            textureRefresh = 0
+            for _, entry in ipairs(demoIcons) do
+                local current = api.GetDemoIconTexture
+                    and api.GetDemoIconTexture(entry.key)
+                if current then entry.icon:SetTexture(current) end
+            end
+        end)
         demo:Hide()
         iconDemo = demo
     end
@@ -382,7 +430,8 @@ local function ShowIconDemo()
     RefreshAll()
 end
 
-local function OrderSection(parent, title, orderKey, defaults, y, columns, onReset)
+local function OrderSection(parent, title, orderKey, defaults, y, columns, onReset,
+    stripX, rowPitch, centerRows, cornerControls, cellWidth, labelWidth)
     Text(parent, title, 20, y, "GameFontNormal")
     if onReset then
         local reset = Button(parent, "Reset Row", 480, y + 8, 100, onReset)
@@ -398,14 +447,17 @@ local function OrderSection(parent, title, orderKey, defaults, y, columns, onRes
         reset:SetScript("OnLeave", function() GameTooltip:Hide() end)
     end
     columns = columns or #defaults
+    rowPitch = rowPitch or 95
+    cellWidth = cellWidth or 78
     local rows = math.ceil(#defaults / columns)
     local strip = CreateFrame("Frame", nil, parent)
-    strip:SetSize(columns * 78, rows > 1 and rows * 95 or 50)
-    strip:SetPoint("TOPLEFT", parent, "TOPLEFT", 24, y - 29)
+    strip:SetSize(columns * cellWidth, rows * rowPitch)
+    strip:SetPoint("TOPLEFT", parent, "TOPLEFT", stripX or 24, y - 29)
     local tiles = {}
     for index = 1, #defaults do
         local tile = CreateFrame("Button", nil, strip)
-        tile:SetSize(42, 42)
+        local tileSize = cornerControls and 34 or 42
+        tile:SetSize(tileSize, tileSize)
         tile:SetMovable(true)
         tile:EnableMouse(true)
         tile:RegisterForDrag("LeftButton")
@@ -413,17 +465,35 @@ local function OrderSection(parent, title, orderKey, defaults, y, columns, onRes
         background:SetAllPoints(tile)
         background:SetColorTexture(0, 0, 0, 1)
         local icon = tile:CreateTexture(nil, "ARTWORK")
-        icon:SetPoint("TOPLEFT", tile, "TOPLEFT", 2, -2)
-        icon:SetPoint("BOTTOMRIGHT", tile, "BOTTOMRIGHT", -2, 2)
+        local iconInset = cornerControls and 1 or 2
+        icon:SetPoint("TOPLEFT", tile, "TOPLEFT", iconInset, -iconInset)
+        icon:SetPoint("BOTTOMRIGHT", tile, "BOTTOMRIGHT", -iconInset, iconInset)
         icon:SetTexCoord(0.115, 0.885, 0.115, 0.885)
         tile.icon = icon
+        if cornerControls then
+            local grip = tile:CreateTexture(nil, "OVERLAY")
+            grip:SetPoint("TOPLEFT", tile, "TOPLEFT", 3, -3)
+            grip:SetSize(10, 13)
+            grip:SetColorTexture(0.04, 0.035, 0.025, 0.85)
+            for dot = 1, 6 do
+                local mark = tile:CreateTexture(nil, "OVERLAY")
+                mark:SetSize(2, 2)
+                mark:SetPoint("TOPLEFT", grip, "TOPLEFT",
+                    2 + ((dot - 1) % 2) * 4, -2 - math.floor((dot - 1) / 2) * 4)
+                mark:SetColorTexture(1, 0.82, 0.25, 1)
+            end
+        end
         tile:SetScript("OnEnter", function(self)
             GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
             GameTooltip:SetText(DisplayName(self.key))
             if ICON_HELP[self.key] then
                 GameTooltip:AddLine(ICON_HELP[self.key], 1, 1, 1, true)
             end
-            if orderKey == "buffOrder" and self.key == "breath" then
+            if cornerControls then
+                GameTooltip:AddLine("Drag this icon tile by its gold grip to reorder it.",
+                    1, 1, 1, true)
+                GameTooltip:AddLine("Use the checkmark to show or hide it.", 1, 1, 1, true)
+            elseif orderKey == "buffOrder" and self.key == "breath" then
                 GameTooltip:AddLine("Fixed at the right end of the buff row", 1, 1, 1)
             else
                 GameTooltip:AddLine("Drag to change order", 1, 1, 1)
@@ -449,10 +519,13 @@ local function OrderSection(parent, title, orderKey, defaults, y, columns, onRes
             cursorX, cursorY = cursorX / scale, cursorY / scale
             local left, bottom, top = strip:GetLeft(), strip:GetBottom(), strip:GetTop()
             if left and bottom and top and cursorY >= bottom - 20 and cursorY <= top + 20 then
-                local column = math.max(1, math.min(columns,
-                    math.floor((cursorX - left) / 78) + 1))
                 local row = rows > 1 and math.max(1, math.min(rows,
-                    math.floor((top - cursorY) / 95) + 1)) or 1
+                    math.floor((top - cursorY) / rowPitch) + 1)) or 1
+                local rowCount = math.min(columns, #defaults - (row - 1) * columns)
+                local rowOffset = centerRows
+                    and (columns - rowCount) * cellWidth / 2 or 0
+                local column = math.max(1, math.min(columns,
+                    math.floor((cursorX - left - rowOffset) / cellWidth) + 1))
                 local lastMovable = orderKey == "buffOrder" and #defaults - 1 or #defaults
                 local destination = math.min(lastMovable, (row - 1) * columns + column)
                 if destination ~= index then
@@ -465,8 +538,14 @@ local function OrderSection(parent, title, orderKey, defaults, y, columns, onRes
             end
             RefreshAll()
         end)
-        local check = CreateFrame("CheckButton", nil, parent, "UICheckButtonTemplate")
-        check:SetPoint("TOP", tile, "BOTTOM", 0, -19)
+        local check = CreateFrame("CheckButton", nil,
+            cornerControls and tile or parent, "UICheckButtonTemplate")
+        if cornerControls then
+            check:SetSize(16, 16)
+            check:SetPoint("TOPRIGHT", tile, "TOPRIGHT", 0, 0)
+        else
+            check:SetPoint("TOP", tile, "BOTTOM", 0, -19)
+        end
         check:SetScript("OnClick", function(self)
             local key = Profile()[orderKey][index]
             if self:GetChecked() then
@@ -478,7 +557,7 @@ local function OrderSection(parent, title, orderKey, defaults, y, columns, onRes
             MarkChanged()
         end)
         local label = parent:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
-        label:SetSize(70, 16)
+        label:SetSize(labelWidth or 70, 16)
         label:SetPoint("TOP", tile, "BOTTOM", 0, -2)
         label:SetJustifyH("CENTER")
         tiles[index] = { frame = tile, check = check, label = label }
@@ -488,9 +567,15 @@ local function OrderSection(parent, title, orderKey, defaults, y, columns, onRes
             local key = Profile()[orderKey][index]
             tile.frame.key = key
             tile.frame:ClearAllPoints()
+            local rowIndex = math.floor((index - 1) / columns)
+            local rowCount = math.min(columns, #defaults - rowIndex * columns)
+            local rowOffset = centerRows
+                and (columns - rowCount) * cellWidth / 2 or 0
+            local tileOffset = cornerControls
+                and (cellWidth - tile.frame:GetWidth()) / 2 or 0
             tile.frame:SetPoint("TOPLEFT", strip, "TOPLEFT",
-                ((index - 1) % columns) * 78,
-                -math.floor((index - 1) / columns) * 95)
+                rowOffset + tileOffset + ((index - 1) % columns) * cellWidth,
+                -rowIndex * rowPitch - (cornerControls and 20 or 0))
             tile.frame.icon:SetTexture(IconForKey(key) or "Interface\\Icons\\INV_Misc_QuestionMark")
             tile.frame.icon:SetDesaturated(Profile().enabled[key] == false)
             tile.frame:SetAlpha(Profile().enabled[key] == false and 0.5 or 1)
@@ -507,7 +592,13 @@ local function LinkedTargetUtilityRows(parent)
     local titles = { "Target DoTs", "Utility" }
     local strips = {}
     local allKeys = #api.MainKeys + #api.CooldownKeys
-    local columns, cellWidth, cellHeight = 7, 78, 51
+    local columns, boxColumns, cellWidth, cellHeight = 11, 12, 50, 53
+    local gridRows = math.max(1, math.ceil(allKeys / columns))
+    local firstTitleY = -155
+    local gridHeight = gridRows * cellHeight + 30
+    local secondTitleY = firstTitleY - 20 - gridHeight - 15
+    local nameplatesY = secondTitleY - 20 - gridHeight - 10
+    local resetY = nameplatesY - 44
 
     local function ResetBoth()
         local defaults = DefaultProfile()
@@ -517,14 +608,27 @@ local function LinkedTargetUtilityRows(parent)
     end
 
     for rowIndex, orderKey in ipairs(keys) do
-        local y = rowIndex == 1 and -180 or -315
+        local y = rowIndex == 1 and firstTitleY or secondTitleY
         Text(parent, titles[rowIndex], 20, y, "GameFontNormal")
-        if rowIndex == 1 then
-            Button(parent, "Reset Both Rows", 460, y + 8, 140, ResetBoth)
-        end
         local strip = CreateFrame("Frame", nil, parent)
-        strip:SetSize(columns * cellWidth, 2 * cellHeight)
-        strip:SetPoint("TOPLEFT", parent, "TOPLEFT", 24, y - 25)
+        local rowKeys = orderKey == "mainOrder" and api.MainKeys or api.CooldownKeys
+        local visibleRows = gridRows
+        strip:SetSize(boxColumns * cellWidth, visibleRows * cellHeight + 30)
+        strip:SetPoint("TOP", parent, "TOP", 0, y - 20)
+        local back = strip:CreateTexture(nil, "BACKGROUND")
+        back:SetAllPoints(strip)
+        back:SetColorTexture(0.025, 0.035, 0.05, 0.55)
+        local border = CreateFrame("Frame", nil, strip)
+        border:SetAllPoints(strip)
+        for _, edgeInfo in ipairs({
+            { "TOP", strip:GetWidth(), 1 }, { "BOTTOM", strip:GetWidth(), 1 },
+            { "LEFT", 1, strip:GetHeight() }, { "RIGHT", 1, strip:GetHeight() },
+        }) do
+            local edge = border:CreateTexture(nil, "BORDER")
+            edge:SetSize(edgeInfo[2], edgeInfo[3])
+            edge:SetPoint(edgeInfo[1], border, edgeInfo[1])
+            edge:SetColorTexture(0.7, 0.54, 0.2, 0.75)
+        end
         strips[rowIndex] = strip
         local tiles = {}
         for index = 1, allKeys do
@@ -541,12 +645,20 @@ local function LinkedTargetUtilityRows(parent)
             icon:SetPoint("BOTTOMRIGHT", tile, "BOTTOMRIGHT", -1, 1)
             icon:SetTexCoord(0.115, 0.885, 0.115, 0.885)
             tile.icon = icon
-            local label = tile:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
-            label:SetSize(70, 14)
-            label:SetPoint("TOP", tile, "BOTTOM", 0, 0)
+            local grip = tile:CreateTexture(nil, "OVERLAY")
+            grip:SetPoint("TOPLEFT", tile, "TOPLEFT", 3, -3)
+            grip:SetSize(10, 13)
+            grip:SetColorTexture(0.04, 0.035, 0.025, 0.85)
+            for dot = 1, 6 do
+                local mark = tile:CreateTexture(nil, "OVERLAY")
+                mark:SetSize(2, 2)
+                mark:SetPoint("TOPLEFT", grip, "TOPLEFT",
+                    2 + ((dot - 1) % 2) * 4, -2 - math.floor((dot - 1) / 2) * 4)
+                mark:SetColorTexture(1, 0.82, 0.25, 1)
+            end
             local check = CreateFrame("CheckButton", nil, tile, "UICheckButtonTemplate")
-            check:SetSize(20, 20)
-            check:SetPoint("TOPRIGHT", tile, "TOPRIGHT", 8, 8)
+            check:SetSize(16, 16)
+            check:SetPoint("TOPRIGHT", tile, "TOPRIGHT", 0, 0)
             check:SetScript("OnClick", function(self)
                 if not tile.key then return end
                 local key = tile.key
@@ -564,8 +676,9 @@ local function LinkedTargetUtilityRows(parent)
                 if ICON_HELP[self.key] then
                     GameTooltip:AddLine(ICON_HELP[self.key], 1, 1, 1, true)
                 end
-                GameTooltip:AddLine("Drag within or between Target DoTs and Utility.",
+                GameTooltip:AddLine("Drag this icon tile by its gold grip. Drop in either grid to reorder or move it.",
                     1, 1, 1, true)
+                GameTooltip:AddLine("Use the checkmark to show or hide it.", 1, 1, 1, true)
                 GameTooltip:Show()
             end)
             tile:SetScript("OnLeave", function() GameTooltip:Hide() end)
@@ -581,36 +694,48 @@ local function LinkedTargetUtilityRows(parent)
                 local scale = UIParent:GetEffectiveScale()
                 cursorX, cursorY = cursorX / scale, cursorY / scale
                 for destinationRow, target in ipairs(strips) do
-                    local left, right = target:GetLeft(), target:GetRight()
-                    local bottom, top = target:GetBottom(), target:GetTop()
-                    if left and right and bottom and top
-                        and cursorX >= left - 8 and cursorX <= right + 8
-                        and cursorY >= bottom - 8 and cursorY <= top + 8 then
-                        local source = Profile()[orderKey]
-                        local sourceIndex
-                        for i, key in ipairs(source) do
-                            if key == self.key then sourceIndex = i; break end
-                        end
-                        if sourceIndex then
-                            local destination = Profile()[keys[destinationRow]]
-                            local column = math.max(1, math.min(columns,
-                                math.floor((cursorX - left) / cellWidth) + 1))
-                            local row = math.max(1, math.min(2,
-                                math.floor((top - cursorY) / cellHeight) + 1))
-                            local slot = (row - 1) * columns + column
-                            table.remove(source, sourceIndex)
-                            if source == destination and slot > sourceIndex then
-                                slot = slot - 1
+                    local stripLeft, stripTop = target:GetLeft(), target:GetTop()
+                    if stripLeft and stripTop then
+                        local left, right = stripLeft, stripLeft + boxColumns * cellWidth
+                        local top = stripTop - 17
+                        local visibleRows = gridRows
+                        local bottom = top - visibleRows * cellHeight
+                        if cursorX >= left - 8 and cursorX <= right + 8
+                            and cursorY >= bottom - 8 and cursorY <= top + 8 then
+                            local source = Profile()[orderKey]
+                            local sourceIndex
+                            for i, key in ipairs(source) do
+                                if key == self.key then sourceIndex = i; break end
                             end
-                            table.insert(destination, math.min(slot, #destination + 1), self.key)
-                            MarkChanged()
-                            return
+                            if sourceIndex then
+                                local destination = Profile()[keys[destinationRow]]
+                                local destinationCount = #destination
+                                local rowCount = math.max(0, math.min(columns,
+                                    destinationCount - (row - 1) * columns))
+                                local rowOffset = (strip:GetWidth() - rowCount * cellWidth) / 2
+                                local column = math.max(1, math.min(columns,
+                                    math.floor((cursorX - stripLeft - rowOffset) / cellWidth) + 1))
+                                local row = math.max(1, math.min(visibleRows,
+                                    math.floor((top - cursorY) / cellHeight) + 1))
+                                local slot = (row - 1) * columns + column
+                                table.remove(source, sourceIndex)
+                                if source == destination and slot > sourceIndex then
+                                    slot = slot - 1
+                                end
+                                table.insert(destination, math.min(slot, #destination + 1), self.key)
+                                MarkChanged()
+                                return
+                            end
                         end
                     end
                 end
                 RefreshAll()
             end)
-            tiles[index] = { frame = tile, label = label, check = check }
+            local label = strip:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
+            label:SetSize(cellWidth, 14)
+            label:SetPoint("TOP", tile, "BOTTOM", 0, -2)
+            label:SetJustifyH("CENTER")
+            tiles[index] = { frame = tile, check = check, label = label }
         end
         refreshers[#refreshers + 1] = function()
             local order = Profile()[orderKey]
@@ -618,23 +743,38 @@ local function LinkedTargetUtilityRows(parent)
                 local key = order[index]
                 local tile = entry.frame
                 tile:SetShown(key ~= nil)
+                entry.label:SetShown(key ~= nil)
                 if key then
                     tile.key = key
                     tile:ClearAllPoints()
+                    local rowIndex = math.floor((index - 1) / columns)
+                    local rowCount = math.min(columns, #order - rowIndex * columns)
+                    local firstX = (strip:GetWidth() - rowCount * cellWidth) / 2
                     tile:SetPoint("TOPLEFT", strip, "TOPLEFT",
-                        ((index - 1) % columns) * cellWidth,
-                        -math.floor((index - 1) / columns) * cellHeight)
+                        firstX + ((index - 1) % columns) * cellWidth,
+                        -17 - rowIndex * cellHeight)
                     tile.icon:SetTexture(IconForKey(key)
                         or "Interface\\Icons\\INV_Misc_QuestionMark")
                     local enabled = IsFeatureEnabled(key)
                     tile.icon:SetDesaturated(not enabled)
                     tile:SetAlpha(enabled and 1 or 0.5)
-                    entry.label:SetText(TILE_LABELS[key] or DisplayName(key))
                     entry.check:SetChecked(enabled)
+                    entry.label:SetText(TILE_LABELS[key] or DisplayName(key))
                 end
             end
         end
     end
+    local reset = Button(parent, "Reset Both Rows", 300, resetY, 140, ResetBoth)
+    reset:SetScript("OnEnter", function(self)
+        GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+        GameTooltip:SetText("Reset Target DoTs and Utility")
+        GameTooltip:AddLine(
+            "Restores both rows' icon sizes, order, and visibility. Edit Mode positions stay.",
+            1, 1, 1, true)
+        GameTooltip:Show()
+    end)
+    reset:SetScript("OnLeave", function() GameTooltip:Hide() end)
+    return nameplatesY
 end
 
 DefaultProfile = function()
@@ -661,8 +801,8 @@ StaticPopupDialogs.WARLOCKHUD_RESET_PAGE = {
     hideOnEscape = true,
 }
 
-local function ResetPageButton(parent, pageName, reset)
-    Button(parent, "Reset Page", 300, -520, 110, function()
+local function ResetPageButton(parent, pageName, reset, x, y)
+    Button(parent, "Reset Page", x or 300, y or -520, 110, function()
         StaticPopup_Show("WARLOCKHUD_RESET_PAGE", pageName, nil, reset)
     end)
 end
@@ -905,11 +1045,18 @@ local shards = WarlockHudOptionsShards.Build({
     refreshers = refreshers,
 })
 
+local shareCategory
 local about = WarlockHudOptionsAbout.Build({
     api = api,
     Panel = Panel,
     Text = Text,
     Button = Button,
+    refreshers = refreshers,
+    ShowIconDemo = ShowIconDemo,
+    IsDemoShown = function() return iconDemo and iconDemo:IsShown() end,
+    OpenSharingSettings = function()
+        if shareCategory then Settings.OpenToCategory(shareCategory:GetID()) end
+    end,
 })
 
 local category
@@ -939,22 +1086,23 @@ registration:SetScript("OnEvent", function(_, event)
         print("|cffff7a7aWarlock HUD:|r AddOn settings are unavailable on this client.")
         return
     end
-    category = Settings.RegisterCanvasLayoutCategory(layout, "Warlock HUD")
+    category = Settings.RegisterCanvasLayoutCategory(about, "Warlock HUD")
     Settings.RegisterAddOnCategory(category)
     Settings.RegisterCanvasLayoutSubcategory(category, general, "General")
-    Settings.RegisterCanvasLayoutSubcategory(category, fonts, "Fonts")
-    Settings.RegisterCanvasLayoutSubcategory(category, multiDotPanel, "Multi-Target DoTs")
+    Settings.RegisterCanvasLayoutSubcategory(category, layout, "Rows & Layout")
     Settings.RegisterCanvasLayoutSubcategory(category, spells, "Tracked Auras")
+    Settings.RegisterCanvasLayoutSubcategory(category, multiDotPanel, "Multi-Target DoTs")
     Settings.RegisterCanvasLayoutSubcategory(category, consumeLayout, "Consumes")
     Settings.RegisterCanvasLayoutSubcategory(category, buffLayout, "Buffs")
     Settings.RegisterCanvasLayoutSubcategory(category, procLayout, "Procs")
-    Settings.RegisterCanvasLayoutSubcategory(category, profiles, "Profiles")
-    Settings.RegisterCanvasLayoutSubcategory(category, sharingPanel, "Share Settings")
-    Settings.RegisterCanvasLayoutSubcategory(category, notifications, "Notifications")
-    Settings.RegisterCanvasLayoutSubcategory(category, summons, "Summons")
-    Settings.RegisterCanvasLayoutSubcategory(category, stones, "Stones")
     Settings.RegisterCanvasLayoutSubcategory(category, shards, "Soul Shards")
-    Settings.RegisterCanvasLayoutSubcategory(category, about, "About")
+    Settings.RegisterCanvasLayoutSubcategory(category, stones, "Stones")
+    Settings.RegisterCanvasLayoutSubcategory(category, summons, "Summons")
+    Settings.RegisterCanvasLayoutSubcategory(category, notifications, "Notifications")
+    Settings.RegisterCanvasLayoutSubcategory(category, fonts, "Fonts")
+    Settings.RegisterCanvasLayoutSubcategory(category, profiles, "Profiles")
+    shareCategory = Settings.RegisterCanvasLayoutSubcategory(category, sharingPanel,
+        "Share Settings")
     RefreshAll()
 end)
 

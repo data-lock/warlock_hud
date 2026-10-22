@@ -1,7 +1,7 @@
 -- Static player buff and proc definitions. Runtime aura handling stays in
 -- Warlock_Hud.lua so Blizzard continues to own native aura presentation.
 WarlockHudPlayerEffects = {
-    CooldownKeys = { "healthstone", "soulstone", "fear", "conflagrate", "racial1", "racial2", "demon" },
+    CooldownKeys = { "healthstone", "soulstone", "fear", "banish", "conflagrate", "racial1", "racial2", "demon" },
     Stones = {
         { name = "Healthstone", defaultID = 5512,
             learnNames = { "Create Healthstone", "Create Healthstone (Minor)",

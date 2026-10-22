@@ -21,15 +21,17 @@ function WarlockHudOptionsSharing.Build(context)
         local x = index <= 3 and 20 or 335
         local y = -80 - ((index - 1) % 3) * 31
         local check = CreateFrame("CheckButton", nil, sharingPanel, "UICheckButtonTemplate")
+        check:SetSize(22, 22)
         check:SetPoint("TOPLEFT", sharingPanel, "TOPLEFT", x, y)
         check:SetChecked(true)
-        Text(sharingPanel, labels[section], x + 28, y - 5, "GameFontHighlight")
+        Text(sharingPanel, labels[section], x + 27, y - 5, "GameFontHighlight")
         check:SetScript("OnClick", function(self) selected[section] = self:GetChecked() and true or false end)
     end
     local allProfiles = false
     local allCheck = CreateFrame("CheckButton", nil, sharingPanel, "UICheckButtonTemplate")
+    allCheck:SetSize(22, 22)
     allCheck:SetPoint("TOPLEFT", sharingPanel, "TOPLEFT", 20, -182)
-    Text(sharingPanel, "All profiles (import creates new profiles)", 48, -187, "GameFontHighlight")
+    Text(sharingPanel, "All profiles (import creates new profiles)", 47, -187, "GameFontHighlight")
     allCheck:SetScript("OnClick", function(self) allProfiles = self:GetChecked() and true or false end)
     Text(sharingPanel, "Import current merges selected sections into the active profile.",
         20, -213, "GameFontHighlightSmall")

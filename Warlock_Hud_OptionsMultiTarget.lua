@@ -6,20 +6,18 @@ function WarlockHudOptionsMultiTarget.Build(context)
     local Text, Check, Button = context.Text, context.Check, context.Button
     local Profile, refreshers = context.Profile, context.refreshers
 
-    Text(multiDotPanel, "Up to 16 mobs from nameplates and group targets. Target through world nameplates or Tab.",
-        20, -54, "GameFontHighlight")
-    Text(multiDotPanel, "On by default for new profiles. Use /whud mtd to open or close it outside combat.",
-        20, -81, "GameFontHighlightSmall")
-    Text(multiDotPanel, "This view is read-only; target enemies through world nameplates or Tab.",
-        20, -106, "GameFontHighlightSmall")
-    Check(multiDotPanel, 20, -145, "Enable multi-target DoT window",
+    Text(multiDotPanel, "Multi-Target Window", 20, -53, "GameFontNormal")
+    Text(multiDotPanel,
+        "Track up to 16 enemies using available nameplates and group target information.",
+        20, -76, "GameFontHighlightSmall")
+    Check(multiDotPanel, 20, -104, "Enable Multi-Target DoT window",
         function() return Profile().multiDotEnabled == true end,
         function(value)
             if InCombatLockdown() then return end
             Profile().multiDotEnabled = value
         end,
         "Enable or disable the window outside combat. Saved immediately.", false)
-    Check(multiDotPanel, 20, -181, "Hide outside combat",
+    Check(multiDotPanel, 20, -139, "Hide outside combat",
         function() return Profile().multiDotHideOutOfCombat == true end,
         function(value)
             if InCombatLockdown() then return end
@@ -27,37 +25,43 @@ function WarlockHudOptionsMultiTarget.Build(context)
             if WarlockHudMultiTarget then WarlockHudMultiTarget.UpdateAppearance() end
         end,
         "Show the window only during combat while it is enabled. Saved immediately.", false)
-    Check(multiDotPanel, 20, -211, "Show Threat Indicator",
+
+    Text(multiDotPanel, "Combat Information", 20, -184, "GameFontNormal")
+    Text(multiDotPanel, "Damage is estimated. Threat shows LOW, MED, HIGH or unknown.",
+        20, -207, "GameFontHighlightSmall")
+    Check(multiDotPanel, 20, -235, "Show Threat Indicator",
         function() return Profile().multiDotThreatIndicator ~= false end,
         function(value)
             if InCombatLockdown() then return end
             Profile().multiDotThreatIndicator = value
             if WarlockHudMultiTarget then WarlockHudMultiTarget.UpdateAppearance() end
         end,
-        "Personal LOW / MED / HIGH threat; a grey dash means unavailable. Saved immediately; the view updates when combat and aura protection allow.", false)
-    Check(multiDotPanel, 300, -211, "Show predicted DoT damage",
+        "Personal threat: LOW / MED / HIGH. A grey dash means unavailable. Saved immediately.", false)
+    Check(multiDotPanel, 300, -235, "Show predicted DoT damage",
         function() return Profile().multiDotDamageEnabled ~= false end,
         function(value)
             Profile().multiDotDamageEnabled = value
             if WarlockHudMultiTarget then WarlockHudMultiTarget.Refresh() end
         end,
         "Show approximate remaining DoT damage on Multi-Target rows.", false)
-    Button(multiDotPanel, "Reset position", 20, -249, 130, function()
+
+    Text(multiDotPanel, "Appearance", 20, -282, "GameFontNormal")
+    Button(multiDotPanel, "Reset position", 20, -307, 130, function()
         if InCombatLockdown() then return end
         Profile().multiDotX, Profile().multiDotY = nil, nil
         if WarlockHudMultiTarget then WarlockHudMultiTarget.Refresh() end
     end)
-    Button(multiDotPanel, "Reset size", 163, -249, 110, function()
+    Button(multiDotPanel, "Reset size", 163, -307, 110, function()
         if InCombatLockdown() then return end
         Profile().multiDotScale = 1
         Profile().multiDotWidth, Profile().multiDotHeight = 430, 548
         if WarlockHudMultiTarget then WarlockHudMultiTarget.Refresh() end
     end)
-    Text(multiDotPanel, "Transparency", 20, -295, "GameFontHighlight")
-    local alphaValue = Text(multiDotPanel, "100%", 400, -295, "GameFontHighlight")
+    Text(multiDotPanel, "Transparency", 20, -356, "GameFontHighlight")
+    local alphaValue = Text(multiDotPanel, "100%", 400, -356, "GameFontHighlight")
     local alphaSlider = CreateFrame("Slider", nil, multiDotPanel, "OptionsSliderTemplate")
     alphaSlider:SetSize(165, 17)
-    alphaSlider:SetPoint("TOPLEFT", multiDotPanel, "TOPLEFT", 203, -292)
+    alphaSlider:SetPoint("TOPLEFT", multiDotPanel, "TOPLEFT", 203, -353)
     alphaSlider:SetMinMaxValues(30, 100)
     alphaSlider:SetValueStep(5)
     alphaSlider:SetScript("OnValueChanged", function(_, value)
@@ -77,16 +81,20 @@ function WarlockHudOptionsMultiTarget.Build(context)
     refreshers[#refreshers + 1] = function()
         alphaSlider:SetValue(math.floor(((Profile().multiDotAlpha or 1) * 100) / 5 + 0.5) * 5)
     end
-    Text(multiDotPanel, "Toggle and adjust outside combat. Drag the title to move or the lower-right grip to resize; scroll when needed.",
-        20, -338, "GameFontHighlightSmall")
-    Text(multiDotPanel, "A nameplate token can be reused; its old label is cleared on removal.",
-        20, -369, "GameFontHighlightSmall")
-    Text(multiDotPanel, "Native aura slots show tracked effects. Brand follows Target DoTs settings.",
-        20, -394, "GameFontHighlightSmall")
-    Text(multiDotPanel, "Each row shows a portrait, name, health bar, and 20% health mark.",
-        20, -419, "GameFontHighlightSmall")
-    Text(multiDotPanel, "Damage: amber Corruption, violet Bane, teal Siphon, red Immolate.",
-        20, -469, "GameFontHighlightSmall")
-    Text(multiDotPanel, "Timer decimals follow the setting on Tracked Auras.",
-        20, -444, "GameFontHighlightSmall")
+
+    Text(multiDotPanel, "Controls & Limitations", 20, -399, "GameFontNormal")
+    Text(multiDotPanel,
+        "Move or resize outside combat. In combat, target through the world or standard controls.",
+        20, -422, "GameFontHighlightSmall")
+    Text(multiDotPanel,
+        "Available DoT timers are native. Last-seen rows may remain briefly; aura data can be protected.",
+        20, -445, "GameFontHighlightSmall")
+    Text(multiDotPanel,
+        "Brand follows Target DoTs. Rows show health and a 20% marker.",
+        20, -468, "GameFontHighlightSmall")
+    Text(multiDotPanel,
+        "Damage colors: Corruption amber, Bane violet, Siphon teal, Immolate red.",
+        20, -491, "GameFontHighlightSmall")
+    Text(multiDotPanel, "Timer decimals follow Tracked Auras.",
+        20, -514, "GameFontHighlightSmall")
 end

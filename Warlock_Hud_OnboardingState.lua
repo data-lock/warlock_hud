@@ -5,16 +5,18 @@ local onboarding = WarlockHudOnboarding
 
 function onboarding.Migrate(db)
     if type(db) ~= "table" then return false end
-    if type(db.onboarding) == "table" and db.onboarding.schemaVersion == 1 then
+    if type(db.onboarding) == "table"
+        and type(db.onboarding.schemaVersion) == "number"
+        and db.onboarding.schemaVersion >= 2 then
         return db.onboarding.completed ~= true
     end
-    if onboarding.freshAtLoad then
-        db.onboarding = { schemaVersion = 1, completed = false }
-        return true
-    end
-    -- An old account has no onboarding field. Never infer that it is new.
-    db.onboarding = { schemaVersion = 1, completed = true }
-    return false
+    local existingInstall = not onboarding.freshAtLoad
+    db.onboarding = {
+        schemaVersion = 2,
+        completed = false,
+        requireConfirm = existingInstall,
+    }
+    return true
 end
 
 local function CopyProfile(source)

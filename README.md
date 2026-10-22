@@ -1,12 +1,12 @@
 # Warlock HUD
 
-A configurable HUD for Warlocks in **World of Warcraft: Forever beta**. It keeps
+A configurable HUD for Warlocks in **World of Warcraft: Forever**. It keeps
 target effects, cooldowns, buffs, procs, and Soul Shards visible without opening
 other panels.
 
 ## First-run setup
 
-A new installation opens a short welcome window after login when combat is over.
+Getting Started opens after login when combat is over while setup is incomplete.
 Choose **Basic** for the essential combat HUD with secondary windows initially
 hidden, or **Advanced** for Multi-Target DoTs, predicted damage, personal threat,
 and the summon request queue. Both choices are presets for the current profile:
@@ -14,21 +14,25 @@ every feature remains available in Settings. The completion screen points to
 `/whud`, Edit Mode, and profile sharing.
 
 Reopen the choices from **General → Getting Started → Reopen Welcome & Setup**.
-Applying a preset again asks for confirmation and changes only its listed
-settings in the current profile. Other profiles and saved positions remain in
-place. Existing beta installations keep their settings and do not receive the
-automatic welcome or an automatic preset.
+On an existing profile or a manual reopen, applying a preset asks for
+confirmation and changes only its listed settings in the current profile.
+Other profiles and saved positions remain in place. Existing installations
+see Getting Started on their first 1.0.0 launch. Showing or closing the window
+does not change their settings; the welcome returns on a later login until
+setup is completed.
+
+![Getting Started setup choices](screenshots/whud_options_0_welcome.png)
 
 ### HUD in play
 
-![Warlock HUD with its live icon rows](screenshots/warlock_hud_overview.png)
+![Warlock HUD with its live icon rows](screenshots/whud-ui-1-slim.jpg)
 
 The live HUD shows only slots that are enabled and relevant to your character.
 Target DoTs and buffs use their normal in-game colors and countdowns.
 
 ### All bars demo
 
-![Warlock HUD with all bars shown in demo mode](screenshots/warlock_hud_overview_demo.png)
+![Warlock HUD with all bars shown in demo mode](screenshots/whud-ui-2-demo-all.jpg)
 
 The demo labels **Consumes**, **Buffs**, **Procs**, **Target DoTs**, **Utility**, and **Soul
 Shards** at their on-screen positions. It shows inactive and disabled icon slots
@@ -41,8 +45,8 @@ so you can see the full layout before choosing what to track. Open it from
 | --- | --- |
 | Main row | Corruption, Immolate, Siphon Life, Banes, Curses, Drain spells, and Demonic Brand when talented. Banes, Curses, and Drains each share an icon slot. Active target effects show a native countdown, with optional decimals near expiration. Brand also shows Blizzard's native application count. |
 | Multi-Target DoTs (optional) | Up to 16 view-only rows drawn from prebuilt nameplate, player-target, party-target, and raid-target tokens, plus grey last-seen rows for mobs with readable GUIDs and active estimated DoTs. Live rows have native slots for your tracked effects, including Demonic Brand when talented and enabled in Target DoTs settings. Brand shows a native countdown and application count. Mobs with confirmed group threat, a target in your group, a party/raid target, or a safely verified player effect appear; matching tokens are deduplicated by identity. Each live row has the mob's portrait, any assigned raid marker, a separate name and health bar with current HP and percent, a 20% health tick when the execute marker is enabled, and a slim gold accent when selected. Target through world nameplates or Tab. New standalone profiles enable the window by default; the first-run Basic preset hides it, and an existing off choice stays off. Use `/whud mtd` to open or close it outside combat. Outside combat, drag the title to move the window or the lower-right grip to resize it while keeping the top-left corner fixed. Shorter windows keep fixed row spacing and show a scroll bar when needed. Toggling, moving, and resizing are unavailable during combat. Settings can hide it outside combat and adjust transparency. |
-| Cooldown row | Healthstone, Soulstone, Fear, Conflagrate when learned, available racial abilities, and an optional flashing Sense Demons reminder when no demon or active Demonic Sacrifice is confirmed. Conflagrate shows its cooldown and pulses while your Immolate is active on the current target. |
-| Consumes row | Well Fed plus optional Flask of Supreme Power, Arcane Elixir family, Shadow Power, Greater Firepower, Mageblood family, and Wizard Oil or Firestone tracking. Aura effects use native countdowns. Firestone shows remaining time when the client exposes it; Wizard Oil has no HUD timer. Each category has its own tracking and missing-reminder choice. The row has its own position, icon size, visibility, and color settings. |
+| Cooldown row | Healthstone, Soulstone, Fear, Banish, Conflagrate when learned, available racial abilities, and an optional flashing Sense Demons reminder when no demon or active Demonic Sacrifice is confirmed. Conflagrate shows its cooldown and pulses while your Immolate is active on the current target. |
+| Consumes row | Well Fed plus optional Flask of Supreme Power, Arcane Elixir family, Shadow Power, Greater Firepower, Mageblood family, and Wizard Oil or Firestone tracking. Aura effects use native countdowns. Firestone shows remaining time when the client exposes it; Wizard Oil has no HUD timer. The missing-enchant reminder is labeled Weapon Buff. Each category has its own tracking and reminder choice. The row has its own position, icon size, visibility, and color settings. |
 | Buff row | Demon Armor / Demon Skin, Fortitude, Mark or Gift of the Wild, Intellect, Spirit, Kings, Salvation, Thorns, Demonic Sacrifice, Soul Link, and Unending Breath. Active buffs show colored icons with native countdowns when available; a setting reverses active and missing colors. Soul Link reminds when known, a demon is present, and its buff is confirmed missing. Thorns follows the same Druid-aware missing-buff reminder and active-buff formatting as Mark of the Wild. Unending Breath appears at the right end only while active. Visible buffs pack left to right. |
 | Proc row | Power Infusion and Nightfall appear only while active, with a pulsing glow and countdown. |
 | Soul Shards | A separate icon near the Player Frame shows your shard count. It flashes red at or below the low warning threshold (default 4), or yellow at or above the high threshold (default 18) or when shards occupy regular bags alongside an equipped Soul Bag. Each click destroys one shard from a regular bag, stopping when those bags are clear or your configured minimum remains. The default minimum is 8. Shards cannot be destroyed in combat. |
@@ -108,7 +112,7 @@ can reset addon settings to defaults after confirmation.
 - DoT damage is approximate. It can differ because of critical hits, resists,
   damage modifiers, early aura removal, and Immolate's separate direct hit.
 
-### Known Forever beta issue: Soul Link below level 30
+### Known Forever issue: Soul Link below level 30
 
 Extra talent points can make Soul Link castable before level 30. At level 25,
 casting it consumed mana but applied no detectable buff to the player or pet,
@@ -207,13 +211,23 @@ The screenshots below show the available controls. **About** shows the loaded
 addon and interface versions.
 
 <details>
+<summary>About</summary>
+
+Quick links open Getting Started, Edit Mode help, the full HUD demo, and Share
+Settings. Your Setup summarizes the current profile and feature state.
+
+![About page and quick actions](screenshots/whud_options_1_main.png)
+
+</details>
+
+<details>
 <summary>General</summary>
 
 Enable Warlock HUD for this character, reopen Getting Started, and start the
 temporary on-screen demo of every HUD bar. Choose whether each HUD row shows
 out of combat.
 
-![General settings](screenshots/whud_options_1_general.png)
+![General settings](screenshots/whud_options_2_general.png)
 
 </details>
 
@@ -223,7 +237,7 @@ out of combat.
 Set Target DoT and Utility icon sizes, reorder or hide slots, and toggle the
 nameplate 20% marker.
 
-![Rows and Layout settings](screenshots/whud_options_0_main.png)
+![Rows and Layout settings](screenshots/whud_options_3_rows_and_layouts.png)
 
 </details>
 
@@ -259,8 +273,6 @@ When your assigned Soulstone target is confirmed missing the buff and your
 Soulstone is ready, its Utility icon pulses red. An unknown aura state does not
 trigger the reminder.
 
-![Tracked Auras settings](screenshots/whud_options_2_tracked_auras.png)
-
 ### Group Assignments
 
 ![Curse and Bane assignments](screenshots/assigned_main_screen.png)
@@ -277,12 +289,33 @@ target changes, or the assignment changes.
 </details>
 
 <details>
+<summary>Multi-Target DoTs</summary>
+
+Enable the view-only tracker, set its out-of-combat visibility, choose threat
+and damage indicators, and adjust its size, position, and transparency.
+
+![Multi-Target DoTs settings](screenshots/whud_options_4_multi_target_dots.png)
+
+</details>
+
+<details>
+<summary>Consumes</summary>
+
+Choose tracked consumables, reorder and hide their icons, set missing reminders,
+and adjust active and missing colors. Weapon enchant reminders use the general
+**Weapon Buff** label.
+
+![Consumes settings](screenshots/whud_options_5_consumes.png)
+
+</details>
+
+<details>
 <summary>Buffs</summary>
 
 Size, reorder, or hide buff slots. Choose active versus missing icon colors.
 The page also explains group buff reminders.
 
-![Buff settings](screenshots/whud_options_3_buffs.png)
+![Buff settings](screenshots/whud_options_6_buffs.png)
 
 </details>
 
@@ -292,39 +325,17 @@ The page also explains group buff reminders.
 Size and arrange the Power Infusion and Nightfall slots. These icons appear in
 the live HUD only while their procs are active.
 
-![Proc settings](screenshots/whud_options_4_procs.png)
+![Proc settings](screenshots/whud_options_7_procs.png)
 
 </details>
 
 <details>
-<summary>Profiles</summary>
+<summary>Soul Shards</summary>
 
-Choose, copy, rename, or delete profiles, and optionally assign them to dual
-specs. The summary shows enabled slots and row sizes.
+Set the shard icon size, deletion reserve, red and yellow warning thresholds,
+and optional Soul Bag overflow warning.
 
-![Profile settings](screenshots/whud_options_5_profiles.png)
-
-</details>
-
-<details>
-<summary>Notifications</summary>
-
-Choose summon, Soulstone, and completed Healthstone trade notices and where
-eligible notices are sent.
-
-![Notification settings](screenshots/whud_options_6_notifications.png)
-
-</details>
-
-<details>
-<summary>Summons</summary>
-
-Set a comma-separated list of request keywords and accepted chat sources,
-enable nearby removal, and open or preview the summon queue window.
-
-![Summons settings](screenshots/whud_options_7_summons.png)
-
-![Summon request window](screenshots/whud_summon_window.png)
+![Soul Shards settings](screenshots/whud_options_8_soul_shards.png)
 
 </details>
 
@@ -339,12 +350,55 @@ for group members, and the supplied-player list.
 </details>
 
 <details>
-<summary>Soul Shards</summary>
+<summary>Summons</summary>
 
-Set the shard icon size, deletion reserve, red and yellow warning thresholds,
-and optional Soul Bag overflow warning.
+Set request keywords and accepted chat sources, enable nearby removal, and
+open or preview the summon queue window.
 
-![Soul Shards settings](screenshots/whud_options_8_soul_shards.png)
+![Summons settings](screenshots/whud_options_10_summons.png)
+
+![Summon request window](screenshots/whud_summon_window.png)
+
+</details>
+
+<details>
+<summary>Notifications</summary>
+
+Choose summon, Soulstone, and completed Healthstone trade notices and where
+eligible notices are sent.
+
+![Notification settings](screenshots/whud_options_11_notifications.png)
+
+</details>
+
+<details>
+<summary>Fonts</summary>
+
+Choose the built-in HUD and Multi-Target fonts, then adjust text and timer
+sizes.
+
+![Fonts settings](screenshots/whud_options_12_fonts.png)
+
+</details>
+
+<details>
+<summary>Profiles</summary>
+
+Choose, copy, rename, or delete profiles, and optionally assign them to dual
+specs. The summary shows enabled slots and row sizes. **Copy** starts with the
+current profile name and adds a duplicate suffix when clicked.
+
+![Profile settings](screenshots/whud_options_13_profiles.png)
+
+</details>
+
+<details>
+<summary>Share Settings</summary>
+
+Select profile sections to export, preview an import, and confirm which
+sections to merge or which profiles to add.
+
+![Share Settings page](screenshots/whud_options_14_share_settings.png)
 
 </details>
 

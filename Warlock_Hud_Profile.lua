@@ -35,7 +35,22 @@ local function NormalizeTargetAndUtility(mainOrder, utilityOrder, mainDefaults, 
     Append(mainOrder, main)
     Append(utilityOrder, utility)
     Append(mainDefaults, main)
-    Append(utilityDefaults, utility)
+    for index, key in ipairs(utilityDefaults) do
+        if not seen[key] then
+            local insertAt = #utility + 1
+            for nextIndex = index + 1, #utilityDefaults do
+                for position, existing in ipairs(utility) do
+                    if existing == utilityDefaults[nextIndex] then
+                        insertAt = position
+                        break
+                    end
+                end
+                if insertAt <= #utility then break end
+            end
+            table.insert(utility, insertAt, key)
+            seen[key] = true
+        end
+    end
     return main, utility
 end
 
@@ -144,6 +159,23 @@ function WarlockHudProfile.CreateNormalizer(keys)
             math.floor(tonumber(p.shardHighThreshold) or 18)))
         p.mainOrder, p.cooldownOrder = NormalizeTargetAndUtility(
             p.mainOrder, p.cooldownOrder, effects.MainKeys, keys.cooldown)
+        if not p.banishUtilityOrderV1 then
+            local banishIndex, fearIndex
+            for index, key in ipairs(p.cooldownOrder) do
+                if key == "banish" then banishIndex = index end
+                if key == "fear" then fearIndex = index end
+            end
+            if banishIndex and fearIndex and banishIndex ~= fearIndex + 1 then
+                table.remove(p.cooldownOrder, banishIndex)
+                for index, key in ipairs(p.cooldownOrder) do
+                    if key == "fear" then
+                        table.insert(p.cooldownOrder, index + 1, "banish")
+                        break
+                    end
+                end
+            end
+            p.banishUtilityOrderV1 = true
+        end
         p.buffOrder = NormalizeOrder(p.buffOrder, keys.buff)
         p.consumeOrder = NormalizeOrder(p.consumeOrder, keys.consume)
         if type(p.showOutOfCombat) ~= "table" then p.showOutOfCombat = {} end

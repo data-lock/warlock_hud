@@ -326,10 +326,12 @@ local function VisibleOrder(order)
         local hasSpell = true
         if key == "demonicbrand" then
             hasSpell = KnowsDemonicBrand() and Enabled("Demonic Brand")
-        elseif key == "fear" or MAIN_KEY_SET[key] then
+        elseif key == "fear" or key == "banish" or MAIN_KEY_SET[key] then
             hasSpell = false
             for _, spell in ipairs(SPELLS) do
-                local spellKey = spell.group == 2 and "fear" or MAIN_KEYS[spell.slot]
+                local spellKey = spell.group == 2
+                    and (spell.name == "Banish" and "banish" or "fear")
+                    or MAIN_KEYS[spell.slot]
                 if spellKey == key and Enabled(spell.name) and KnownSpell(spell) then
                     hasSpell = true
                     break
@@ -1423,18 +1425,21 @@ local function BuildTargetAuraSlots(auraContainer, utilityAuras, mainOrder, util
     local baseCreated = {}
     for _, spell in ipairs(SPELLS) do
         local includeSpellIDs = {}
+        local currentSpellID = C_Spell and C_Spell.GetSpellIDForSpellIdentifier
+            and C_Spell.GetSpellIDForSpellIdentifier(spell.name)
+        local available = Enabled(spell.name)
+            and (spell.talentEffect and KnowsDemonicBrand() or KnownSpell(spell))
         for _, spellID in ipairs(spell.ids) do
             includeSpellIDs[spellID] = true
         end
-        local currentSpellID = C_Spell and C_Spell.GetSpellIDForSpellIdentifier
-            and C_Spell.GetSpellIDForSpellIdentifier(spell.name)
         if currentSpellID and not spell.talentEffect then
             includeSpellIDs[currentSpellID] = true
         end
-        local groupKey = spell.group == 2 and "fear" or MAIN_KEYS[spell.slot]
+        local groupKey = spell.group == 2
+            and (spell.name == "Banish" and "banish" or "fear")
+            or MAIN_KEYS[spell.slot]
         local anchor, x, iconSize, inMain = RowPlacement(groupKey, mainOrder, utilityOrder)
-        if x and Enabled(spell.name)
-            and (spell.talentEffect and KnowsDemonicBrand() or KnownSpell(spell))
+        if x and available
             and next(includeSpellIDs) then
             if not baseCreated[groupKey] then
                 local assigned = WarlockHudAssignmentSpell
@@ -1442,7 +1447,7 @@ local function BuildTargetAuraSlots(auraContainer, utilityAuras, mainOrder, util
                 local preview = assigned or spell
                 local selected = profile.defaultDotIcons
                     and profile.defaultDotIcons[groupKey]
-                if selected and not assigned then
+                if selected and not assigned and spell.group ~= 2 then
                     for _, candidate in ipairs(SPELLS) do
                         if candidate.slot == spell.slot
                             and candidate.name == selected then
@@ -2157,6 +2162,44 @@ local function Rebuild()
     return false
 end
 
+local function GetDemoIconTexture(key)
+    local function Texture(icon)
+        return icon and icon.GetTexture and icon:GetTexture()
+    end
+
+    -- Prefer the texture on the real HUD widget. Some icons are selected at
+    -- build time (talents and assignments), while weapon coating can change
+    -- its texture without rebuilding the HUD.
+    if key == "wizardoil" then
+        return Texture(consumeState.oilIcon)
+    elseif key == "wellfed" then
+        return Texture(wellFedGlow and wellFedGlow.pulseIcon)
+    elseif key == "armor" then
+        return Texture(armorGlow and armorGlow.pulseIcon)
+    elseif key == "soulshards" then
+        return Texture(shardState.icon)
+    elseif key == "conflagrate" or key == "demon" then
+        local entry = groupBuffIcons[key == "demon" and "demonReminder" or key]
+        return Texture(entry and entry.icon)
+    end
+
+    for _, entry in ipairs(icons) do
+        if entry.key == key then return Texture(entry.icon) end
+    end
+    for _, entry in ipairs(itemIcons) do
+        local itemKey = entry.stone and entry.stone.name == "Healthstone"
+            and "healthstone" or entry.stone and "soulstone"
+        if itemKey == key then return Texture(entry.icon) end
+    end
+    for _, entry in ipairs(groupBuffIcons) do
+        if entry.buff and entry.buff.key == key and entry.icon then
+            return Texture(entry.icon)
+        end
+    end
+    local consumeGlow = consumeState.glows and consumeState.glows[key]
+    if consumeGlow then return Texture(consumeGlow.pulseIcon) end
+end
+
 function WarlockHudRefreshAssignmentIcons()
     if not profile then return end
     for _, entry in ipairs(icons) do
@@ -2591,6 +2634,7 @@ WarlockHudAPI = {
             shards = shardState.anchor,
         }
     end,
+    GetDemoIconTexture = GetDemoIconTexture,
     GetDB = function() return WarlockHudDB end,
     NormalizeProfile = NormalizeProfile,
     GetSoulShardCount = GetSoulShardCount,

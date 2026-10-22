@@ -8,16 +8,14 @@ function WarlockHudOptionsRows.BuildLayout(context)
     local ResetRowValues, ResetPageButton = context.ResetRowValues, context.ResetPageButton
     local DefaultProfile, Profile, MarkChanged = context.DefaultProfile, context.Profile, context.MarkChanged
 
-    Text(layout, "Move rows in Edit Mode. Drag icons within or between Target DoTs and Utility.",
+    Text(layout, "Drag gold grips to reorder or move icons. Use checks to show or hide them; move rows in Edit Mode.",
         20, -50, "GameFontHighlightSmall")
-    Text(layout, "Changes save immediately; the HUD rebuilds when combat and aura state allow it.",
-        20, -67, "GameFontHighlightSmall")
-    Text(layout, "Icon sizes", 20, -82, "GameFontNormal")
-    SizeSlider(layout, "Target DoT icon size", "mainSize", 16, 96, 20, -105)
-    SizeSlider(layout, "Utility icon size", "cooldownSize", 16, 64, 20, -135)
-    LinkedTargetUtilityRows(layout)
-    Text(layout, "Nameplates", 20, -455, "GameFontNormal")
-    Check(layout, 20, -475, "20% marker on attackable nameplates",
+    Text(layout, "Icon sizes", 20, -72, "GameFontNormal")
+    SizeSlider(layout, "Target DoT icon size", "mainSize", 16, 96, 20, -95)
+    SizeSlider(layout, "Utility icon size", "cooldownSize", 16, 64, 20, -125)
+    local nameplatesY = LinkedTargetUtilityRows(layout)
+    Text(layout, "Nameplates", 20, nameplatesY, "GameFontNormal")
+    Check(layout, 20, nameplatesY - 20, "20% marker on attackable nameplates",
         function() return Profile().enabled.executeMarker ~= false end,
         function(value)
             if value then
@@ -32,7 +30,7 @@ function WarlockHudOptionsRows.BuildLayout(context)
         ResetRowValues("cooldownSize", "cooldownOrder", api.CooldownKeys, defaults)
         Profile().enabled.executeMarker = nil
         MarkChanged()
-    end)
+    end, 470, nameplatesY - 48)
 end
 
 function WarlockHudOptionsRows.BuildConsumes(context)
@@ -53,8 +51,25 @@ function WarlockHudOptionsRows.BuildConsumes(context)
         end, "The row stays movable in Edit Mode when disabled.", false)
     Text(consumeLayout, "Icon size", 20, -125, "GameFontNormal")
     SizeSlider(consumeLayout, "Consume icon size", "consumeSize", 16, 64, 20, -150)
+    local trackedFrame = CreateFrame("Frame", nil, consumeLayout)
+    trackedFrame:SetSize(504, 68)
+    trackedFrame:SetPoint("TOPLEFT", consumeLayout, "TOPLEFT", 50, -221)
+    local trackedBackground = trackedFrame:CreateTexture(nil, "BACKGROUND")
+    trackedBackground:SetAllPoints(trackedFrame)
+    trackedBackground:SetColorTexture(0.025, 0.035, 0.05, 0.55)
+    for _, edgeInfo in ipairs({
+        { "TOP", trackedFrame:GetWidth(), 1 },
+        { "BOTTOM", trackedFrame:GetWidth(), 1 },
+        { "LEFT", 1, trackedFrame:GetHeight() },
+        { "RIGHT", 1, trackedFrame:GetHeight() },
+    }) do
+        local edge = trackedFrame:CreateTexture(nil, "BORDER")
+        edge:SetSize(edgeInfo[2], edgeInfo[3])
+        edge:SetPoint(edgeInfo[1], trackedFrame, edgeInfo[1])
+        edge:SetColorTexture(0.7, 0.54, 0.2, 0.75)
+    end
     OrderSection(consumeLayout, "Tracked consumables", "consumeOrder", api.ConsumeKeys,
-        -205, nil, function()
+        -185, 7, function()
             local defaults = DefaultProfile()
             ResetRowValues("consumeSize", "consumeOrder", api.ConsumeKeys, defaults)
             for _, key in ipairs(api.ConsumeKeys) do
@@ -63,25 +78,19 @@ function WarlockHudOptionsRows.BuildConsumes(context)
             Profile().consumeReminders = defaults.consumeReminders
             Profile().colorActiveConsumes = nil
             MarkChanged()
-        end)
-    Text(consumeLayout, "Checked icons are tracked. Only checked reminders flash when confirmed missing.",
-        20, -325, "GameFontHighlightSmall")
-    Check(consumeLayout, 20, -345, "Color when active; grey when missing",
-        function() return Profile().colorActiveConsumes ~= false end,
-        function(value)
-            if value then Profile().colorActiveConsumes = nil
-            else Profile().colorActiveConsumes = false end
-        end, "On (default): color when active, grey when missing. Off reverses the colors.")
-    Text(consumeLayout, "Remind when missing", 20, -380, "GameFontNormal")
+        end, 127, 68, true, true, 50, 50)
+    Text(consumeLayout, "Reminder settings", 20, -300, "GameFontNormal")
+    Text(consumeLayout, "Only enabled trackers can show a missing reminder.",
+        20, -320, "GameFontHighlightSmall")
     for index, option in ipairs({
         { "wellfed", "Well Fed" }, { "flask", "Flask" },
         { "spelldamage", "Spell Damage" }, { "shadow", "Shadow Damage" },
-        { "fire", "Fire Damage" }, { "wizardoil", "Wizard Oil / Firestone" },
+        { "fire", "Fire Damage" }, { "wizardoil", "Weapon Buff" },
         { "manaregen", "Mana Regeneration" },
     }) do
         local key, label = option[1], option[2]
-        Check(consumeLayout, 20 + ((index - 1) % 2) * 340,
-            -399 - math.floor((index - 1) / 2) * 27, label,
+        Check(consumeLayout, 20 + ((index - 1) % 3) * 225,
+            -343 - math.floor((index - 1) / 3) * 26, "Remind: " .. label,
             function() return Profile().consumeReminders[key] == true end,
             function(value)
                 Profile().consumeReminders[key] = value
@@ -89,6 +98,13 @@ function WarlockHudOptionsRows.BuildConsumes(context)
             end, "Only flashes when this tracker is enabled and the effect is confirmed missing.",
             false)
     end
+    Text(consumeLayout, "Appearance", 20, -431, "GameFontNormal")
+    Check(consumeLayout, 125, -427, "Color when active; grey when missing",
+        function() return Profile().colorActiveConsumes ~= false end,
+        function(value)
+            if value then Profile().colorActiveConsumes = nil
+            else Profile().colorActiveConsumes = false end
+        end, "On (default): color when active, grey when missing. Off reverses the colors.")
     ResetPageButton(consumeLayout, "Consumes", function()
         local defaults = DefaultProfile()
         ResetRowValues("consumeSize", "consumeOrder", api.ConsumeKeys, defaults)
@@ -100,7 +116,7 @@ function WarlockHudOptionsRows.BuildConsumes(context)
         Profile().showOutOfCombat.consumes = nil
         Profile().colorActiveConsumes = nil
         MarkChanged()
-    end)
+    end, 450, -425)
     return consumeLayout
 end
 
@@ -116,11 +132,28 @@ function WarlockHudOptionsRows.BuildBuffs(context)
         20, -50, "GameFontHighlightSmall")
     Text(buffLayout, "Icon size", 20, -85, "GameFontNormal")
     SizeSlider(buffLayout, "Buff icon size", "buffSize", 16, 64, 20, -110)
-    OrderSection(buffLayout, "Player buffs", "buffOrder", api.BuffKeys, -165, 7, function()
+    local trackedFrame = CreateFrame("Frame", nil, buffLayout)
+    trackedFrame:SetSize(504, 136)
+    trackedFrame:SetPoint("TOPLEFT", buffLayout, "TOPLEFT", 50, -201)
+    local trackedBackground = trackedFrame:CreateTexture(nil, "BACKGROUND")
+    trackedBackground:SetAllPoints(trackedFrame)
+    trackedBackground:SetColorTexture(0.025, 0.035, 0.05, 0.55)
+    for _, edgeInfo in ipairs({
+        { "TOP", trackedFrame:GetWidth(), 1 },
+        { "BOTTOM", trackedFrame:GetWidth(), 1 },
+        { "LEFT", 1, trackedFrame:GetHeight() },
+        { "RIGHT", 1, trackedFrame:GetHeight() },
+    }) do
+        local edge = trackedFrame:CreateTexture(nil, "BORDER")
+        edge:SetSize(edgeInfo[2], edgeInfo[3])
+        edge:SetPoint(edgeInfo[1], trackedFrame, edgeInfo[1])
+        edge:SetColorTexture(0.7, 0.54, 0.2, 0.75)
+    end
+    OrderSection(buffLayout, "Player buffs", "buffOrder", api.BuffKeys, -165, 8, function()
         ResetRowValues("buffSize", "buffOrder", api.BuffKeys, DefaultProfile())
         Profile().colorActiveBuffs = nil
         MarkChanged()
-    end)
+    end, 102, 68, true, true, 50, 50)
     Text(buffLayout, "Buff reminders", 20, -400, "GameFontNormal")
     Text(buffLayout, "Fortitude, Wild, Intellect, Spirit, Kings, and Salvation include group versions.",
         20, -427, "GameFontHighlightSmall")
@@ -150,10 +183,27 @@ function WarlockHudOptionsRows.BuildProcs(context)
         20, -50, "GameFontHighlightSmall")
     Text(procLayout, "Icon size", 20, -85, "GameFontNormal")
     SizeSlider(procLayout, "Proc icon size", "procSize", 20, 64, 20, -110)
-    OrderSection(procLayout, "Active procs", "procOrder", api.ProcKeys, -165, nil, function()
+    local trackedFrame = CreateFrame("Frame", nil, procLayout)
+    trackedFrame:SetSize(504, 68)
+    trackedFrame:SetPoint("TOPLEFT", procLayout, "TOPLEFT", 50, -201)
+    local trackedBackground = trackedFrame:CreateTexture(nil, "BACKGROUND")
+    trackedBackground:SetAllPoints(trackedFrame)
+    trackedBackground:SetColorTexture(0.025, 0.035, 0.05, 0.55)
+    for _, edgeInfo in ipairs({
+        { "TOP", trackedFrame:GetWidth(), 1 },
+        { "BOTTOM", trackedFrame:GetWidth(), 1 },
+        { "LEFT", 1, trackedFrame:GetHeight() },
+        { "RIGHT", 1, trackedFrame:GetHeight() },
+    }) do
+        local edge = trackedFrame:CreateTexture(nil, "BORDER")
+        edge:SetSize(edgeInfo[2], edgeInfo[3])
+        edge:SetPoint(edgeInfo[1], trackedFrame, edgeInfo[1])
+        edge:SetColorTexture(0.7, 0.54, 0.2, 0.75)
+    end
+    OrderSection(procLayout, "Active procs", "procOrder", api.ProcKeys, -165, 7, function()
         ResetRowValues("procSize", "procOrder", api.ProcKeys, DefaultProfile())
         MarkChanged()
-    end)
+    end, 127, 68, true, true, 50, 50)
     Text(procLayout, "Power Infusion and Nightfall (Shadow Trance) pulse with a countdown.",
         20, -310, "GameFontHighlightSmall")
     return procLayout

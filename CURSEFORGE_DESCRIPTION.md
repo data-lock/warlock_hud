@@ -10,7 +10,17 @@ Built with Forever's modern addon restrictions in mind, Warlock HUD uses Blizzar
 
 **Whether you're leveling, running dungeons, or coordinating a raid, Warlock HUD helps you spend less time managing your UI and more time playing your Warlock.**
 
-![Warlock HUD in play](https://raw.githubusercontent.com/data-lock/warlock_hud/main/screenshots/warlock_hud_overview.png)
+![Warlock HUD in play](https://raw.githubusercontent.com/data-lock/warlock_hud/main/screenshots/whud-ui-1-slim.jpg)
+
+## Getting Started
+
+The welcome window helps you choose a **Basic** setup for the core combat HUD
+or an **Advanced** setup that also enables Multi-Target DoTs and summon tools.
+Every feature remains available in Settings. Existing installations see the
+welcome window on their first 1.0.0 launch. Showing or closing it does not
+change an existing profile; applying a preset requires confirmation.
+
+![Getting Started setup choices](https://raw.githubusercontent.com/data-lock/warlock_hud/main/screenshots/whud_options_0_welcome.png)
 
 ## Combat HUD
 
@@ -67,13 +77,19 @@ Keep track of your personal buffs, group buffs, and important procs:
 Missing-buff reminders flash when the addon can confirm a buff is absent. Active procs appear with countdowns and a flashing glow.
 
 The HUD avoids treating protected or unreadable combat information as proof that a buff is missing.
-Each Consumes category can be selected independently, with optional missing reminders. Aura effects use native countdowns. Wizard Oil reads temporary weapon-enchant state without showing an estimated timer.
+Each Consumes category can be selected independently, with optional missing reminders. Aura effects use native countdowns. Firestone shows its remaining time when the client exposes it; Wizard Oil has no HUD timer. The missing-enchant reminder is labeled **Weapon Buff**.
 
 Share selected profile settings with a copyable code. Preview and choose which sections to import before confirming. A separate reset button restores addon defaults after confirmation.
 
+![Share Settings](https://raw.githubusercontent.com/data-lock/warlock_hud/main/screenshots/whud_options_14_share_settings.png)
+
+Profiles can be copied, renamed, and assigned to talent specializations. Clicking **Copy** adds a duplicate suffix to the current profile name by default.
+
+![Profile settings](https://raw.githubusercontent.com/data-lock/warlock_hud/main/screenshots/whud_options_13_profiles.png)
+
 ### Utility & Combat Awareness
 
-*   Healthstone, Soulstone, and Fear tracking
+*   Healthstone, Soulstone, Fear, and Banish tracking
 *   Conflagrate cooldown when learned; its icon pulses while your Immolate is active on the current target
 *   Available racial abilities
 *   Drain Life, Drain Soul, and Drain Mana channel tick markers
@@ -82,7 +98,18 @@ Share selected profile settings with a copyable code. Preview and choose which s
 *   Spell-rank warnings when casting outdated ranks
 *   Shift+Right-click wand attack on a living enemy when a wand is equipped
 
-![All HUD bars in demo mode](https://raw.githubusercontent.com/data-lock/warlock_hud/main/screenshots/warlock_hud_overview_demo.png)
+![All HUD bars in demo mode](https://raw.githubusercontent.com/data-lock/warlock_hud/main/screenshots/whud-ui-2-demo-all.jpg)
+
+### Settings preview
+
+Reorder compact icon tiles with their gold grips, show or hide individual
+trackers, and configure reminders from dedicated pages.
+
+![Rows and Layout settings](https://raw.githubusercontent.com/data-lock/warlock_hud/main/screenshots/whud_options_3_rows_and_layouts.png)
+
+![Consumes settings](https://raw.githubusercontent.com/data-lock/warlock_hud/main/screenshots/whud_options_5_consumes.png)
+
+![Buffs settings](https://raw.githubusercontent.com/data-lock/warlock_hud/main/screenshots/whud_options_6_buffs.png)
 
 ## Raid Assignments — PallyPower for Warlocks!
 
@@ -227,13 +254,13 @@ Settings save immediately, although changes to protected UI elements may need to
 
 ## Built for WoW Forever
 
-Warlock HUD is developed specifically for **World of Warcraft: Forever beta** and its modern addon API restrictions.
+Warlock HUD is developed specifically for **World of Warcraft: Forever** and its modern addon API restrictions.
 
 It prioritizes Blizzard-native aura and cooldown rendering wherever supported.
 
 Because Forever protects some combat information, certain effects may be displayed without the addon being allowed to inspect their underlying values. Warlock HUD avoids unreliable guesses where possible.
 
-**Compatibility:** World of Warcraft: Forever beta — interface `16001` / game version `1.60.1`.
+**Compatibility:** World of Warcraft: Forever — interface `16001` / game version `1.60.1`.
 
 ## Feedback & Development
 
@@ -263,6 +290,7 @@ Special thanks to:
 *   **stevegeoffmcgeofforington** — for recommending Demonic Brand tracking.
 *   **GamaKatsu** — for recommending a DoT kill tracker on the Multi-Target DoTs window.
 *   **Drugnanov** — for recommending a toggle for milliseconds or seconds.
+*   **devast** — for recommending able to change buff/CD category, UX fixes, and font sizing.
 
 And thanks to everyone downloading, testing, and sharing feedback. It means a lot to see other Warlocks getting use out of something I originally built for myself!
 
@@ -270,6 +298,6 @@ And thanks to everyone downloading, testing, and sharing feedback. It means a lo
 
 The lethal DoT indicator was inspired by [DoesItDie](https://www.curseforge.com/wow/addons/does-it-die), which demonstrated a clever way to work with WoW Forever's protected health values using native StatusBar rendering.
 
-Warlock HUD uses the same underlying technique but implements it differently, using an inverted health threshold and a pulsing portrait indicator.
+Warlock HUD uses the same underlying technique and implements it differently, using an inverted health threshold and a pulsing portrait indicator.
 
 Thanks to the DoesItDie developer for sharing their work and helping make these kinds of solutions possible for the addon community.

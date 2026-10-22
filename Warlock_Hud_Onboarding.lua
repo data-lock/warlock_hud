@@ -76,7 +76,7 @@ local function Apply(preset, expectedProfile)
         print("|cffff7a7aWarlock HUD:|r Preset could not be applied.")
         return
     end
-    db.onboarding = { schemaVersion = 1, completed = true,
+    db.onboarding = { schemaVersion = 2, completed = true,
         selectedPreset = preset }
     pendingVisual = not visualReady
     if WarlockHudMultiTarget then WarlockHudMultiTarget.Refresh() end
@@ -88,7 +88,8 @@ local function ConfirmOrApply()
     local db = api.GetDB()
     if not db or not db.activeProfile then return end
     local profileName = db.activeProfile
-    if manualFlow or (db.onboarding and db.onboarding.completed) then
+    if manualFlow or (db.onboarding and
+        (db.onboarding.completed or db.onboarding.requireConfirm)) then
         StaticPopup_Show("WARLOCKHUD_APPLY_ONBOARDING_PRESET",
             selected == "basic" and "Basic" or "Advanced",
             profileName, { preset = selected, profile = profileName })

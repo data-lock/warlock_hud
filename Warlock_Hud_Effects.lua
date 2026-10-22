@@ -20,6 +20,7 @@ WarlockHudEffects = {
         -- from the talent spell and the pet's consumption effect.
         { name = "Demonic Brand", slot = 7, ids = { 1293696 }, talentEffect = true },
         { name = "Fear", group = 2, slot = 3, ids = { 5782, 6213, 6215 } },
+        { name = "Banish", group = 2, slot = 3, ids = { 710, 18647 } },
     },
     MainKeys = { "corruption", "bane", "curse", "drain", "immolate", "siphonlife", "demonicbrand" },
     DefaultSlots = { bane = 2, curse = 3, drain = 4 },

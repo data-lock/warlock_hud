@@ -1,5 +1,24 @@
 # Changelog
 
+## v1.0.0
+
+- Publish the first stable release for World of Warcraft: Forever.
+- Add the Getting Started welcome window with Basic and Advanced setup
+  presets. Existing installations see it on their first 1.0.0 launch; applying
+  a preset to an existing profile requires confirmation.
+- Refresh the settings experience with dedicated pages, compact draggable icon
+  tiles, per-icon visibility, clearer reset controls, and current screenshots.
+- Add separate Fear and Banish tracking and group control assignments, a
+  configurable HUD and Multi-Target font, and easier profile copying.
+- Complete the profile sharing, dual-spec selection, summon queue, raid
+  assignment, spell-rank warning, demon grimoire, shard, and consumable tools
+  in one release.
+- Keep Blizzard-native aura and cooldown rendering and guarded protected-UI
+  rebuilds.
+
+See `releases/v1.0.0.md` for the feature overview, update behavior, and known
+limitations.
+
 ## v0.44.0
 
 - Add an optional personal threat indicator to live Multi-Target rows: green LOW,
