@@ -342,7 +342,7 @@ function WarlockHudMultiTargetIdentity.New(getRows, spells, rowLimit, plain,
             end
         end
         local threat, dot = GroupThreat(unit), OwnDot(unit)
-        local targetingGroup = TargetsGroup(unit)
+        local targetingGroup = TargetsGroup(unit) or TargetedByGroup(unit)
         local guid = ReadableGuid(unit)
         local tracked = guid ~= "unavailable" and hasTrackedDamage
             and hasTrackedDamage(guid)
