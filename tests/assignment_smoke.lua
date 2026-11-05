@@ -254,6 +254,8 @@ function methods:SetScript(name, handler) self[name] = handler end
 function methods:CreateFontString() return region() end
 function methods:CreateTexture() return region() end
 function methods:GetCenter() return 500, 400 end
+function methods:GetFrameLevel() return rawget(self, "frameLevel") or 1 end
+function methods:SetFrameLevel(level) self.frameLevel = level end
 function methods:GetChecked() return true end
 setmetatable(methods, { __index = function() return function() end end })
 UIParent = region()
@@ -273,14 +275,15 @@ function UIDropDownMenu_SetText() end
 function UIDropDownMenu_EnableDropDown() end
 function UIDropDownMenu_DisableDropDown() end
 C_Spell.GetSpellTexture = function(id) return id and "icon:" .. id end
+assert(loadfile("Warlock_Hud_WindowChrome.lua"))()
 
 WarlockHudOpenAssignments()
 local window = ui.WarlockHudAssignmentsWindow
-assert(window and profile.assignmentWindowCompact and window.width == 517
-    and window.height == 135 + 3 * 38,
+assert(window and profile.assignmentWindowCompact and window.width == 340
+    and window.height == 171,
     "a saved personal assignment should open in compact mode")
 window.toggle:OnClick()
-assert(window.width == 995 and window.height == 420,
+assert(window.width == 930 and window.height == 420,
     "expanding should open the full window at its minimum size")
 window:SetSize(1080, 500)
 window.resizeGrip:OnMouseUp()
@@ -288,12 +291,12 @@ assert(profile.assignmentWindowWidth == 1080 and profile.assignmentWindowHeight 
     "resized full dimensions should save")
 window:Hide()
 WarlockHudOpenAssignments()
-assert(profile.assignmentWindowCompact and window.width == 517,
+assert(profile.assignmentWindowCompact and window.width == 340,
     "reopening with a personal assignment should return to compact mode")
 window.toggle:OnClick()
 window.toggle:OnClick()
-assert(profile.assignmentWindowCompact and window.width == 517
-    and window.height == 135 + 3 * 38,
+assert(profile.assignmentWindowCompact and window.width == 340
+    and window.height == 171,
     "compact window should fit three Warlocks")
 assert(window.resizeGrip.shown == false and window.compactHeaders[1].shown,
     "compact view should show headers and hide the resize grip")
@@ -304,7 +307,7 @@ assert(not profile.assignmentWindowCompact and window.width == 1080
 window.toggle:OnClick()
 units.party2 = nil
 event("GROUP_ROSTER_UPDATE")
-assert(window.height == 135 + 2 * 38,
+assert(window.height == 102 + 2 * 23,
     "compact height should follow the current Warlock roster")
 
 WarlockHudSetAssignment("Player-1", "curse", "ELEMENTS")
@@ -319,8 +322,11 @@ receive("V1|SET|Player-1|soulstone|Player-9|Player-2", "Rigged Elections")
 assert(WarlockHudSoulstoneAssignmentTarget() == "Player-2",
     "Soulstone target outside the roster is rejected")
 local beforeClear = #sent
+assert(not window.clearAssignments.shown,
+    "Clear Assignments should be hidden in compact mode")
+window.toggle:OnClick()
 assert(window.clearAssignments.shown,
-    "Clear Assignments should remain available in compact mode")
+    "Clear Assignments should be available in expanded mode")
 window.clearAssignments:OnClick()
 assert(WarlockHudAssignmentSpell("curse") == nil
     and WarlockHudAssignmentSpell("bane") == nil

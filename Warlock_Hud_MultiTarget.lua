@@ -68,7 +68,7 @@ local function NameWidth(displayWidth, profile)
     if not profile or profile.multiDotShowIcons ~= false then
         iconWidth = DOT_SLOTS * (ICON_SIZE + 3) + 3
     end
-    return math.max(42, displayWidth - 45 - iconWidth)
+    return math.max(42, displayWidth - 45 - iconWidth - 6)
 end
 
 local function DotIconStart(displayWidth, profile)
@@ -138,7 +138,7 @@ end
 Position = function()
     if not root then return end
     local p = Profile()
-    local scale = root:GetScale()
+    local scale = root:GetScale() or 1
     root:ClearAllPoints()
     if type(p.multiDotX) == "number" and type(p.multiDotY) == "number" then
         root:SetPoint("CENTER", UIParent, "BOTTOMLEFT",
