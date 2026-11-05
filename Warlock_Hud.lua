@@ -2536,7 +2536,8 @@ SlashCmdList.WARLOCKHUD = function(message)
         WarlockHudOpenSummonQueueDemo()
         return
     end
-    if message == "summonqueue" and WarlockHudOpenSummonQueue then
+    if (message == "summonqueue" or message == "summons")
+        and WarlockHudOpenSummonQueue then
         WarlockHudOpenSummonQueue()
         return
     end

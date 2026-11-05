@@ -40,7 +40,8 @@ end
 
 local function CreateButton()
     if button or not Minimap then return end
-    button = CreateFrame("Button", nil, Minimap)
+    -- OneForAll's button collector only considers named minimap buttons.
+    button = CreateFrame("Button", "WarlockHudMinimapButton", Minimap)
     button:SetSize(31, 31)
     button:SetFrameStrata("MEDIUM")
     button:SetFrameLevel(Minimap:GetFrameLevel() + 5)

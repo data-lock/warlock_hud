@@ -334,24 +334,26 @@ function WarlockHudMultiTargetIdentity.New(getRows, spells, rowLimit, plain,
                 ClearIdentity(row); return
             end
         end
-        if source == "nameplate" or source == "target" then
-            local threat, dot = GroupThreat(unit), OwnDot(unit)
-            local targetingGroup = TargetsGroup(unit)
-            local groupTarget = TargetedByGroup(unit)
-            local tracked = false
-            if source == "target" and hasTrackedDamage then
-                local guid = ReadableGuid(unit)
-                tracked = guid ~= "unavailable" and hasTrackedDamage(guid)
-            end
-            -- A row confirmed before combat stays visible while DoT evidence is
-            -- restricted. New rows still need confirmation, and safe reads recheck it.
-            local retainConfirmed = row.eligible and InCombatLockdown() and dot == nil
-            if threat ~= true and dot ~= true and not targetingGroup
-                and not groupTarget and not tracked
-                and not retainConfirmed then
+        if (source == "party" or source == "raid") and UnitAffectingCombat then
+            local combatOK, inCombat = pcall(UnitAffectingCombat, unit)
+            if combatOK and Plain(inCombat) and not inCombat then
                 ClearIdentity(row)
                 return
             end
+        end
+        local threat, dot = GroupThreat(unit), OwnDot(unit)
+        local targetingGroup = TargetsGroup(unit)
+        local guid = ReadableGuid(unit)
+        local tracked = guid ~= "unavailable" and hasTrackedDamage
+            and hasTrackedDamage(guid)
+        -- A row confirmed before combat stays visible while DoT evidence is
+        -- restricted. New rows from every token need engagement confirmation;
+        -- a group member merely selecting an idle mob is not enough.
+        local retainConfirmed = row.eligible and InCombatLockdown() and dot == nil
+        if threat ~= true and dot ~= true and not targetingGroup and not tracked
+            and not retainConfirmed then
+            ClearIdentity(row)
+            return
         end
         row.present = true
         row.eligible = true
@@ -404,8 +406,12 @@ function WarlockHudMultiTargetIdentity.New(getRows, spells, rowLimit, plain,
         -- Match the HUD's full/half icon alpha for an attackable target while
         -- leaving row text and health legible. The parent also carries native aura
         -- buttons, so Blizzard continues to control their visibility and timers.
-        row.icons:SetAlpha((row.relevant == true
-            or (targetOK and Plain(selected) and selected == true)) and 1 or 0.5)
+        local profile = WarlockHudAPI and WarlockHudAPI.GetProfile
+            and WarlockHudAPI.GetProfile()
+        local showIcons = not profile or profile.multiDotShowIcons ~= false
+        row.icons:SetAlpha(showIcons and (row.relevant == true
+            or (targetOK and Plain(selected) and selected == true)) and 1
+            or showIcons and 0.5 or 0)
     end
 
     local function NormalizeRows()

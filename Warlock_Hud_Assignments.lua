@@ -39,7 +39,10 @@ local registered = false
 local lastCastGUID, lastCastID
 local window, rowsFrame, compactRowsFrame, statusText, enableCheck, warningCheck
 local rows, compactRows = {}, {}
-local FULL_WIDTH, COMPACT_WIDTH = 995, 517
+local FULL_WIDTH, PREVIOUS_FULL_WIDTH, COMPACT_WIDTH = 930, 995, 340
+local MAX_FULL_WIDTH, MAX_FULL_HEIGHT = 1200, 900
+local NAME_COLUMN_WIDTH, ASSIGNMENT_COLUMN_WIDTH = 150, 180
+local COLUMN_X = { curse = 165, bane = 345, control = 525, soulstone = 705 }
 local events = CreateFrame("Frame")
 
 local function SyncTrace(message)
@@ -676,20 +679,24 @@ local function NewRow(index)
     row:SetPoint("TOPLEFT", 0, -(index - 1) * 59)
     row.name = row:CreateFontString(nil, "ARTWORK", "GameFontHighlight")
     row.name:SetPoint("TOPLEFT", 4, -4)
-    row.name:SetWidth(185)
+    row.name:SetWidth(NAME_COLUMN_WIDTH)
     row.name:SetJustifyH("LEFT")
     row.highlight = row:CreateTexture(nil, "BACKGROUND")
     row.highlight:SetAllPoints(row)
     row.highlight:SetColorTexture(0.35, 0.3, 0.55, 0.25)
-    row.by = row:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
-    row.by:SetPoint("TOPLEFT", 4, -31)
-    row.by:SetWidth(FULL_WIDTH - 60)
-    row.by:SetHeight(24)
-    row.by:SetJustifyH("LEFT")
-    row.curse = NewDrop(row, "curse", 205)
-    row.bane = NewDrop(row, "bane", 385)
-    row.control = NewDrop(row, "control", 565)
-    row.soulstone = NewDrop(row, "soulstone", 745)
+    row.by = {}
+    for category, x in pairs(COLUMN_X) do
+        local author = row:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
+        author:SetPoint("TOPLEFT", row, "TOPLEFT", x + 20, -31)
+        author:SetWidth(ASSIGNMENT_COLUMN_WIDTH)
+        author:SetHeight(20)
+        author:SetJustifyH("LEFT")
+        row.by[category] = author
+    end
+    row.curse = NewDrop(row, "curse", COLUMN_X.curse)
+    row.bane = NewDrop(row, "bane", COLUMN_X.bane)
+    row.control = NewDrop(row, "control", COLUMN_X.control)
+    row.soulstone = NewDrop(row, "soulstone", COLUMN_X.soulstone)
     rows[index] = row
     return row
 end
@@ -706,23 +713,24 @@ end
 
 local function NewCompactRow(index)
     local row = CreateFrame("Frame", nil, compactRowsFrame)
-    row:SetSize(COMPACT_WIDTH - 40, 36)
-    row:SetPoint("TOPLEFT", 0, -(index - 1) * 38)
-    row.name = row:CreateFontString(nil, "ARTWORK", "GameFontHighlight")
+    row:SetSize(COMPACT_WIDTH - 20, 22)
+    row:SetPoint("TOPLEFT", 0, -(index - 1) * 23)
+    row.name = row:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
     row.name:SetPoint("LEFT", 4, 0)
-    row.name:SetWidth(238)
+    row.name:SetWidth(92)
     row.name:SetJustifyH("LEFT")
     row.icons = {}
-    for category, x in pairs({ curse = 257, bane = 309,
-        control = 361, soulstone = 413 }) do
+    local compactCenters = { curse = 136, bane = 184,
+        control = 232, soulstone = 286 }
+    for category, centerX in pairs(compactCenters) do
         local iconCategory = category
         local icon = CreateFrame("Frame", nil, row)
-        icon:SetSize(30, 30)
-        icon:SetPoint("CENTER", row, "LEFT", x + 15, 0)
+        icon:SetSize(18, 18)
+        icon:SetPoint("CENTER", row, "LEFT", centerX - 10, 0)
         icon.texture = icon:CreateTexture(nil, "ARTWORK")
         icon.texture:SetAllPoints(icon)
         icon.texture:SetTexCoord(0.08, 0.92, 0.08, 0.92)
-        icon.text = icon:CreateFontString(nil, "ARTWORK", "GameFontHighlight")
+        icon.text = icon:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
         icon.text:SetPoint("CENTER")
         icon.text:SetText("—")
         icon:EnableMouse(true)
@@ -759,23 +767,44 @@ local function ApplyWindowMode()
     rowsFrame:SetShown(not compact)
     compactRowsFrame:SetShown(compact)
     window.fullControls:SetShown(not compact)
+    window.clearAssignments:SetShown(not compact)
+    window.title:ClearAllPoints()
+    if compact then
+        window.title:SetWidth(COMPACT_WIDTH - 48)
+        window.title:SetJustifyH("LEFT")
+        window.title:SetPoint("TOPLEFT", window, "TOPLEFT", 9, -8)
+    else
+        window.title:SetWidth(math.max(1, window:GetWidth() - 48))
+        window.title:SetJustifyH("LEFT")
+        window.title:SetPoint("TOPLEFT", window, "TOPLEFT", 9, -8)
+    end
     window.toggle:SetText(compact and "Expand" or "Compact")
     window.toggle:ClearAllPoints()
     window.clearAssignments:ClearAllPoints()
     if compact then
-        window.toggle:SetPoint("TOPRIGHT", -20, -35)
-        window.clearAssignments:SetPoint("BOTTOMLEFT", 20, 10)
-        window:SetSize(COMPACT_WIDTH, 135 + #roster * 38)
+        window.toggle:SetPoint("BOTTOMRIGHT", -12, 10)
+        window:SetSize(COMPACT_WIDTH, 102 + #roster * 23)
     else
         window.toggle:SetPoint("BOTTOMRIGHT", -30, 10)
         window.clearAssignments:SetPoint("BOTTOMLEFT", 335, 10)
-        local width = math.max(FULL_WIDTH, profile.assignmentWindowWidth or FULL_WIDTH)
+        local savedWidth = profile.assignmentWindowWidth
+        if savedWidth and math.abs(savedWidth - PREVIOUS_FULL_WIDTH) < 1 then
+            savedWidth = nil
+        end
+        local width = math.max(FULL_WIDTH, savedWidth or FULL_WIDTH)
+        width = math.min(MAX_FULL_WIDTH, width)
+        local maxHeight = math.max(MAX_FULL_HEIGHT, MinimumFullHeight())
         local height = math.max(MinimumFullHeight(),
             profile.assignmentWindowHeight or MinimumFullHeight())
+        height = math.min(maxHeight, height)
         if window.SetResizeBounds then
-            window:SetResizeBounds(FULL_WIDTH, MinimumFullHeight())
+            window:SetResizeBounds(FULL_WIDTH, MinimumFullHeight(),
+                MAX_FULL_WIDTH, maxHeight)
         elseif window.SetMinResize then
             window:SetMinResize(FULL_WIDTH, MinimumFullHeight())
+            if window.SetMaxResize then
+                window:SetMaxResize(MAX_FULL_WIDTH, maxHeight)
+            end
         end
         window:SetSize(width, height)
         window.resizeGrip:Show()
@@ -813,10 +842,10 @@ local function RefreshWindow()
         local stoneDetails = state.soulstone and state.soulstone ~= "NONE"
             and (stoneText .. " (by " .. DisplayName(stoneBy and stoneBy.name) .. ")")
             or "Unassigned"
-        row.by:SetText("Curse by: " .. DisplayName(curseBy and curseBy.name)
-            .. "     Bane by: " .. DisplayName(baneBy and baneBy.name)
-            .. "     Fear/Banish by: " .. DisplayName(controlBy and controlBy.name)
-            .. "     Soulstone: " .. stoneDetails)
+        row.by.curse:SetText("By: " .. (curseBy and DisplayName(curseBy.name) or "-"))
+        row.by.bane:SetText("By: " .. (baneBy and DisplayName(baneBy.name) or "-"))
+        row.by.control:SetText("By: " .. (controlBy and DisplayName(controlBy.name) or "-"))
+        row.by.soulstone:SetText(stoneDetails)
         for _, category in ipairs({ "curse", "bane", "control", "soulstone" }) do
             local drop = row[category]
             drop.key = state[category] or "NONE"
@@ -863,7 +892,7 @@ local function RefreshWindow()
         row:Show()
     end
     for index = #roster + 1, #compactRows do compactRows[index]:Hide() end
-    compactRowsFrame:SetHeight(math.max(36, #roster * 38))
+    compactRowsFrame:SetHeight(math.max(22, #roster * 23))
     ApplyWindowMode()
     window:Layout(window:GetWidth())
     for _, header in ipairs(window.compactHeaders) do
@@ -906,9 +935,40 @@ function WarlockHudAnnounceAssignments()
     end
 end
 
+local function PlaceColumnHeader(header, category)
+    header:ClearAllPoints()
+    header:SetPoint("TOPLEFT", 40 + COLUMN_X[category], -100)
+    header:SetWidth(145)
+    header:SetJustifyH("LEFT")
+end
+
+local function PositionAssignmentWindow()
+    if not window then return end
+    local profile = Profile()
+    local scale = math.max(0.5, math.min(1,
+        tonumber(profile.assignmentWindowScale) or 1))
+    window:SetScale(scale)
+    window:ClearAllPoints()
+    if type(profile.assignmentWindowX) == "number"
+        and type(profile.assignmentWindowY) == "number" then
+        window:SetPoint("CENTER", UIParent, "BOTTOMLEFT",
+            profile.assignmentWindowX * UIParent:GetWidth() / scale,
+            profile.assignmentWindowY * UIParent:GetHeight() / scale)
+    else
+        window:SetPoint("CENTER", UIParent, "CENTER", 0, 0)
+    end
+end
+
+function WarlockHudSetAssignmentWindowScale(value)
+    local profile = Profile()
+    if not profile then return end
+    profile.assignmentWindowScale = math.max(0.5, math.min(1,
+        tonumber(value) or 1))
+    PositionAssignmentWindow()
+end
+
 local function CreateWindow()
-    window = CreateFrame("Frame", "WarlockHudAssignmentsWindow", UIParent,
-        "BasicFrameTemplateWithInset")
+    window = CreateFrame("Frame", "WarlockHudAssignmentsWindow", UIParent)
     window:SetSize(FULL_WIDTH, 420)
     window:SetFrameStrata("DIALOG")
     window:SetMovable(true)
@@ -916,23 +976,16 @@ local function CreateWindow()
     window:SetClampedToScreen(true)
     window:EnableMouse(true)
     window:RegisterForDrag("LeftButton")
-    window.TitleText:SetText("Warlock HUD - Assignments")
-    if window.CloseButton then
-        window.CloseButton:SetScript("OnClick", function() window:Hide() end)
-    end
+    window.title = WarlockHudWindowChrome.Apply(window, "Assignments", function()
+        Profile().assignmentWindowOpen = false
+        window:Hide()
+    end, 0.5)
     window.fullControls = {}
     function window.fullControls:SetShown(shown)
         for _, control in ipairs(self) do control:SetShown(shown) end
     end
     local profile = Profile()
-    if type(profile.assignmentWindowX) == "number"
-        and type(profile.assignmentWindowY) == "number" then
-        window:SetPoint("CENTER", UIParent, "BOTTOMLEFT",
-            profile.assignmentWindowX * UIParent:GetWidth(),
-            profile.assignmentWindowY * UIParent:GetHeight())
-    else
-        window:SetPoint("CENTER")
-    end
+    PositionAssignmentWindow()
     window:SetScript("OnDragStart", function(self) self:StartMoving() end)
     window:SetScript("OnDragStop", function(self)
         self:StopMovingOrSizing()
@@ -940,6 +993,7 @@ local function CreateWindow()
         if x and y then
             Profile().assignmentWindowX = x / UIParent:GetWidth()
             Profile().assignmentWindowY = y / UIParent:GetHeight()
+            PositionAssignmentWindow()
         end
     end)
     local subtitle = window:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
@@ -975,44 +1029,44 @@ local function CreateWindow()
     nameHeader:SetText("Warlock")
     window.fullControls[#window.fullControls + 1] = nameHeader
     local curseHeader = window:CreateFontString(nil, "ARTWORK", "GameFontNormal")
-    curseHeader:SetPoint("TOPLEFT", 243, -100)
     curseHeader:SetText("Curse")
+    PlaceColumnHeader(curseHeader, "curse")
     window.fullControls[#window.fullControls + 1] = curseHeader
     local baneHeader = window:CreateFontString(nil, "ARTWORK", "GameFontNormal")
-    baneHeader:SetPoint("TOPLEFT", 423, -100)
     baneHeader:SetText("Bane")
+    PlaceColumnHeader(baneHeader, "bane")
     window.fullControls[#window.fullControls + 1] = baneHeader
     local controlHeader = window:CreateFontString(nil, "ARTWORK", "GameFontNormal")
-    controlHeader:SetPoint("TOPLEFT", 603, -100)
     controlHeader:SetText("Fear / Banish")
+    PlaceColumnHeader(controlHeader, "control")
     window.fullControls[#window.fullControls + 1] = controlHeader
     local stoneHeader = window:CreateFontString(nil, "ARTWORK", "GameFontNormal")
-    stoneHeader:SetPoint("TOPLEFT", 783, -100)
     stoneHeader:SetText("Soulstone target")
+    PlaceColumnHeader(stoneHeader, "soulstone")
     window.fullControls[#window.fullControls + 1] = stoneHeader
     rowsFrame = CreateFrame("Frame", nil, window)
     rowsFrame:SetPoint("TOPLEFT", 20, -120)
     rowsFrame:SetSize(FULL_WIDTH - 45, 58)
     compactRowsFrame = CreateFrame("Frame", nil, window)
-    compactRowsFrame:SetPoint("TOPLEFT", 20, -93)
-    compactRowsFrame:SetSize(COMPACT_WIDTH - 40, 36)
-    local compactName = window:CreateFontString(nil, "ARTWORK", "GameFontNormal")
-    compactName:SetPoint("TOPLEFT", 24, -74)
+    compactRowsFrame:SetPoint("TOPLEFT", 10, -45)
+    compactRowsFrame:SetSize(COMPACT_WIDTH - 20, 22)
+    local compactName = window:CreateFontString(nil, "ARTWORK", "GameFontNormalSmall")
+    compactName:SetPoint("TOPLEFT", 16, -34)
     compactName:SetText("Name")
-    local compactCurse = window:CreateFontString(nil, "ARTWORK", "GameFontNormal")
-    compactCurse:SetPoint("TOPLEFT", 278, -74)
+    local compactCurse = window:CreateFontString(nil, "ARTWORK", "GameFontNormalSmall")
+    compactCurse:SetPoint("CENTER", window, "TOPLEFT", 136, -39)
     compactCurse:SetText("Curse")
-    local compactBane = window:CreateFontString(nil, "ARTWORK", "GameFontNormal")
-    compactBane:SetPoint("TOPLEFT", 330, -74)
+    local compactBane = window:CreateFontString(nil, "ARTWORK", "GameFontNormalSmall")
+    compactBane:SetPoint("CENTER", window, "TOPLEFT", 184, -39)
     compactBane:SetText("Bane")
-    local compactControl = window:CreateFontString(nil, "ARTWORK", "GameFontNormal")
-    compactControl:SetPoint("TOPLEFT", 370, -74)
-    compactControl:SetWidth(52)
+    local compactControl = window:CreateFontString(nil, "ARTWORK", "GameFontNormalSmall")
+    compactControl:SetPoint("CENTER", window, "TOPLEFT", 232, -39)
+    compactControl:SetWidth(50)
     compactControl:SetJustifyH("CENTER")
     compactControl:SetText("Control")
-    local compactStone = window:CreateFontString(nil, "ARTWORK", "GameFontNormal")
-    compactStone:SetPoint("TOPLEFT", 434, -74)
-    compactStone:SetText("Soulstone")
+    local compactStone = window:CreateFontString(nil, "ARTWORK", "GameFontNormalSmall")
+    compactStone:SetPoint("CENTER", window, "TOPLEFT", 286, -39)
+    compactStone:SetText("S. Stone")
     window.compactHeaders = { compactName, compactCurse, compactBane,
         compactControl, compactStone }
     statusText = window:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
@@ -1021,17 +1075,21 @@ local function CreateWindow()
     statusText:SetHeight(24)
     statusText:SetJustifyH("LEFT")
     window.fullControls[#window.fullControls + 1] = statusText
-    window.announce = NewButton(window, "Announce to Party", 180, 20, -390,
+    window.announce = NewButton(window, "Announce to Party", 160, 20, -390,
         WarlockHudAnnounceAssignments)
+    window.announce:SetHeight(20)
+    WarlockHudWindowChrome.StyleButton(window.announce)
     window.announce:ClearAllPoints()
     window.announce:SetPoint("BOTTOMLEFT", 20, 10)
     window.fullControls[#window.fullControls + 1] = window.announce
     local sync = NewButton(window, "Request Sync", 115, 210, -390, RequestSnapshot)
+    WarlockHudWindowChrome.StyleButton(sync)
     sync:ClearAllPoints()
     sync:SetPoint("BOTTOMLEFT", 210, 10)
     window.fullControls[#window.fullControls + 1] = sync
     window.clearAssignments = NewButton(window, "Clear Assignments", 150, 335,
         -390, ClearAllAssignments)
+    WarlockHudWindowChrome.StyleButton(window.clearAssignments)
     window.clearAssignments:ClearAllPoints()
     window.clearAssignments:SetPoint("BOTTOMLEFT", 335, 10)
     window.clearAssignments:SetScript("OnEnter", function(self)
@@ -1044,6 +1102,8 @@ local function CreateWindow()
         Profile().assignmentWindowCompact = not (Profile().assignmentWindowCompact == true)
         window:Refresh()
     end)
+    window.toggle:SetSize(72, 19)
+    WarlockHudWindowChrome.StyleButton(window.toggle)
     window.toggle:ClearAllPoints()
     window.toggle:SetPoint("BOTTOMRIGHT", -30, 10)
     window.resizeGrip = CreateFrame("Button", nil, window)
@@ -1066,25 +1126,20 @@ local function CreateWindow()
         statusText:SetWidth(contentWidth)
         for _, row in ipairs(rows) do
             row:SetWidth(contentWidth)
-            row.name:SetWidth(contentWidth - 765)
-            row.by:SetWidth(contentWidth - 15)
+            row.name:SetWidth(NAME_COLUMN_WIDTH)
             row.curse:ClearAllPoints()
-            row.curse:SetPoint("TOPRIGHT", row, "TOPRIGHT", -565, 3)
+            row.curse:SetPoint("TOPLEFT", row, "TOPLEFT", COLUMN_X.curse, 3)
             row.bane:ClearAllPoints()
-            row.bane:SetPoint("TOPRIGHT", row, "TOPRIGHT", -385, 3)
+            row.bane:SetPoint("TOPLEFT", row, "TOPLEFT", COLUMN_X.bane, 3)
             row.control:ClearAllPoints()
-            row.control:SetPoint("TOPRIGHT", row, "TOPRIGHT", -205, 3)
+            row.control:SetPoint("TOPLEFT", row, "TOPLEFT", COLUMN_X.control, 3)
             row.soulstone:ClearAllPoints()
-            row.soulstone:SetPoint("TOPRIGHT", row, "TOPRIGHT", -25, 3)
+            row.soulstone:SetPoint("TOPLEFT", row, "TOPLEFT", COLUMN_X.soulstone, 3)
         end
-        curseHeader:ClearAllPoints()
-        curseHeader:SetPoint("TOPRIGHT", self, "TOPRIGHT", -704, -100)
-        baneHeader:ClearAllPoints()
-        baneHeader:SetPoint("TOPRIGHT", self, "TOPRIGHT", -524, -100)
-        controlHeader:ClearAllPoints()
-        controlHeader:SetPoint("TOPRIGHT", self, "TOPRIGHT", -314, -100)
-        stoneHeader:ClearAllPoints()
-        stoneHeader:SetPoint("TOPRIGHT", self, "TOPRIGHT", -135, -100)
+        PlaceColumnHeader(curseHeader, "curse")
+        PlaceColumnHeader(baneHeader, "bane")
+        PlaceColumnHeader(controlHeader, "control")
+        PlaceColumnHeader(stoneHeader, "soulstone")
     end
     window:SetScript("OnSizeChanged", function(self, width) self:Layout(width) end)
     window.Refresh = RefreshWindow
@@ -1104,6 +1159,7 @@ function WarlockHudOpenAssignments()
     end
     if not window then CreateWindow() end
     window:Refresh()
+    Profile().assignmentWindowOpen = true
     window:Show()
 end
 
@@ -1131,6 +1187,9 @@ events:SetScript("OnEvent", function(_, event, ...)
         end
         Changed()
         RequestSnapshot()
+        if Profile() and Profile().assignmentWindowOpen then
+            WarlockHudOpenAssignments()
+        end
     elseif event == "GROUP_ROSTER_UPDATE" or event == "PLAYER_ENTERING_WORLD" then
         SyncTrace("event " .. event)
         local disbanded = RefreshRoster()

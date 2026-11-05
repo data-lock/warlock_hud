@@ -21,10 +21,10 @@ for i = 1, 4 do SOURCE_UNITS[#SOURCE_UNITS + 1] = "party" .. i .. "target" end
 for i = 1, 40 do SOURCE_UNITS[#SOURCE_UNITS + 1] = "raid" .. i .. "target" end
 local LIVE_UNITS = #SOURCE_UNITS
 for i = 1, ROWS do SOURCE_UNITS[#SOURCE_UNITS + 1] = "ghost" .. i end
-local ICON_SIZE = 24
-local ROW_HEIGHT = 29
+local ICON_SIZE = 20
+local ROW_HEIGHT = 43
 local PORTRAIT_SIZE = 26
-local BASE_WIDTH, BASE_HEIGHT = 430, 548
+local BASE_WIDTH, BASE_HEIGHT = 420, 420
 local COUNTDOWN_FONT = "WarlockHudMultiDotCountdownFont"
 local countdownFontReady = false
 local SPELLS = api.Spells
@@ -38,7 +38,10 @@ local function ClampScale(value)
 end
 
 local function ClampWidth(value)
-    local minimum = math.max(390, DOT_SLOTS * (ICON_SIZE + 3) + 305)
+    local profile = api.GetProfile()
+    local showIcons = not profile or profile.multiDotShowIcons ~= false
+    local iconWidth = showIcons and (DOT_SLOTS * (ICON_SIZE + 3) + 3) or 0
+    local minimum = math.max(260, 27 + 45 + 42 + iconWidth)
     return math.max(minimum, math.min(700, tonumber(value) or BASE_WIDTH))
 end
 
@@ -60,18 +63,45 @@ local function Profile()
     return api.GetProfile()
 end
 
+local function NameWidth(displayWidth, profile)
+    local iconWidth = 0
+    if not profile or profile.multiDotShowIcons ~= false then
+        iconWidth = DOT_SLOTS * (ICON_SIZE + 3) + 3
+    end
+    return math.max(42, displayWidth - 45 - iconWidth)
+end
+
+local function DotIconStart(displayWidth, profile)
+    return 45 + NameWidth(displayWidth, profile) + 3
+end
+
+local Position
+
+local function SetWindowScale(nextScale)
+    if not root or not Safe() then return end
+    nextScale = math.max(0.5, math.min(1, tonumber(nextScale) or 1))
+    if root:GetScale() == nextScale then return end
+    root:SetScale(nextScale)
+    Position()
+end
+
 local function ApplyAppearance()
     if not root then return false end
     local p = Profile()
     if not p then return false end
     root:SetAlpha(math.max(0.3, math.min(1, tonumber(p.multiDotAlpha) or 1)))
     if Safe() then
+        local nextScale = math.max(0.5, math.min(1,
+            tonumber(p.multiDotWindowScale) or 1))
+        SetWindowScale(nextScale)
         local showThreat = p.multiDotThreatIndicator ~= false
+        local showIcons = p.multiDotShowIcons ~= false
         for _, row in ipairs(rows) do
             row.threatLabel:SetShown(showThreat)
             row.threatDot:SetShown(showThreat)
-            row.name:SetWidth(math.max(42, row.display:GetWidth()
-                - (showThreat and 223 or 168)))
+            row.name:SetWidth(NameWidth(row.display:GetWidth(), p))
+            row.icons:SetAlpha(showIcons
+                and (row.source == "ghost" and row.present and 0.65 or 1) or 0)
         end
     end
     local wantsDriver = p.multiDotEnabled and p.multiDotHideOutOfCombat
@@ -105,19 +135,19 @@ local function ApplyAppearance()
     return ok
 end
 
-local function Position()
+Position = function()
     if not root then return end
     local p = Profile()
-    local width, height = root:GetSize()
+    local scale = root:GetScale()
     root:ClearAllPoints()
     if type(p.multiDotX) == "number" and type(p.multiDotY) == "number" then
-        root:SetPoint("TOPLEFT", UIParent, "BOTTOMLEFT",
-            p.multiDotX * UIParent:GetWidth() - width / 2,
-            p.multiDotY * UIParent:GetHeight() + height / 2)
+        root:SetPoint("CENTER", UIParent, "BOTTOMLEFT",
+            p.multiDotX * UIParent:GetWidth() / scale,
+            p.multiDotY * UIParent:GetHeight() / scale)
     else
-        root:SetPoint("TOPLEFT", UIParent, "BOTTOMLEFT",
-            UIParent:GetWidth() / 2 + 320 - width / 2,
-            UIParent:GetHeight() / 2 + height / 2)
+        root:SetPoint("CENTER", UIParent, "BOTTOMLEFT",
+            (UIParent:GetWidth() / 2 + 320) / scale,
+            UIParent:GetHeight() / 2 / scale)
     end
 end
 
@@ -211,7 +241,7 @@ local function UpdateGhostRows()
             if not textOK then
                 row.healthText:SetText("DoT " .. dotLabel .. " (last seen)")
             end
-            row.icons:SetAlpha(0.65)
+            row.icons:SetAlpha(Profile().multiDotShowIcons == false and 0 or 0.65)
             local estimates = damage.EstimatesForGuid(ghost.guid)
             local byKey = {
                 corruption = estimates["Corruption"] or 0,
@@ -258,9 +288,9 @@ local CompactRows = WarlockHudMultiTargetLayout.New(function() return rows end,
 local function ApplyLayout(width, height)
     root:SetSize(width, height)
     if mover then mover:SetWidth(width - 35) end
-    scrollFrame:SetWidth(width - 27)
+    scrollFrame:SetWidth(width - 16)
     scrollFrame:SetHeight(height - 57)
-    scrollContent:SetWidth(width - 27)
+    scrollContent:SetWidth(width - 20)
     scrollBar:SetHeight(height - 57)
     CompactRows(width, height)
 end
@@ -301,8 +331,10 @@ end
 
 local function PlaceDot(icon, display, index, size)
     icon:ClearAllPoints()
-    icon:SetPoint("LEFT", display, "RIGHT",
-        15 + (index - 1) * (size + 3), 0)
+    local profile = Profile()
+    local x = DotIconStart(display:GetWidth(), profile)
+        + (index - 1) * (size + 3)
+    icon:SetPoint("TOPLEFT", display, "TOPLEFT", x, -1)
 end
 
 local function ApplyDotOrder(profile)
@@ -389,9 +421,8 @@ local function Build()
         if newstate == "show" then window:Show() else window:Hide() end
     ]])
     Position()
-    local bg = root:CreateTexture(nil, "BACKGROUND")
-    bg:SetAllPoints(root)
-    bg:SetColorTexture(0.035, 0.035, 0.045, 0.88)
+    WarlockHudWindowChrome.SetBackground(root, 0.5)
+    WarlockHudWindowChrome.AddBorder(root)
     local title = root:CreateFontString(nil, "ARTWORK", "GameFontNormalSmall")
     WarlockHudFonts.Apply(title, p, "fontMultiTargetSize", 10, "multiTargetFontFace")
     title:SetPoint("TOPLEFT", root, "TOPLEFT", 9, -8)
@@ -421,21 +452,13 @@ local function Build()
             local current = Profile()
             current.multiDotX = x / UIParent:GetWidth()
             current.multiDotY = y / UIParent:GetHeight()
-            Position()
         end
     end)
-    local close = CreateFrame("Button", FrameName("WarlockHudMultiTargetClose"), root)
-    close:SetSize(27, 27)
-    close:SetPoint("TOPRIGHT", root, "TOPRIGHT", -3, -2)
-    close:SetFrameLevel(root:GetFrameLevel() + 5)
-    local closeText = close:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
-    closeText:SetAllPoints(close)
-    closeText:SetText("X")
-    close:SetScript("OnClick", function()
+    WarlockHudWindowChrome.CreateCloseButton(root, function()
         if InCombatLockdown() then return end
         Profile().multiDotEnabled = false
         ApplyAppearance()
-    end)
+    end, FrameName("WarlockHudMultiTargetClose"))
     local resize = CreateFrame("Button", FrameName("WarlockHudMultiTargetResize"), root)
     resize:SetSize(19, 19)
     resize:SetPoint("BOTTOMRIGHT", root, "BOTTOMRIGHT", -2, 2)
@@ -468,15 +491,16 @@ local function Build()
             resizing = false
             return
         end
+        ApplyDotOrder(Profile())
         local current = Profile()
         current.multiDotWidth, current.multiDotHeight = newWidth, newHeight
     end)
     resize:SetScript("OnDragStop", function() resizing = false end)
     scrollFrame = CreateFrame("ScrollFrame", FrameName("WarlockHudMultiTargetScroll"), root)
     scrollFrame:SetPoint("TOPLEFT", root, "TOPLEFT", 7, -50)
-    scrollFrame:SetSize(width - 27, height - 57)
+    scrollFrame:SetSize(width - 16, height - 57)
     scrollContent = CreateFrame("Frame", nil, scrollFrame)
-    scrollContent:SetSize(width - 27, ROWS * ROW_HEIGHT)
+    scrollContent:SetSize(width - 20, ROWS * ROW_HEIGHT)
     scrollFrame:SetScrollChild(scrollContent)
     scrollFrame:EnableMouseWheel(true)
     scrollBar = CreateFrame("Slider", FrameName("WarlockHudMultiTargetScrollBar"), root,
@@ -495,7 +519,7 @@ local function Build()
     scrollBar:Hide()
     for i, unit in ipairs(SOURCE_UNITS) do
         local display = CreateFrame("Frame", nil, scrollContent)
-        display:SetSize(width - (DOT_SLOTS * (size + 3) + 38), size + 5)
+        display:SetSize(width - 20, ROW_HEIGHT)
         display:SetPoint("TOPLEFT", scrollContent, "TOPLEFT", 0,
             -(i - 1) * ROW_HEIGHT)
         local background = display:CreateTexture(nil, "BACKGROUND")
@@ -522,9 +546,9 @@ local function Build()
         marker:SetTexture(RAID_ICONS)
         marker:Hide()
         local healthBar = CreateFrame("StatusBar", nil, display)
-        healthBar:SetPoint("BOTTOMLEFT", display, "BOTTOMLEFT", 44, 3)
-        healthBar:SetPoint("BOTTOMRIGHT", display, "BOTTOMRIGHT", 7, 3)
-        healthBar:SetHeight(11)
+        healthBar:SetPoint("BOTTOMLEFT", display, "BOTTOMLEFT", 44, 2)
+        healthBar:SetPoint("BOTTOMRIGHT", display, "BOTTOMRIGHT", 0, 2)
+        healthBar:SetHeight(8)
         healthBar:SetFrameLevel(display:GetFrameLevel())
         healthBar:SetStatusBarTexture("Interface\\TargetingFrame\\UI-StatusBar")
         healthBar:SetStatusBarColor(0.5, 0.15, 0.17, 0.9)
@@ -545,8 +569,8 @@ local function Build()
         local healthText = display:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
         WarlockHudFonts.Apply(healthText, p, "fontMultiTargetSize", 10,
             "multiTargetFontFace")
-        healthText:SetPoint("TOPRIGHT", healthBar, "TOPRIGHT", 0, 13)
-        healthText:SetSize(128, math.max(12, p.fontMultiTargetSize or 10))
+        healthText:SetPoint("TOPRIGHT", display, "TOPRIGHT", 0, -22)
+        healthText:SetSize(112, math.max(12, p.fontMultiTargetSize or 10))
         healthText:SetJustifyH("RIGHT")
         healthText:SetTextColor(0.96, 0.96, 0.94)
         healthText:SetShadowColor(0, 0, 0, 1)
@@ -560,7 +584,7 @@ local function Build()
             else
                 bar:SetPoint("TOPLEFT", healthBar, "TOPLEFT", 0, 0)
             end
-            bar:SetWidth(width - (DOT_SLOTS * (size + 3) + 75))
+            bar:SetWidth(width - 64)
             bar:SetHeight(4)
             bar:SetFrameLevel(healthBar:GetFrameLevel() + level)
             bar:SetStatusBarTexture("Interface\\TargetingFrame\\UI-StatusBar")
@@ -577,7 +601,7 @@ local function Build()
         -- status bars move their fill textures as health and estimates change;
         -- Lua never reads back their protected widths or positions.
         local healthEdge = executeLayer:CreateTexture(nil, "OVERLAY", nil, 1)
-        healthEdge:SetSize(2, 11)
+        healthEdge:SetSize(2, 8)
         healthEdge:SetPoint("CENTER", healthBar:GetStatusBarTexture(), "RIGHT", 0, 0)
         healthEdge:SetColorTexture(1, 1, 1, 1)
         local damageEdge = executeLayer:CreateTexture(nil, "OVERLAY", nil, 2)
@@ -590,7 +614,7 @@ local function Build()
         WarlockHudFonts.Apply(name, p, "fontMultiTargetSize", 10,
             "multiTargetFontFace")
         name:SetPoint("TOPLEFT", display, "TOPLEFT", 45, -2)
-        name:SetWidth(math.max(42, width - (DOT_SLOTS * (size + 3) + 261)))
+        name:SetWidth(NameWidth(display:GetWidth(), p))
         name:SetJustifyH("LEFT")
         name:SetTextColor(0.96, 0.96, 0.94)
         name:SetShadowColor(0, 0, 0, 1)
@@ -599,9 +623,9 @@ local function Build()
         local threatLabel = display:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
         WarlockHudFonts.Apply(threatLabel, p, "fontMultiTargetSize", 10,
             "multiTargetFontFace")
-        threatLabel:SetPoint("RIGHT", healthText, "LEFT", -4, 0)
+        threatLabel:SetPoint("TOPLEFT", name, "BOTTOMLEFT", 0, -2)
         threatLabel:SetWidth(38)
-        threatLabel:SetJustifyH("RIGHT")
+        threatLabel:SetJustifyH("LEFT")
         local threatDot = display:CreateTexture(nil, "OVERLAY")
         threatDot:SetPoint("RIGHT", threatLabel, "LEFT", -3, 0)
         threatDot:SetSize(8, 8)
@@ -622,7 +646,8 @@ local function Build()
                 "CustomAuraContainerTemplate")
         end
         auras:SetSize(math.max(1, DOT_SLOTS * (size + 3)), size)
-        auras:SetPoint("LEFT", display, "RIGHT", 14, 0)
+        auras:SetPoint("TOPLEFT", display, "TOPLEFT",
+            DotIconStart(display:GetWidth(), p), -1)
         local row = { unit = unit, source = source,
             display = display, icons = iconHolder, name = name,
             threatLabel = threatLabel, threatDot = threatDot,
@@ -635,6 +660,7 @@ local function Build()
             portraitCover = portraitCover, marker = marker,
             target = selection, auras = auras,
             dotVisuals = {} }
+        display.mtdRow = row
         function row:SetThreat(state)
             if self.threatState == state then return end
             self.threatState = state
@@ -695,6 +721,7 @@ local function Build()
     UpdateGhostRows()
     UpdateStatus()
     ApplyLayout(width, height)
+    ApplyDotOrder(p)
     damage.SetDebugEnabled(damageDebug)
     builtTimerMilliseconds = p.dotTimerMilliseconds ~= false
     builtFontFace, builtFontSize, builtTimerFontSize =
@@ -720,7 +747,6 @@ local function Refresh()
     local height = ClampHeight(p.multiDotHeight or BASE_HEIGHT * ClampScale(p.multiDotScale))
     ApplyLayout(width, height)
     ApplyDotOrder(p)
-    Position()
     ApplyAppearance()
     pending = false
     return true

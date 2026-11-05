@@ -18,9 +18,11 @@ function WarlockHudMultiTargetLayout.New(getRows, dotSlots, iconSize, rowHeight,
 
     local function CompactRows(width, height, positionsOnly)
         local _, scrollContent = getScrollFrames()
-        local displayWidth = width - (dotSlots() * (ICON_SIZE + 3) + 38)
-        local healthWidth = displayWidth - 37
+        local displayWidth = width - 20
+        local healthWidth = displayWidth - 44
         local profile = Profile()
+        local showIcons = not profile or profile.multiDotShowIcons ~= false
+        local iconWidth = showIcons and (dotSlots() * (ICON_SIZE + 3) + 3) or 0
         local showExecute = profile and profile.enabled
             and profile.enabled.executeMarker ~= false
         local step = ROW_HEIGHT
@@ -61,9 +63,8 @@ function WarlockHudMultiTargetLayout.New(getRows, dotSlots, iconSize, rowHeight,
                 end
             end
             if not positionsOnly then
-                row.name:SetWidth(math.max(42, displayWidth
-                    - (profile and profile.multiDotThreatIndicator == false
-                        and 168 or 223)))
+                row.name:SetWidth(math.max(42,
+                    displayWidth - 45 - iconWidth))
                 for _, segment in ipairs({ row.damageMarker, row.baneMarker,
                     row.siphonMarker, row.immolateMarker }) do
                     segment:SetWidth(healthWidth)

@@ -126,11 +126,40 @@ function WarlockHudOptionsSummons.Build(context)
             end,
             nil, false)
     end
+    Text(summons, "Summon window scale", 20, -495, "GameFontHighlight")
+    local summonScaleValue = Text(summons, "100%", 400, -495, "GameFontHighlight")
+    local summonScaleSlider = CreateFrame("Slider", nil, summons, "OptionsSliderTemplate")
+    summonScaleSlider:SetSize(165, 17)
+    summonScaleSlider:SetPoint("TOPLEFT", summons, "TOPLEFT", 203, -492)
+    summonScaleSlider:SetMinMaxValues(50, 100)
+    summonScaleSlider:SetValueStep(5)
+    summonScaleSlider:SetScript("OnValueChanged", function(_, value)
+        local percent = math.max(50,
+            math.min(100, math.floor(value / 5 + 0.5) * 5))
+        summonScaleValue:SetText(percent .. "%")
+        local settings = Profile().summonQueueWindow
+        if settings and settings.scale ~= percent / 100 then
+            settings.scale = percent / 100
+            if WarlockHudSetSummonQueueWindowScale then
+                WarlockHudSetSummonQueueWindowScale(settings.scale)
+            end
+            MarkChanged(false)
+        end
+    end)
+    refreshers[#refreshers + 1] = function()
+        local settings = Profile().summonQueueWindow or {}
+        summonScaleSlider:SetValue(math.floor(((settings.scale or 1)
+            * 100) / 5 + 0.5) * 5)
+    end
     ResetPageButton(summons, "Summons", function()
         Profile().summonKeywords = api.DefaultSummonKeywords
         Profile().summonQueueEnabled = true
         Profile().summonAutoRemoveNearby = true
         Profile().summonSources = {}
+        Profile().summonQueueWindow.scale = 1
+        if WarlockHudSetSummonQueueWindowScale then
+            WarlockHudSetSummonQueueWindowScale(1)
+        end
         MarkChanged(false)
     end)
     return summons

@@ -811,6 +811,7 @@ end
 
 local layout = Panel("Warlock HUD - Rows & Layout")
 local general = Panel("Warlock HUD - General", false)
+local assignmentsPanel = Panel("Warlock HUD - Assignments", false)
 local fonts = Panel("Warlock HUD - Fonts")
 Text(fonts, "Choose a built-in font and set sizes for HUD text.",
     20, -50, "GameFontHighlightSmall")
@@ -983,6 +984,41 @@ local spells = WarlockHudOptionsTrackedAuras.Build({
     refreshers = refreshers,
 })
 
+Text(assignmentsPanel, "Assignments Window", 20, -55, "GameFontNormal")
+Text(assignmentsPanel, "Open the group assignment window.",
+    20, -82, "GameFontHighlightSmall")
+Button(assignmentsPanel, "Group Assignments", 20, -108, 165, function()
+    if WarlockHudOpenAssignments then WarlockHudOpenAssignments() end
+end)
+Text(assignmentsPanel, "Scale applies to the Assignments window only.",
+    20, -150, "GameFontHighlightSmall")
+Text(assignmentsPanel, "Window scale", 20, -190, "GameFontHighlight")
+local assignmentScaleValue = Text(assignmentsPanel, "100%", 400, -190,
+    "GameFontHighlight")
+local assignmentScaleSlider = CreateFrame("Slider", nil, assignmentsPanel,
+    "OptionsSliderTemplate")
+assignmentScaleSlider:SetSize(165, 17)
+assignmentScaleSlider:SetPoint("TOPLEFT", assignmentsPanel, "TOPLEFT", 203, -187)
+assignmentScaleSlider:SetMinMaxValues(50, 100)
+assignmentScaleSlider:SetValueStep(5)
+assignmentScaleSlider:SetScript("OnValueChanged", function(_, value)
+    local percent = math.max(50,
+        math.min(100, math.floor(value / 5 + 0.5) * 5))
+    assignmentScaleValue:SetText(percent .. "%")
+    local p = Profile()
+    if p and p.assignmentWindowScale ~= percent / 100 then
+        p.assignmentWindowScale = percent / 100
+        if WarlockHudSetAssignmentWindowScale then
+            WarlockHudSetAssignmentWindowScale(p.assignmentWindowScale)
+        end
+        MarkChanged(false)
+    end
+end)
+refreshers[#refreshers + 1] = function()
+    assignmentScaleSlider:SetValue(math.floor(((Profile().assignmentWindowScale
+        or 1) * 100) / 5 + 0.5) * 5)
+end
+
 local profiles = WarlockHudOptionsProfiles.Build({
     api = api,
     Panel = Panel,
@@ -1099,6 +1135,7 @@ registration:SetScript("OnEvent", function(_, event)
     Settings.RegisterCanvasLayoutSubcategory(category, procLayout, "Procs")
     Settings.RegisterCanvasLayoutSubcategory(category, shards, "Soul Shards")
     Settings.RegisterCanvasLayoutSubcategory(category, stones, "Stones")
+    Settings.RegisterCanvasLayoutSubcategory(category, assignmentsPanel, "Assignments")
     Settings.RegisterCanvasLayoutSubcategory(category, summons, "Summons")
     Settings.RegisterCanvasLayoutSubcategory(category, notifications, "Notifications")
     Settings.RegisterCanvasLayoutSubcategory(category, fonts, "Fonts")
