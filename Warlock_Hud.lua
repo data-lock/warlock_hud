@@ -1310,6 +1310,10 @@ local function BuildConsumeAnchor(saved, consumeOrder)
 end
 
 local function BuildCooldownAnchor(saved, cooldownOrder)
+    -- Size the Edit Mode mover to the saved layout, even if no Utility spells
+    -- are currently available to render.
+    cooldownOrder = type(saved.cooldownOrder) == "table"
+        and saved.cooldownOrder or cooldownOrder
     local cooldownWidth = math.max(1, #cooldownOrder * COOLDOWN_ICON_SIZE
         + math.max(0, #cooldownOrder - 1) * ICON_SPACING)
     rowFrames.cooldownAnchor = CreateFrame("Frame", nil, WarlockHudRowVisibility.masks.utility)
@@ -1364,6 +1368,9 @@ local function BuildCooldownAnchor(saved, cooldownOrder)
 end
 
 local function BuildMainAnchor(saved, mainOrder)
+    -- Size the Edit Mode mover to the saved layout, even if no target spells
+    -- are currently available to render.
+    mainOrder = type(saved.mainOrder) == "table" and saved.mainOrder or mainOrder
     local rowWidth = math.max(1, #mainOrder * ICON_SIZE + math.max(0, #mainOrder - 1) * ICON_SPACING)
     rowFrames.hudAnchor = CreateFrame("Frame", nil, WarlockHudRowVisibility.masks.main)
     rowFrames.hudAnchor:SetSize(rowWidth, ICON_SIZE)
@@ -1639,12 +1646,9 @@ local function Build()
     local consumeOrder = VisibleOrder(profile.consumeOrder)
     local procOrder = VisibleOrder(profile.procOrder)
     local saved = profile
-    -- Keep the Edit Mode mover sized to the saved layout even when no spells
-    -- are currently available to render in the target row.
-    local rowWidth = BuildMainAnchor(saved, profile.mainOrder)
+    local rowWidth = BuildMainAnchor(saved, mainOrder)
 
-    -- Utility can also be empty until its spells are learned or enabled.
-    local cooldownWidth = BuildCooldownAnchor(saved, profile.cooldownOrder)
+    local cooldownWidth = BuildCooldownAnchor(saved, cooldownOrder)
 
     BuildBuffAnchor(saved, buffOrder)
 
