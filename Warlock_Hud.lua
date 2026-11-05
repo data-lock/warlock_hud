@@ -1639,9 +1639,12 @@ local function Build()
     local consumeOrder = VisibleOrder(profile.consumeOrder)
     local procOrder = VisibleOrder(profile.procOrder)
     local saved = profile
-    local rowWidth = BuildMainAnchor(saved, mainOrder)
+    -- Keep the Edit Mode mover sized to the saved layout even when no spells
+    -- are currently available to render in the target row.
+    local rowWidth = BuildMainAnchor(saved, profile.mainOrder)
 
-    local cooldownWidth = BuildCooldownAnchor(saved, cooldownOrder)
+    -- Utility can also be empty until its spells are learned or enabled.
+    local cooldownWidth = BuildCooldownAnchor(saved, profile.cooldownOrder)
 
     BuildBuffAnchor(saved, buffOrder)
 

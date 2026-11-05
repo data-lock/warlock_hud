@@ -25,6 +25,7 @@ local LABELS = {
     spirit = "Spirit", kings = "Kings", salv = "Salvation",
     thorns = "Thorns", breath = "Unending Breath",
     powerinfusion = "Power Infusion", nightfall = "Nightfall",
+    decimation = "Decimation",
 }
 local TILE_LABELS = { motw = "Wild", breath = "Breath",
     spelldamage = "Spell Dmg", shadow = "Shadow", fire = "Fire",
@@ -68,6 +69,7 @@ local ICON_HELP = {
     breath = "Unending Breath appears at the right end only while active, with a native countdown.",
     powerinfusion = "Appears only while Power Infusion is active, with a pulsing countdown.",
     nightfall = "Shows Shadow Trance while active, with a pulsing countdown.",
+    decimation = "Shows your active Decimation Soul Fire buff with its native countdown.",
 }
 
 local function Profile()
@@ -710,13 +712,13 @@ local function LinkedTargetUtilityRows(parent)
                             if sourceIndex then
                                 local destination = Profile()[keys[destinationRow]]
                                 local destinationCount = #destination
+                                local row = math.max(1, math.min(visibleRows,
+                                    math.floor((top - cursorY) / cellHeight) + 1))
                                 local rowCount = math.max(0, math.min(columns,
                                     destinationCount - (row - 1) * columns))
                                 local rowOffset = (strip:GetWidth() - rowCount * cellWidth) / 2
                                 local column = math.max(1, math.min(columns,
                                     math.floor((cursorX - stripLeft - rowOffset) / cellWidth) + 1))
-                                local row = math.max(1, math.min(visibleRows,
-                                    math.floor((top - cursorY) / cellHeight) + 1))
                                 local slot = (row - 1) * columns + column
                                 table.remove(source, sourceIndex)
                                 if source == destination and slot > sourceIndex then

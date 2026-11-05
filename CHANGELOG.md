@@ -1,5 +1,16 @@
 # Changelog
 
+## v1.0.1
+
+- Add Decimation to the configurable proc row. It tracks the active 10-second
+  player buff with Blizzard-native aura rendering and countdown.
+- Fix icon drops in Rows & Layout so Target DoTs and Utility can be reordered
+  within either grid or moved between them.
+- Keep both rows' Edit Mode movers visible when their icons are currently
+  unavailable.
+
+See `releases/v1.0.1.md` for the release notes.
+
 ## v1.0.0
 
 - Publish the first stable release for World of Warcraft: Forever.
