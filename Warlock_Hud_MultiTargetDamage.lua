@@ -244,14 +244,14 @@ function WarlockHudMultiTargetDamage.New(getRows, readableGuid)
                     true, CurveConstants.ScaleTo100)
                 if healthOK and percentOK then
                     local healthLabel = WarlockHudMultiTargetIdentity.FormatNumber(health)
-                    if healthLabel and debugEnabled and total > 0 then
+                    if healthLabel and total > 0 then
                         pcall(row.healthText.SetFormattedText, row.healthText,
                             "%s %.0f%% (DoT %s)", healthLabel, percent,
                             WarlockHudMultiTargetIdentity.FormatNumber(total))
                     elseif healthLabel then
                         pcall(row.healthText.SetFormattedText, row.healthText,
                             "%s %.0f%%", healthLabel, percent)
-                    elseif debugEnabled and total > 0 then
+                    elseif total > 0 then
                         pcall(row.healthText.SetFormattedText, row.healthText,
                             "%.0f %.0f%% (DoT %s)", health, percent,
                             WarlockHudMultiTargetIdentity.FormatNumber(total))

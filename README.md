@@ -44,7 +44,7 @@ so you can see the full layout before choosing what to track. Open it from
 | Display | What it tracks |
 | --- | --- |
 | Main row | Corruption, Immolate, Siphon Life, Banes, Curses, Drain spells, and Demonic Brand when talented. Banes, Curses, and Drains each share an icon slot. Active target effects show a native countdown, with optional decimals near expiration. Brand also shows Blizzard's native application count. |
-| Multi-Target DoTs (optional) | Up to 16 view-only rows drawn from prebuilt nameplate, player-target, party-target, and raid-target tokens, plus grey last-seen rows for mobs with readable GUIDs and active estimated DoTs. Live rows have native slots for your tracked effects, including Demonic Brand when talented and enabled in Target DoTs settings. Brand shows a native countdown and application count. Mobs with confirmed group threat, a target in your group, a party/raid target, or a safely verified player effect appear; matching tokens are deduplicated by identity. Each live row has the mob's portrait, any assigned raid marker, a separate name and health bar with current HP and percent, a 20% health tick when the execute marker is enabled, and a slim gold accent when selected. Target through world nameplates or Tab. New standalone profiles enable the window by default; the first-run Basic preset hides it, and an existing off choice stays off. Use `/whud mtd` to open or close it outside combat. Outside combat, drag the title to move the window or the lower-right grip to resize it while keeping the top-left corner fixed. Shorter windows keep fixed row spacing and show a scroll bar when needed. Toggling, moving, and resizing are unavailable during combat. Settings can hide it outside combat and adjust transparency. |
+| Multi-Target DoTs (optional) | Up to 16 view-only rows drawn from available nameplates, your current target, and group target tokens, plus grey last-seen rows for mobs with readable GUIDs and active estimated DoTs. Live rows have native slots for your tracked effects, including Demonic Brand when talented and enabled in Target DoTs settings. Brand shows a native countdown and application count. Mobs with confirmed group threat, mobs targeting someone in your group, or a safely verified player effect appear; a group member selecting an idle mob is not enough, and matching tokens are deduplicated by identity. Each live row has the mob's portrait, any assigned raid marker, a name with threat beneath it, right-aligned DoT icons, and a separate health bar with current HP and percent. A 20% health tick appears when the execute marker is enabled, with a slim gold accent when selected. Target through world nameplates or Tab. New standalone profiles enable the window by default; the first-run Basic preset hides it, and an existing off choice stays off. Use `/whud mtd` to open or close it outside combat. Outside combat, drag the title to move it or the lower-right grip to resize it. Shorter windows keep fixed row spacing and show a scroll bar when needed. Settings can hide it outside combat, adjust transparency, and set its scale on the Multi-Target DoTs page. Moving and resizing are unavailable during combat. |
 | Cooldown row | Healthstone, Soulstone, Fear, Banish, Conflagrate when learned, available racial abilities, and an optional flashing Sense Demons reminder when no demon or active Demonic Sacrifice is confirmed. Conflagrate shows its cooldown and pulses while your Immolate is active on the current target. |
 | Consumes row | Well Fed plus optional Flask of Supreme Power, Arcane Elixir family, Shadow Power, Greater Firepower, Mageblood family, and Wizard Oil or Firestone tracking. Aura effects use native countdowns. Firestone shows remaining time when the client exposes it; Wizard Oil has no HUD timer. The missing-enchant reminder is labeled Weapon Buff. Each category has its own tracking and reminder choice. The row has its own position, icon size, visibility, and color settings. |
 | Buff row | Demon Armor / Demon Skin, Fortitude, Mark or Gift of the Wild, Intellect, Spirit, Kings, Salvation, Thorns, Demonic Sacrifice, Soul Link, and Unending Breath. Active buffs show colored icons with native countdowns when available; a setting reverses active and missing colors. Soul Link reminds when known, a demon is present, and its buff is confirmed missing. Thorns follows the same Druid-aware missing-buff reminder and active-buff formatting as Mark of the Wild. Unending Breath appears at the right end only while active. Visible buffs pack left to right. |
@@ -144,11 +144,11 @@ Healthstone trade. Soulstone announcements go to party, raid, or instance chat
 when grouped. Summon and trade notices can be sent to group chat or shown only
 in your own chat window.
 
-The **Summons** page configures the summon request queue. A current group member
+The **Summons** page configures the summon request queue and its window scale. A current group member
 can type `123`, `sum`, or `summ` by default in party, raid, instance chat, or a
 whisper to open the separate queue window. Each row shows its wait time, a
 Summon button, and an X to remove the request. The window can be moved, resized,
-locked, or opened with `/whub summonqueue`. **Announce** invites requests in the
+scaled from 50% to 100%, or opened with `/whub summons` (also `/whub summonqueue`). **Announce** invites requests in the
 current group channel. A request stays queued after clicking Summon and clears
 when the player arrives nearby. The summon and availability announcements show
 your current Soul Shard count when the client provides it. **Preview 15 requests**
@@ -249,33 +249,37 @@ auras. Set whether active Target DoTs appear in color or grey. The milliseconds
 toggle controls native countdowns in both Target DoTs and Multi-Target DoTs and
 is saved per profile.
 
-Use **Group Assignments** to open a movable, resizable window with a Curse, Bane,
-Fear/Banish raid marker, and Soulstone target choice for each Warlock in your group, or yourself while
-solo. `/whud assignments` opens
-the same window. Drag the lower-right corner to resize it, or press **Compact**
-for a roster-sized list of names and assignment icons. Press **Expand** to edit
-the choices again. Group assignments survive `/reload` for the current roster;
-solo login starts with assignments unset. Group assignments clear when the
-group disbands. **Clear Assignments** resets Curse, Bane, Fear/Banish, and Soulstone choices
-for every Warlock shown. Multiple Warlocks may choose the same Soulstone target.
-Anyone using the addon can assign spells. The chosen Curse or Bane appears as
-your idle HUD image and sets its range check. A different
-successful Curse or Bane cast gives a short local warning. The window never
-casts spells. The Announce button shows its party, raid, or instance destination
-and sends the current assignments there only when clicked. You can also use
-`/whud announceassignments`.
+![Tracked Auras settings](screenshots/whud_options_4_tracked_auras.png)
+
+</details>
+
+<details>
+<summary>Assignments</summary>
+
+Use the **Assignments** settings page to set the window scale and open Group
+Assignments. The movable, resizable window offers Curse, Bane, Fear/Banish raid
+marker, and Soulstone target choices for each Warlock in your group, or yourself
+while solo. `/whud assignments` opens the same window. Drag the lower-right
+corner to resize it, or press **Compact** for a roster-sized list of names and
+assignment icons. Press **Expand** to edit the choices again. Group assignments
+survive `/reload` for the current roster; solo login starts with assignments
+unset. Group assignments clear when the group disbands. **Clear Assignments**
+resets Curse, Bane, Fear/Banish, and Soulstone choices for every Warlock shown.
+Multiple Warlocks may choose the same Soulstone target. Anyone using the addon
+can assign spells. The chosen Curse or Bane appears as your idle HUD image and
+sets its range check. A different successful Curse or Bane cast gives a short
+local warning. The window never casts spells. The Announce button shows its
+party, raid, or instance destination and sends the current assignments there
+only when clicked. You can also use `/whud announceassignments`.
 
 Choose one raid marker, such as **Star**, for a Warlock's Fear/Banish target.
-Compact view shows the marker. This records who handles a marked target; it
-does not place the raid marker for you.
+Compact view shows the marker. This records who handles a marked target; it does
+not place the raid marker for you. The Assignments page controls the window
+scale from 50% to 100%.
 
 When your assigned Soulstone target is confirmed missing the buff and your
 Soulstone is ready, its Utility icon pulses red. An unknown aura state does not
 trigger the reminder.
-
-![Tracked Auras settings](screenshots/whud_options_4_tracked_auras.png)
-
-### Group Assignments
 
 ![Curse and Bane assignments](screenshots/assigned_main_screen.png)
 
@@ -293,8 +297,9 @@ target changes, or the assignment changes.
 <details>
 <summary>Multi-Target DoTs</summary>
 
-Enable the view-only tracker, set its out-of-combat visibility, choose threat
-and damage indicators, and adjust its size, position, and transparency.
+Enable the view-only tracker, set its out-of-combat visibility, choose threat,
+damage, and DoT icon visibility, and adjust its size, position, transparency,
+and window scale.
 
 ![Multi-Target DoTs settings](screenshots/whud_options_5_multi_target_dots.png)
 

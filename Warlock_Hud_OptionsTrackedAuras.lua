@@ -128,9 +128,6 @@ function WarlockHudOptionsTrackedAuras.Build(context)
         function(value) Profile().dotTimerMilliseconds = value end,
         "Applies to Target DoTs and Multi-Target DoTs. Saves now; native timers update when combat and aura protection allow a rebuild.",
         nil, 22, 5)
-    Button(spells, "Group Assignments", 165, -540, 165, function()
-        if WarlockHudOpenAssignments then WarlockHudOpenAssignments() end
-    end)
     ResetPageButton(spells, "Tracked Auras", function()
         for _, spell in ipairs(api.Spells) do Profile().enabled[spell.name] = nil end
         Profile().defaultDotIcons = {}

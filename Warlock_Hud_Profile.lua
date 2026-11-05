@@ -100,18 +100,38 @@ function WarlockHudProfile.CreateNormalizer(keys)
         p.multiDotEnabled = p.multiDotEnabled ~= false
         p.multiDotThreatIndicator = p.multiDotThreatIndicator ~= false
         p.multiDotDamageEnabled = p.multiDotDamageEnabled ~= false
+        p.multiDotShowIcons = p.multiDotShowIcons ~= false
+        p.multiDotWindowScale = math.max(0.5,
+            math.min(1, tonumber(p.multiDotWindowScale) or 1))
+        p.assignmentWindowScale = math.max(0.5,
+            math.min(1, tonumber(p.assignmentWindowScale) or 1))
+        if type(p.summonQueueWindow) ~= "table" then
+            p.summonQueueWindow = {}
+        end
+        p.summonQueueWindow.scale = math.max(0.5,
+            math.min(1, tonumber(p.summonQueueWindow.scale) or 1))
         p.multiDotHideOutOfCombat = p.multiDotHideOutOfCombat == true
         p.multiDotAlpha = math.max(0.3, math.min(1, tonumber(p.multiDotAlpha) or 1))
         p.multiDotScale = math.max(0.7, math.min(1.6, tonumber(p.multiDotScale) or 1))
         if not p.multiDotHealthLayoutVersion then
-            p.multiDotWidth = math.max(430,
-                tonumber(p.multiDotWidth) or 310 * p.multiDotScale)
+            p.multiDotWidth = math.max(350,
+                tonumber(p.multiDotWidth) or 400 * p.multiDotScale)
             p.multiDotHealthLayoutVersion = 1
         end
         p.multiDotWidth = math.max(260, math.min(700,
-            tonumber(p.multiDotWidth) or 430))
+            tonumber(p.multiDotWidth) or 420))
         p.multiDotHeight = math.max(150, math.min(800,
-            tonumber(p.multiDotHeight) or 548 * p.multiDotScale))
+            tonumber(p.multiDotHeight) or 420 * p.multiDotScale))
+        if not p.multiDotWindowSizeVersion then
+            if p.multiDotWidth == 430 and p.multiDotHeight == 548 then
+                p.multiDotWidth, p.multiDotHeight = 400, 420
+            end
+            p.multiDotWindowSizeVersion = 1
+        end
+        if p.multiDotWindowSizeVersion < 2 then
+            if p.multiDotWidth == 400 then p.multiDotWidth = 420 end
+            p.multiDotWindowSizeVersion = 2
+        end
         if (tonumber(p.consumesSchemaVersion) or 0) < 1 then
             -- Well Fed keeps its existing enabled flag. Copy row preferences once;
             -- subsequent loads must not follow later Buffs changes.

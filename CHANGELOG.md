@@ -1,5 +1,22 @@
 # Changelog
 
+## v1.1.0
+
+- Refresh the Assignments, Summons, and Multi-Target windows with shared window
+  chrome, compact layouts, scrolling where needed, and independent 50%-100%
+  scale controls on their settings pages.
+- Add an Assignments settings page with a Group Assignments launcher, and keep
+  Assignments and Summons windows open across `/reload` when they were open.
+- Add `/whud summons`, clearer summon queue and pending counts, class-colored
+  character names, and more consistent summon controls and resizing.
+- Tighten the compact Assignments layout and align assignment icons with their
+  headers.
+- Improve Multi-Target row relevance and estimated damage display, allow hiding
+  DoT icons, place threat below the name, and use a roomier two-line row layout.
+- Let OneForAll discover the Warlock HUD minimap button.
+
+See `releases/v1.1.0.md` for release notes.
+
 ## v1.0.1
 
 - Add Decimation to the configurable proc row. It tracks the active 10-second
