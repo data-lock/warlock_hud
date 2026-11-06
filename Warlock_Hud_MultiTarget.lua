@@ -7,7 +7,6 @@ local status
 local damageDebug = true
 local mover
 local scrollFrame, scrollContent, scrollBar
-local visibilityController
 local visibilityDriver = false
 local built, pending, auraWarning, failed = false, false, false, false
 local builtTimerMilliseconds
@@ -110,10 +109,10 @@ local function ApplyAppearance()
         if Safe() then
             local ok
             if wantsDriver and RegisterStateDriver then
-                ok = pcall(RegisterStateDriver, visibilityController, "mtdvisibility",
-                    "[combat] show; hide")
+                ok = pcall(RegisterStateDriver, root, "visibility",
+                    "[combat]show;hide")
             elseif not wantsDriver and UnregisterStateDriver then
-                ok = pcall(UnregisterStateDriver, visibilityController, "mtdvisibility")
+                ok = pcall(UnregisterStateDriver, root, "visibility")
             end
             if ok then
                 visibilityDriver = wantsDriver
@@ -363,7 +362,7 @@ end
 local function RetireWindow()
     damage.SetDebugEnabled(false)
     if visibilityDriver and UnregisterStateDriver then
-        UnregisterStateDriver(visibilityController, "mtdvisibility")
+        UnregisterStateDriver(root, "visibility")
     end
     visibilityDriver = false
     for _, row in ipairs(rows) do
@@ -371,7 +370,7 @@ local function RetireWindow()
         row.auras:Hide()
     end
     root:Hide()
-    rows, root, visibilityController = {}, nil, nil
+    rows, root = {}, nil
     built = false
     builtTimerMilliseconds = nil
 end
@@ -384,10 +383,13 @@ local function Build()
     DOT_SLOTS = #DOT_KEYS
     local active = {}
     for _, key in ipairs(DOT_KEYS) do active[key] = true end
-    if not C_AddOns or not C_AddOns.LoadAddOn then return false end
+    if not C_AddOns or not C_AddOns.LoadAddOn then
+        pending = true
+        return false
+    end
     if not C_AddOns.IsAddOnLoaded("Blizzard_AuraContainer") then
         local loaded = C_AddOns.LoadAddOn("Blizzard_AuraContainer")
-        if not loaded then return false end
+        if not loaded then pending = true; return false end
     end
     if CreateFont then
         local font = _G[COUNTDOWN_FONT] or CreateFont(COUNTDOWN_FONT)
@@ -413,13 +415,6 @@ local function Build()
     root:SetFrameStrata("MEDIUM")
     root:SetMovable(true)
     root:SetClampedToScreen(true)
-    visibilityController = CreateFrame("Frame", nil, UIParent,
-        "SecureHandlerStateTemplate")
-    visibilityController:SetFrameRef("window", root)
-    visibilityController:SetAttribute("_onstate-mtdvisibility", [[
-        local window = self:GetFrameRef("window")
-        if newstate == "show" then window:Show() else window:Hide() end
-    ]])
     Position()
     WarlockHudWindowChrome.SetBackground(root, 0.5)
     WarlockHudWindowChrome.AddBorder(root)
@@ -956,9 +951,18 @@ events:SetScript("OnEvent", function(_, event, unit)
         damage.Update()
     end
 end)
-local ghostElapsed = 0
+local ghostElapsed, retryElapsed = 0, 0
 events:SetScript("OnUpdate", function(_, delta)
-    if not built then return end
+    if not built then
+        if pending and not failed then
+            retryElapsed = retryElapsed + delta
+            if retryElapsed >= 0.5 then
+                retryElapsed = 0
+                GuardedRefresh()
+            end
+        end
+        return
+    end
     ghostElapsed = ghostElapsed + delta
     if ghostElapsed < 0.2 then return end
     ghostElapsed = 0

@@ -219,10 +219,10 @@ end
 CreateFont = function(name) return CreateFrame('Font', name) end
 RegisterStateDriver = function(button, state, condition)
     button.driver = {state, condition}
-    if state == 'mtdvisibility' then button.frameRefs.window:SetShown(combat) end
+    if state == 'visibility' then button:SetShown(combat) end
 end
 UnregisterStateDriver = function(button, state)
-    if state == 'mtdvisibility' then button.driver = nil end
+    if state == 'visibility' then button.driver = nil end
 end
 ''')
 lua.execute(Path("Warlock_Hud_MultiTargetIdentity.lua").read_text(encoding="utf-8"))
@@ -623,7 +623,7 @@ profile.multiDotAlpha = 0.6
 profile.multiDotHideOutOfCombat = true
 assert(WarlockHudMultiTarget.UpdateAppearance() == true)
 assert(root.alpha == 0.6 and root.shown == false)
-assert(rawget(root, 'driver') == nil) -- the driver must not protect the resizable window
+assert(root.driver[1] == 'visibility' and root.driver[2] == '[combat]show;hide')
 combat = true
 root:SetShown(true) -- the client applies the secure visibility driver
 eventFrame.scripts.OnEvent(nil, 'PLAYER_REGEN_DISABLED')

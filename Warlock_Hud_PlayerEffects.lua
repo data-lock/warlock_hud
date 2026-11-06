@@ -27,13 +27,15 @@ WarlockHudPlayerEffects = {
         [5] = { { "Will of the Forsaken", 7744 }, { "Cannibalize", 20577 } },
         [8] = { { "Berserking", 20554 }, { "Rapid Regeneration", 1260270 } },
     },
-    ProcKeys = { "powerinfusion", "nightfall", "decimation" },
+    ProcKeys = { "powerinfusion", "nightfall", "decimation", "soulharvest" },
     BuffKeys = { "fort", "motw", "int", "spirit", "kings", "salv", "armor", "thorns", "sacrifice", "soullink", "breath" },
     Procs = {
         { key = "powerinfusion", name = "Power Infusion", ids = { 10060 } },
         { key = "nightfall", name = "Shadow Trance", ids = { 17941 } },
         -- 440870 is the talent. The active 10-second player buff is 440873.
         { key = "decimation", name = "Decimation", ids = { 440873 } },
+        -- 437032 is the passive talent; this is its active 10-second proc.
+        { key = "soulharvest", name = "Soul Harvest", ids = { 1242853 } },
     },
     Buffs = {
         { key = "fort", name = "Fortitude", casterClass = "PRIEST",

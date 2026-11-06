@@ -1,5 +1,16 @@
 # Changelog
 
+## v1.1.1
+
+- Add Soul Harvest to the configurable Procs row using its active 10-second
+  player buff, rather than the passive talent.
+- Make the Multi-Target window follow combat visibility through the built-in
+  visibility state driver, and retry deferred initialization when safe.
+- Add the 20% execute threshold marker to the current target frame and keep it
+  inside the health bar.
+
+See `releases/v1.1.1.md` for release notes.
+
 ## v1.1.0
 
 - Refresh the Assignments, Summons, and Multi-Target windows with shared window

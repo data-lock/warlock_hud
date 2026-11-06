@@ -25,7 +25,7 @@ local LABELS = {
     spirit = "Spirit", kings = "Kings", salv = "Salvation",
     thorns = "Thorns", breath = "Unending Breath",
     powerinfusion = "Power Infusion", nightfall = "Nightfall",
-    decimation = "Decimation",
+    decimation = "Decimation", soulharvest = "Soul Harvest",
 }
 local TILE_LABELS = { motw = "Wild", breath = "Breath",
     spelldamage = "Spell Dmg", shadow = "Shadow", fire = "Fire",
@@ -70,6 +70,7 @@ local ICON_HELP = {
     powerinfusion = "Appears only while Power Infusion is active, with a pulsing countdown.",
     nightfall = "Shows Shadow Trance while active, with a pulsing countdown.",
     decimation = "Shows your active Decimation Soul Fire buff with its native countdown.",
+    soulharvest = "Shows Soul Harvest for 10 seconds after a Drain Soul kill, with its native countdown.",
 }
 
 local function Profile()
@@ -266,7 +267,7 @@ local function IconForKey(key)
         fort = 1243, motw = 1126, int = 1459,
         spirit = 14752, kings = 20217, salv = 1038,
         thorns = 467, breath = 5697,
-        powerinfusion = 10060, nightfall = 17941,
+        powerinfusion = 10060, nightfall = 17941, soulharvest = 1242853,
     }
     if key == "wizardoil" then
         return C_Item and C_Item.GetItemIconByID and C_Item.GetItemIconByID(20749)
