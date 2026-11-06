@@ -15,23 +15,24 @@ local function UpdateMarker(bar, marker)
     if marker.lastWidth == width and marker.lastHeight == height then return end
     marker.lastWidth, marker.lastHeight = width, height
     for _, texture in ipairs({ marker.outline, marker.line }) do
-        texture:SetHeight(height + 6)
+        texture:SetHeight(math.max(6, height + (marker.heightPadding or 6)))
         texture:ClearAllPoints()
         texture:SetPoint("CENTER", bar, "LEFT", width * 0.2, 0)
     end
 end
 
-local function GetMarker(bar)
+local function GetMarker(bar, compact)
     local marker = markers[bar]
     if marker then return marker end
     marker = {}
     local outline = bar:CreateTexture(nil, "OVERLAY", nil, -2)
-    outline:SetWidth(5)
+    outline:SetWidth(compact and 4 or 5)
     outline:SetColorTexture(0, 0, 0, 1)
     local line = bar:CreateTexture(nil, "OVERLAY", nil, -1)
-    line:SetWidth(3)
+    line:SetWidth(compact and 2 or 3)
     line:SetColorTexture(0.78, 0.43, 0.20, 1)
     marker.outline, marker.line = outline, line
+    marker.heightPadding = compact and -2 or 6
     function marker:Show()
         self.outline:Show()
         self.line:Show()
@@ -83,7 +84,27 @@ local function UpdatePlate(unit)
     end
 end
 
+local function UpdateTargetFrame(create)
+    local bar = TargetFrameHealthBar
+        or (TargetFrame and TargetFrame.healthbar)
+    if not bar then return end
+    local marker = markers[bar]
+    if not Enabled() then
+        if marker then marker:Hide() end
+        return
+    end
+    if not marker and create and not InCombatLockdown() then
+        local ok, result = pcall(GetMarker, bar, true)
+        if ok then marker = result end
+    end
+    if marker then
+        marker:Show()
+        UpdateMarker(bar, marker)
+    end
+end
+
 function WarlockHudRefreshNameplates()
+    UpdateTargetFrame(true)
     if not C_NamePlate or not C_NamePlate.GetNamePlates then return end
     local ok, plates = pcall(C_NamePlate.GetNamePlates)
     if not ok or not plates then return end
@@ -97,9 +118,13 @@ end
 
 events:RegisterEvent("PLAYER_LOGIN")
 events:RegisterEvent("NAME_PLATE_UNIT_ADDED")
+events:RegisterEvent("PLAYER_TARGET_CHANGED")
+events:RegisterEvent("PLAYER_REGEN_ENABLED")
 events:SetScript("OnEvent", function(_, event, unit)
     if event == "PLAYER_LOGIN" then
         WarlockHudRefreshNameplates()
+    elseif event == "PLAYER_TARGET_CHANGED" or event == "PLAYER_REGEN_ENABLED" then
+        UpdateTargetFrame(event == "PLAYER_REGEN_ENABLED")
     else
         UpdatePlate(unit)
         if C_Timer and C_Timer.After then
