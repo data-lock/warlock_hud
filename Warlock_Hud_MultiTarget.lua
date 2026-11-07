@@ -526,7 +526,7 @@ local function Build()
     scrollBar:Hide()
     for i, unit in ipairs(SOURCE_UNITS) do
         local display = CreateFrame("Frame", nil, scrollContent)
-        display:SetSize(width - 24, ROW_HEIGHT)
+        display:SetSize(width - 20, ROW_HEIGHT)
         display:SetPoint("TOPLEFT", scrollContent, "TOPLEFT", 0,
             -(i - 1) * ROW_HEIGHT)
         local background = display:CreateTexture(nil, "BACKGROUND")
