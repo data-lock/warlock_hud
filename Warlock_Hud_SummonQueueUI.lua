@@ -345,6 +345,9 @@ local function MakeWindow()
     scroll:SetScrollChild(content)
     scrollBar = scroll.ScrollBar
         or _G.WarlockHudSummonQueueScrollFrameScrollBar
+    if WarlockHudWindowChrome and WarlockHudWindowChrome.StyleScrollbar then
+        WarlockHudWindowChrome.StyleScrollbar(scrollBar)
+    end
     queueStatus = frame:CreateFontString(nil, "ARTWORK", "GameFontDisableSmall")
     queueStatus:SetPoint("TOPLEFT", frame, "TOPLEFT", 10, -30)
     queueStatus:SetText("No summons in queue")

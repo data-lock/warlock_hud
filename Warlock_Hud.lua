@@ -2015,6 +2015,8 @@ local function Build()
                 icon:SetSize(BUFF_ICON_SIZE, BUFF_ICON_SIZE)
                 icon:SetPoint("CENTER", holder, "CENTER")
                 icon:SetTexture(C_Spell.GetSpellTexture(buff.ids[1])
+                    or (buff.key == "salv" and C_Spell.GetSpellTexture(buff.ids[2]))
+                    or buff.iconTexture
                     or "Interface\\Icons\\INV_Misc_QuestionMark")
                 icon:SetTexCoord(ICON_CROP, 1 - ICON_CROP, ICON_CROP, 1 - ICON_CROP)
                 icon:SetDesaturated(profile.colorActiveBuffs ~= false)
@@ -2611,6 +2613,11 @@ SlashCmdList.WARLOCKHUD = function(message)
     if message == "dotsnapshot" and WarlockHudMultiTarget
         and WarlockHudMultiTarget.DamageSnapshot then
         WarlockHudMultiTarget.DamageSnapshot()
+        return
+    end
+    if message == "mtddebug" and WarlockHudMultiTarget
+        and WarlockHudMultiTarget.PrintDebug then
+        WarlockHudMultiTarget.PrintDebug()
         return
     end
     if (message == "unitprobe" or message == "unitprobe off")

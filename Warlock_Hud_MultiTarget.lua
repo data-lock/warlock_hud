@@ -292,8 +292,7 @@ local function ApplyLayout(width, height)
     if mover then mover:SetWidth(width - 35) end
     scrollFrame:SetWidth(width - 16)
     scrollFrame:SetHeight(height - 57)
-    scrollContent:SetWidth(width - 20)
-    scrollBar:SetHeight(height - 57)
+    scrollContent:SetWidth(width - 24)
     CompactRows(width, height)
 end
 
@@ -498,13 +497,23 @@ local function Build()
     scrollFrame:SetPoint("TOPLEFT", root, "TOPLEFT", 7, -50)
     scrollFrame:SetSize(width - 16, height - 57)
     scrollContent = CreateFrame("Frame", nil, scrollFrame)
-    scrollContent:SetSize(width - 20, ROWS * ROW_HEIGHT)
+    scrollContent:SetSize(width - 24, ROWS * ROW_HEIGHT)
     scrollFrame:SetScrollChild(scrollContent)
     scrollFrame:EnableMouseWheel(true)
-    scrollBar = CreateFrame("Slider", FrameName("WarlockHudMultiTargetScrollBar"), root,
-        "UIPanelScrollBarTemplate")
-    scrollBar:SetPoint("TOPRIGHT", root, "TOPRIGHT", -1, -50)
-    scrollBar:SetHeight(height - 57)
+    scrollBar = CreateFrame("Slider", FrameName("WarlockHudMultiTargetScrollBar"), root)
+    scrollBar:SetOrientation("VERTICAL")
+    scrollBar:SetWidth(6)
+    scrollBar:SetPoint("TOPRIGHT", root, "TOPRIGHT", -5, -54)
+    scrollBar:SetPoint("BOTTOMRIGHT", root, "BOTTOMRIGHT", -5, 11)
+    local scrollTrack = scrollBar:CreateTexture(nil, "BACKGROUND")
+    scrollTrack:SetAllPoints(scrollBar)
+    scrollTrack:SetColorTexture(0.02, 0.02, 0.025, 0.55)
+    scrollBar:SetThumbTexture("Interface\\Buttons\\WHITE8X8")
+    local scrollThumb = scrollBar:GetThumbTexture()
+    if scrollThumb then
+        scrollThumb:SetSize(6, 28)
+        scrollThumb:SetColorTexture(0.86, 0.66, 0.25, 0.78)
+    end
     scrollBar:SetMinMaxValues(0, 0)
     scrollBar:SetValueStep(ROW_HEIGHT)
     scrollBar:SetScript("OnValueChanged", function(_, value)
@@ -517,7 +526,7 @@ local function Build()
     scrollBar:Hide()
     for i, unit in ipairs(SOURCE_UNITS) do
         local display = CreateFrame("Frame", nil, scrollContent)
-        display:SetSize(width - 20, ROW_HEIGHT)
+        display:SetSize(width - 24, ROW_HEIGHT)
         display:SetPoint("TOPLEFT", scrollContent, "TOPLEFT", 0,
             -(i - 1) * ROW_HEIGHT)
         local background = display:CreateTexture(nil, "BACKGROUND")
@@ -783,6 +792,28 @@ WarlockHudMultiTarget = {
         if WarlockHudTraceHUD then
             WarlockHudTraceHUD("Multi-Target ratios: "
                 .. damage.DebugSnapshot())
+            WarlockHudTraceHUD("Multi-Target rows: snapshot follows")
+            local included = 0
+            for _, row in ipairs(rows) do
+                if row.eligible or row.present then
+                    local ok, name = pcall(UnitName, row.unit)
+                    if not ok or not Plain(name) or type(name) ~= "string" then
+                        name = "name unavailable"
+                    end
+                    WarlockHudTraceHUD("Multi-Target row " .. row.unit
+                        .. " name=" .. name
+                        .. "; source=" .. tostring(row.source)
+                        .. "; GUID=" .. ReadableGuid(row.unit)
+                        .. "; cached GUID=" .. tostring(row.lastGuid or "none")
+                        .. "; DoT GUID=" .. tostring(row.ghostGuid or "none")
+                        .. "; eligible=" .. tostring(row.eligible)
+                        .. "; present=" .. tostring(row.present))
+                    included = included + 1
+                end
+            end
+            if included == 0 then
+                WarlockHudTraceHUD("Multi-Target rows: none eligible or present")
+            end
         end
     end,
     ToggleDamageDebug = function()
@@ -831,18 +862,49 @@ WarlockHudMultiTarget = {
     Debug = function()
         local output = WarlockHudTraceHUD
         if not output then return end
-        probe.EnableThreatDebug()
         output("Multi-Target: " .. (built and "built" or "not built")
             .. "; read-only; combat: " .. tostring(InCombatLockdown()))
         for _, row in ipairs(rows) do
-            if row.present then
+            if row.eligible or row.present then
                 local ok, name = pcall(UnitName, row.unit)
                 if not ok or not Plain(name) or type(name) ~= "string" then
                     name = "name unavailable"
                 end
                 output(row.unit .. " = " .. name
-                    .. "; relevant=" .. tostring(row.relevant))
+                    .. "; source=" .. tostring(row.source)
+                    .. "; GUID=" .. ReadableGuid(row.unit)
+                    .. "; cached GUID=" .. tostring(row.lastGuid or "none")
+                    .. "; DoT GUID=" .. tostring(row.ghostGuid or "none")
+                    .. "; eligible=" .. tostring(row.eligible)
+                    .. "; present=" .. tostring(row.present))
             end
+        end
+    end,
+    PrintDebug = function()
+        local output = WarlockHudTraceHUD
+        if not output then return end
+        output("Multi-Target snapshot: built=" .. tostring(built)
+            .. "; combat=" .. tostring(InCombatLockdown()))
+        local included = 0
+        for _, row in ipairs(rows) do
+            if row.eligible or row.present then
+                local ok, name = pcall(UnitName, row.unit)
+                if not ok or not Plain(name) or type(name) ~= "string" then
+                    name = "name unavailable"
+                end
+                output("Multi-Target row " .. row.unit
+                    .. " name=" .. name
+                    .. "; source=" .. tostring(row.source)
+                    .. "; GUID=" .. ReadableGuid(row.unit)
+                    .. "; cached GUID=" .. tostring(row.lastGuid or "none")
+                    .. "; DoT GUID=" .. tostring(row.ghostGuid or "none")
+                    .. "; eligible=" .. tostring(row.eligible)
+                    .. "; present=" .. tostring(row.present))
+                included = included + 1
+            end
+        end
+        if included == 0 then
+            output("Multi-Target rows: none eligible or present")
         end
     end,
 }

@@ -270,20 +270,37 @@ end
 local function GroupPartner()
     if not IsInGroup() then return nil end
     local partnerGUID = UnitGUID("npc")
-    if not partnerGUID or (issecretvalue and issecretvalue(partnerGUID)) then return nil end
+    if issecretvalue and issecretvalue(partnerGUID) then partnerGUID = nil end
+    local partnerName, partnerRealm = UnitName("npc")
+    local partnerFullName = GetUnitName and GetUnitName("npc", true)
+    if not partnerGUID and not Public(partnerName) and not Public(partnerFullName) then
+        return nil
+    end
     local prefix, count = IsInRaid() and "raid" or "party",
         IsInRaid() and GetNumGroupMembers() or GetNumSubgroupMembers()
     for index = 1, count do
         local unit = prefix .. index
         local groupGUID = UnitGUID(unit)
-        if groupGUID and (not issecretvalue or not issecretvalue(groupGUID))
-            and groupGUID == partnerGUID then
-            local name, realm = UnitName(unit)
+        local guidMatches = partnerGUID and groupGUID
+            and (not issecretvalue or not issecretvalue(groupGUID))
+            and groupGUID == partnerGUID
+        local name, realm = UnitName(unit)
+        local fullName = GetUnitName and GetUnitName(unit, true)
+        local nameMatches = not partnerGUID and Public(name)
+            and ((Public(partnerFullName) and Public(fullName)
+                    and fullName == partnerFullName)
+                or (Public(partnerName) and name == partnerName
+                    and (not Public(partnerRealm) or partnerRealm == ""
+                        or not Public(realm) or partnerRealm == realm)))
+        if guidMatches or nameMatches then
             local _, class = UnitClass(unit)
             if name and (not issecretvalue or not issecretvalue(name)) then
-                local fullName = realm and (not issecretvalue or not issecretvalue(realm))
-                    and realm ~= "" and name .. "-" .. realm or name
-                return partnerGUID, fullName,
+                fullName = Public(fullName) and fullName
+                    or realm and (not issecretvalue or not issecretvalue(realm))
+                        and realm ~= "" and name .. "-" .. realm or name
+                local resolvedGUID = groupGUID
+                if not Public(resolvedGUID) then resolvedGUID = partnerGUID end
+                return resolvedGUID, fullName,
                     (not issecretvalue or not issecretvalue(class)) and class or nil
             end
         end
@@ -408,6 +425,9 @@ local function OpenTradeWindow()
         local scroll = CreateFrame("ScrollFrame", nil, frame, "UIPanelScrollFrameTemplate")
         scroll:SetPoint("TOPLEFT", 16, -68)
         scroll:SetPoint("BOTTOMRIGHT", -34, 110)
+        if WarlockHudWindowChrome and WarlockHudWindowChrome.StyleScrollbar then
+            WarlockHudWindowChrome.StyleScrollbar(scroll.ScrollBar)
+        end
         local edit = CreateFrame("EditBox", nil, scroll)
         edit:SetMultiLine(true)
         edit:SetAutoFocus(false)
@@ -506,6 +526,15 @@ local function OpenTradeWindow()
         dotSnapshot:SetScript("OnClick", function()
             if WarlockHudMultiTarget and WarlockHudMultiTarget.DamageSnapshot then
                 WarlockHudMultiTarget.DamageSnapshot()
+            end
+        end)
+        local mtdSnapshot = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate")
+        mtdSnapshot:SetSize(115, 24)
+        mtdSnapshot:SetPoint("LEFT", dotSnapshot, "RIGHT", 8, 0)
+        mtdSnapshot:SetText("MTD Rows")
+        mtdSnapshot:SetScript("OnClick", function()
+            if WarlockHudMultiTarget and WarlockHudMultiTarget.PrintDebug then
+                WarlockHudMultiTarget.PrintDebug()
             end
         end)
         tradeWindow, tradeText, tradeScroll = frame, edit, scroll
@@ -663,28 +692,40 @@ end
 
 local autoPlacedThisTrade = false
 local tradeGeneration = 0
+local function RefreshTradeCandidate()
+    local guid, name, class = GroupPartner()
+    if not guid then return false end
+    tradeCandidate = { guid = guid, name = name, class = class }
+    return true
+end
+
 local function TradeIsEmpty()
     if not GetTradePlayerItemLink or not GetTradeTargetItemLink then
-        return false, "trade item API unavailable"
+        return false, "trade item API unavailable", true
     end
     for slot = 1, 7 do
         local okPlayer, playerLink = pcall(GetTradePlayerItemLink, slot)
         local okTarget, targetLink = pcall(GetTradeTargetItemLink, slot)
-        if not okPlayer or not okTarget or not Public(playerLink) and playerLink ~= nil
-            or not Public(targetLink) and targetLink ~= nil
-            or playerLink or targetLink then return false, "trade slots occupied or unavailable" end
+        if not okPlayer or not okTarget
+            or (playerLink ~= nil and not Public(playerLink))
+            or (targetLink ~= nil and not Public(targetLink)) then
+            return false, "trade slots unavailable", true
+        end
+        if playerLink or targetLink then return false, "trade slots occupied" end
     end
     if not GetPlayerTradeMoney or not GetTargetTradeMoney then
-        return false, "trade money API unavailable"
+        return false, "trade money API unavailable", true
     end
     local okPlayerMoney, playerMoney = pcall(GetPlayerTradeMoney)
-    if not okPlayerMoney or not Public(playerMoney) or playerMoney ~= 0 then
-        return false, "player money occupied or unavailable"
+    if not okPlayerMoney or not Public(playerMoney) then
+        return false, "player trade money unavailable", true
     end
+    if playerMoney ~= 0 then return false, "player money offered" end
     local okTargetMoney, targetMoney = pcall(GetTargetTradeMoney)
-    if not okTargetMoney or not Public(targetMoney) or targetMoney ~= 0 then
-        return false, "partner money occupied or unavailable"
+    if not okTargetMoney or not Public(targetMoney) then
+        return false, "partner trade money unavailable", true
     end
+    if targetMoney ~= 0 then return false, "partner money offered" end
     return true
 end
 
@@ -715,11 +756,17 @@ local function AutoPlaceHealthstone()
         TraceTrade("AUTO_PLACE", "skipped: setting off")
         return
     end
-    if not tradeCandidate then TraceTrade("AUTO_PLACE", "skipped: group partner unknown"); return end
+    if not tradeCandidate and not RefreshTradeCandidate() then
+        TraceTrade("AUTO_PLACE", "retry: group partner not resolved yet")
+        return "retry"
+    end
     if autoPlacedThisTrade then TraceTrade("AUTO_PLACE", "skipped: already attempted"); return end
     if InCombatLockdown() then TraceTrade("AUTO_PLACE", "skipped: combat"); return end
-    local empty, reason = TradeIsEmpty()
-    if not empty then TraceTrade("AUTO_PLACE", "skipped: " .. reason); return end
+    local empty, reason, retryable = TradeIsEmpty()
+    if not empty then
+        TraceTrade("AUTO_PLACE", (retryable and "retry: " or "skipped: ") .. reason)
+        return retryable and "retry" or nil
+    end
     if not C_Container or not C_Container.PickupContainerItem
         or not ClickTradeButton or not GetCursorInfo then
         TraceTrade("AUTO_PLACE", "skipped: placement API unavailable")
@@ -758,6 +805,23 @@ local function AutoPlaceHealthstone()
     local placed = pcall(ClickTradeButton, 1)
     TraceTrade("AUTO_PLACE", "item=" .. api.Stones[1].name
         .. " result=" .. (placed and "called" or "failed"))
+end
+
+local function ScheduleAutoPlace(generation, attempt)
+    if not C_Timer or not C_Timer.After then
+        TraceTrade("AUTO_PLACE", "skipped: timer API unavailable")
+        return
+    end
+    C_Timer.After(0.2, function()
+        if generation ~= tradeGeneration then return end
+        -- The Forever client can populate the NPC/group unit mapping and trade
+        -- slots noticeably after TRADE_SHOW. Keep retrying transient reads for
+        -- a few seconds, while terminal states (occupied trade, no stone,
+        -- disabled option) still stop immediately.
+        if AutoPlaceHealthstone() == "retry" and attempt < 20 then
+            ScheduleAutoPlace(generation, attempt + 1)
+        end
+    end)
 end
 
 events:RegisterEvent("UNIT_SPELLCAST_SENT")
@@ -899,15 +963,10 @@ events:SetScript("OnEvent", function(_, event, ...)
                 .. " group match=" .. tostring(tradeCandidate ~= nil)
                 .. " slots=" .. TradeSlots())
         end
-        if tradeCandidate and C_Timer and C_Timer.After then
-            local generation = tradeGeneration
-            TraceTrade("AUTO_PLACE", "scheduled")
-            C_Timer.After(0.1, function()
-                if generation == tradeGeneration then AutoPlaceHealthstone() end
-            end)
-        elseif tradeCandidate then
-            TraceTrade("AUTO_PLACE", "skipped: timer API unavailable")
-        end
+        local generation = tradeGeneration
+        TraceTrade("AUTO_PLACE", "scheduled; group match="
+            .. tostring(tradeCandidate ~= nil))
+        ScheduleAutoPlace(generation, 1)
     elseif event == "TRADE_PLAYER_ITEM_CHANGED" then
         tradeHasHealthstone = IsHealthstoneInTrade()
         if not tradeHasHealthstone then

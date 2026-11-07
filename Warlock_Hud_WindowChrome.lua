@@ -88,6 +88,26 @@ function WarlockHudWindowChrome.StyleButton(button)
     button:HookScript("OnLeave", function() SetState(false) end)
 end
 
+function WarlockHudWindowChrome.StyleScrollbar(scrollBar)
+    if not scrollBar then return end
+    scrollBar:SetWidth(6)
+    for _, key in ipairs({ "ScrollUpButton", "ScrollDownButton" }) do
+        local button = scrollBar[key]
+        if button then button:Hide() end
+    end
+    if scrollBar.SetThumbTexture and scrollBar.GetThumbTexture then
+        scrollBar:SetThumbTexture("Interface\\Buttons\\WHITE8X8")
+        local thumb = scrollBar:GetThumbTexture()
+        if thumb then
+            thumb:SetSize(6, 28)
+            thumb:SetColorTexture(0.86, 0.66, 0.25, 0.78)
+        end
+    end
+    local track = scrollBar:CreateTexture(nil, "BACKGROUND")
+    track:SetAllPoints(scrollBar)
+    track:SetColorTexture(0.02, 0.02, 0.025, 0.55)
+end
+
 function WarlockHudWindowChrome.CreateCloseButton(frame, onClose, name)
     local close = CreateFrame("Button", name, frame)
     close:SetSize(18, 18)
