@@ -428,11 +428,12 @@ function WarlockHudMultiTargetIdentity.New(getRows, spells, rowLimit, plain,
         for _, row in ipairs(getRows()) do
             if row.eligible then
                 -- Combat can hide GUIDs, names, and UnitIsUnit results. In that
-                -- state a target/group-target token may be an alias for a
-                -- visible nameplate, and Lua cannot safely prove the identity.
-                -- Prefer the authoritative visible nameplate rows; use target
-                -- tokens as fallback only when no nameplate mob is available.
-                if hasLiveNameplate and row.source ~= "nameplate" then
+                -- state group-target tokens may alias visible nameplates, and
+                -- Lua cannot safely prove their identity. Prefer nameplates
+                -- over party/raid target aliases, while preserving the direct
+                -- target token as a fallback for the selected mob.
+                if hasLiveNameplate
+                    and (row.source == "party" or row.source == "raid") then
                     row.present = false
                     row.display:SetAlpha(0)
                 else
