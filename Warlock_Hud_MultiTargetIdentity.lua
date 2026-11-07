@@ -416,28 +416,50 @@ function WarlockHudMultiTargetIdentity.New(getRows, spells, rowLimit, plain,
 
     local function NormalizeRows()
         local seen, accepted, count = {}, {}, 0
+        local hasLiveNameplate = false
+        if InCombatLockdown() then
+            for _, row in ipairs(getRows()) do
+                if row.source == "nameplate" and row.eligible then
+                    hasLiveNameplate = true
+                    break
+                end
+            end
+        end
         for _, row in ipairs(getRows()) do
             if row.eligible then
-                local guid = ReadableGuid(row.unit)
-                local duplicate = guid ~= "unavailable" and seen[guid]
-                if not duplicate and UnitIsUnit then
-                    for _, prior in ipairs(accepted) do
-                        local ok, same = pcall(UnitIsUnit, row.unit, prior)
-                        if ok and Plain(same) and same then
-                            duplicate = true
-                            break
-                        end
-                    end
-                end
-                if duplicate or count >= ROWS then
+                -- Combat can hide GUIDs, names, and UnitIsUnit results. In that
+                -- state a target/group-target token may be an alias for a
+                -- visible nameplate, and Lua cannot safely prove the identity.
+                -- Prefer the authoritative visible nameplate rows; use target
+                -- tokens as fallback only when no nameplate mob is available.
+                if hasLiveNameplate and row.source ~= "nameplate" then
                     row.present = false
                     row.display:SetAlpha(0)
                 else
-                    row.present = true
-                    row.display:SetAlpha(1)
-                    if guid ~= "unavailable" then seen[guid] = true end
-                    accepted[#accepted + 1] = row.unit
-                    count = count + 1
+                    local guid = ReadableGuid(row.unit)
+                    if guid == "unavailable" and type(row.lastGuid) == "string" then
+                        guid = row.lastGuid
+                    end
+                    local duplicate = guid ~= "unavailable" and seen[guid]
+                    if not duplicate and UnitIsUnit then
+                        for _, prior in ipairs(accepted) do
+                            local ok, same = pcall(UnitIsUnit, row.unit, prior)
+                            if ok and Plain(same) and same then
+                                duplicate = true
+                                break
+                            end
+                        end
+                    end
+                    if duplicate or count >= ROWS then
+                        row.present = false
+                        row.display:SetAlpha(0)
+                    else
+                        row.present = true
+                        row.display:SetAlpha(1)
+                        if guid ~= "unavailable" then seen[guid] = true end
+                        accepted[#accepted + 1] = row.unit
+                        count = count + 1
+                    end
                 end
             end
         end

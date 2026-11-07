@@ -18,7 +18,9 @@ function WarlockHudMultiTargetLayout.New(getRows, dotSlots, iconSize, rowHeight,
 
     local function CompactRows(width, height, positionsOnly)
         local _, scrollContent = getScrollFrames()
-        local displayWidth = width - 20
+        -- Reserve the narrow right gutter for the scrollbar so its track and
+        -- arrow buttons never cover row content.
+        local displayWidth = width - 24
         local healthWidth = displayWidth - 44
         local profile = Profile()
         local showIcons = not profile or profile.multiDotShowIcons ~= false

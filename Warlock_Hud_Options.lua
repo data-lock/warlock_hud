@@ -313,7 +313,12 @@ local function IconForKey(key)
         return "Interface\\Icons\\Spell_Shadow_CurseOfMannoroth"
     end
     local spellID = WarlockHudEffects.PreviewSpellIDs[key] or spellIDs[key]
-    return spellID and C_Spell and C_Spell.GetSpellTexture(spellID)
+    local texture = spellID and C_Spell and C_Spell.GetSpellTexture(spellID)
+    if texture then return texture end
+    if key == "salv" then
+        return C_Spell and C_Spell.GetSpellTexture(25895)
+            or "Interface\\Icons\\Spell_Holy_SealOfSalvation"
+    end
 end
 
 local iconDemo

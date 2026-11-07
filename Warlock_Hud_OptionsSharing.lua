@@ -60,6 +60,9 @@ function WarlockHudOptionsSharing.Build(context)
     local shareScroll = CreateFrame("ScrollFrame", nil, shareArea, "UIPanelScrollFrameTemplate")
     shareScroll:SetPoint("TOPLEFT", shareArea, "TOPLEFT", 8, -7)
     shareScroll:SetSize(540, 144)
+    if WarlockHudWindowChrome and WarlockHudWindowChrome.StyleScrollbar then
+        WarlockHudWindowChrome.StyleScrollbar(shareScroll.ScrollBar)
+    end
     local shareInput = CreateFrame("EditBox", nil, shareScroll)
     shareInput:SetMultiLine(true)
     shareInput:SetAutoFocus(false)

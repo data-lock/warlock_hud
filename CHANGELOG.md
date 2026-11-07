@@ -1,5 +1,19 @@
 # Changelog
 
+## v1.1.3
+
+- Prevent duplicate Multi-Target rows during combat when unit identities are
+  restricted by prioritizing visible nameplates and using target tokens as a
+  fallback when no nameplate mob is available.
+- Add an MTD row snapshot button to the debug trace and include row sources and
+  readable or cached identities in the snapshot.
+- Replace the Multi-Target scrollbar with a slim gold control and apply the
+  same scrollbar style to Summon Requests, debug trace, and profile sharing.
+- Improve automatic Healthstone placement retries when trade or group-member
+  details are temporarily unavailable, and add a fallback Salvation buff icon.
+
+See `releases/v1.1.3.md` for release notes.
+
 ## v1.1.2
 
 - Track the cooldowns for pet abilities in the configurable Utility row,
