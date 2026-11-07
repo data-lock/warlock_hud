@@ -1,5 +1,17 @@
 # Changelog
 
+## v1.1.2
+
+- Track the cooldowns for pet abilities in the configurable Utility row,
+  including Torment, Suffering, Phase Shift, Lash of Pain, Soothing Kiss,
+  Devour Magic, and Spell Lock.
+- Fix duplicate Multi-Target rows when a live unit's GUID is restricted during
+  combat and its last-seen DoT row is also available.
+- Improve demon trainer grimoire scans on first opening and treat Incubus and
+  Succubus as the same pet family. Mark known grimoires with tinted icons.
+
+See `releases/v1.1.2.md` for release notes.
+
 ## v1.1.1
 
 - Add Soul Harvest to the configurable Procs row using its active 10-second

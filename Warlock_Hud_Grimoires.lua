@@ -7,8 +7,20 @@ local petScanQueued = false
 local merchantPaintQueued = false
 local merchantHooked = false
 local iconBorders = {}
+local iconTints = {}
 local petNames = { "Imp", "Voidwalker", "Succubus", "Felhunter",
     "Felguard", "Infernal", "Doomguard" }
+local petFamilyAliases = { incubus = "succubus", sayaad = "succubus" }
+local QueueMerchantPaint
+
+local function CanonicalFamily(family)
+    local key = type(family) == "string" and family:lower()
+    return key and (petFamilyAliases[key] or key)
+end
+
+local function FamilyLabel(family)
+    return family == "succubus" and "Succubus/Incubus" or family
+end
 
 local function Rank(text)
     return type(text) == "string" and tonumber(text:match("[Rr]ank%s*(%d+)"))
@@ -30,7 +42,7 @@ local function ScanPet()
     if not UnitExists("pet") or not UnitCreatureFamily
         or not C_SpellBook or not C_SpellBook.HasPetSpells
         or not C_SpellBook.GetSpellBookItemInfo then return end
-    local family = UnitCreatureFamily("pet")
+    local family = CanonicalFamily(UnitCreatureFamily("pet"))
     local count = C_SpellBook.HasPetSpells()
     local bank = Enum and Enum.SpellBookSpellBank
         and Enum.SpellBookSpellBank.Pet
@@ -48,24 +60,37 @@ local function ScanPet()
             spells[key] = math.max(spells[key] or 0, rank or 1)
         end
     end
-    if not next(spells) then return end
+    if not next(spells) then return false end
     local store = Store()
     if store then
-        local known = store[family:lower()] or {}
+        local known = store[family] or {}
         for name, rank in pairs(spells) do
             known[name] = math.max(known[name] or 0, rank)
         end
-        store[family:lower()] = known
+        store[family] = known
+        return true
     end
+    return false
 end
 
-local function QueuePetScan()
+local function QueuePetScan(retries)
     if petScanQueued then return end
     petScanQueued = true
+    local function ScanWhenReady()
+        petScanQueued = false
+        local scanned = ScanPet()
+        if scanned then
+            if QueueMerchantPaint and MerchantFrame and MerchantFrame:IsShown() then
+                QueueMerchantPaint()
+            end
+        elseif retries and retries > 0 then
+            QueuePetScan(retries - 1)
+        end
+    end
     if C_Timer and C_Timer.After then
-        C_Timer.After(0.5, ScanPet)
+        C_Timer.After(0.5, ScanWhenReady)
     else
-        ScanPet()
+        ScanWhenReady()
     end
 end
 
@@ -89,18 +114,26 @@ local function GrimoireInfo(index)
     tooltip:SetMerchantItem(index)
     local store = Store()
     local families = {}
-    for _, family in ipairs(petNames) do families[family:lower()] = family end
+    for _, family in ipairs(petNames) do
+        local key = CanonicalFamily(family)
+        families[family:lower()] = { key = key, display = FamilyLabel(key) }
+    end
+    families.incubus = { key = "succubus", display = FamilyLabel("succubus") }
+    families.sayaad = { key = "succubus", display = FamilyLabel("succubus") }
     if store then
-        for family in pairs(store) do families[family] = family end
+        for family in pairs(store) do
+            local key = CanonicalFamily(family)
+            families[family] = { key = key, display = FamilyLabel(key) }
+        end
     end
     for line = 2, tooltip:NumLines() do
         local textRegion = _G[tooltip:GetName() .. "TextLeft" .. line]
         local text = textRegion and textRegion:GetText()
         if type(text) == "string" then
             local lower = text:lower()
-            for family, displayName in pairs(families) do
+            for family, info in pairs(families) do
                 if lower:find("%f[%a]" .. family .. "%f[%A]") then
-                    return spellName:lower(), rank, family, displayName
+                    return spellName:lower(), rank, info.key, info.display
                 end
             end
         end
@@ -112,7 +145,20 @@ local function KnownState(index)
     if not family then return nil end
     local store = Store()
     local spells = store and store[family]
-    if not spells then
+    local scanned = spells ~= nil
+    if store and family == "succubus" then
+        spells = spells or {}
+        for alias in pairs(petFamilyAliases) do
+            local old = store[alias]
+            if old then
+                scanned = true
+                for name, knownRank in pairs(old) do
+                    spells[name] = math.max(spells[name] or 0, knownRank)
+                end
+            end
+        end
+    end
+    if not scanned then
         return "unscanned", displayName, spell, rank, family
     end
     return (spells[spell] or 0) >= rank and "known" or "missing",
@@ -145,6 +191,26 @@ local function BorderFor(button, visible)
     edges[4]:SetWidth(3)
     iconBorders[visible] = { frame = border, edges = edges }
     return iconBorders[visible]
+end
+
+local function TintIcon(button, visible, r, g, b)
+    local icon = button.icon or button.Icon
+    if not icon and button.GetName then
+        local name = button:GetName()
+        icon = name and _G[name .. "IconTexture"]
+    end
+    if not icon then return end
+    local tint = iconTints[visible]
+    if not tint or tint.icon ~= icon then
+        local red, green, blue = icon:GetVertexColor()
+        tint = { icon = icon, red = red, green = green, blue = blue }
+        iconTints[visible] = tint
+    end
+    if r then
+        icon:SetVertexColor(r, g, b)
+    else
+        icon:SetVertexColor(tint.red, tint.green, tint.blue)
+    end
 end
 
 local function MerchantAvailable(index)
@@ -199,7 +265,7 @@ local function PaintMerchant()
     merchantPaintQueued = false
     if not MerchantFrame or not MerchantFrame:IsShown()
         or not GetMerchantNumItems then return end
-    ScanPet()
+    if not ScanPet() then QueuePetScan(4) end
     local perPage = MERCHANT_ITEMS_PER_PAGE or 10
     local total = GetMerchantNumItems()
     local availableRanks = MerchantFrame.selectedTab == 1
@@ -229,18 +295,20 @@ local function PaintMerchant()
                 end
             end
             if r then
+                TintIcon(button, visible, r, g, b)
                 for _, edge in ipairs(border.edges) do
                     edge:SetVertexColor(r, g, b)
                 end
                 border.frame:Show()
             else
+                TintIcon(button, visible)
                 border.frame:Hide()
             end
         end
     end
 end
 
-local function QueueMerchantPaint()
+QueueMerchantPaint = function()
     if merchantPaintQueued then return end
     merchantPaintQueued = true
     if C_Timer and C_Timer.After then
@@ -302,9 +370,12 @@ frame:SetScript("OnEvent", function(_, event, unit)
     if event == "UNIT_PET" and unit ~= "player" then return end
     if event == "PLAYER_LOGIN" or event == "UNIT_PET"
         or event == "PET_BAR_UPDATE" or event == "SPELLS_CHANGED" then
-        QueuePetScan()
+        QueuePetScan(4)
     end
-    if event == "MERCHANT_SHOW" then HookMerchant() end
+    if event == "MERCHANT_SHOW" then
+        HookMerchant()
+        QueuePetScan(4)
+    end
     if event == "MERCHANT_SHOW" or event == "MERCHANT_UPDATE"
         or event == "GET_ITEM_INFO_RECEIVED" or event == "SPELLS_CHANGED"
         or event == "PET_BAR_UPDATE" then

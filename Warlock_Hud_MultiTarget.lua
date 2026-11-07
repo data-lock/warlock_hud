@@ -188,7 +188,10 @@ local function UpdateGhostRows()
         elseif row.present then
             liveCount = liveCount + 1
             local guid = ReadableGuid(row.unit)
-            if guid == "unavailable" and row.source == "nameplate" then
+            -- Combat can make GUID reads unavailable for any unit token. Use
+            -- the last observed identity for a token that has not changed so
+            -- its live row suppresses a duplicate last-seen DoT row.
+            if guid == "unavailable" then
                 guid = row.lastGuid
             end
             if guid then liveGuids[guid] = true end
@@ -932,8 +935,15 @@ events:SetScript("OnEvent", function(_, event, unit)
                 and unit ~= "target"))
             then return end
         if event == "PLAYER_TARGET_CHANGED" then
+            for _, row in ipairs(rows) do
+                if row.unit == "target" then row.lastGuid = nil; break end
+            end
             RefreshSourceAuras("target")
         elseif event == "UNIT_TARGET" and Plain(unit) and type(unit) == "string" then
+            local changedTarget = unit .. "target"
+            for _, row in ipairs(rows) do
+                if row.unit == changedTarget then row.lastGuid = nil; break end
+            end
             RefreshSourceAuras(unit .. "target")
         end
         if event ~= "UNIT_TARGET" and Plain(unit) and type(unit) == "string"

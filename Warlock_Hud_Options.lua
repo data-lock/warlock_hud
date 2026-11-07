@@ -13,6 +13,13 @@ local LABELS = {
     healthstone = "Healthstone", soulstone = "Soulstone", fear = "Fear",
     banish = "Banish",
     conflagrate = "Conflagrate",
+    torment = "Torment",
+    suffering = "Suffering",
+    phaseshift = "Phase Shift",
+    lashofpain = "Lash of Pain",
+    soothingkiss = "Soothing Kiss",
+    devourmagic = "Devour Magic",
+    spelllock = "Spell Lock",
     demon = "Missing Demon Reminder", sacrifice = "Demonic Sacrifice",
     soullink = "Soul Link",
     soulshards = "Soul Shards",
@@ -46,6 +53,13 @@ local ICON_HELP = {
     fear = "Shows Fear on the current target when available.",
     banish = "Shows Banish on the current target when available.",
     conflagrate = "Shows Conflagrate and its cooldown when learned. The icon pulses when your Immolate is active on the current target.",
+    torment = "Shows the active pet's Torment ability and its cooldown when known (Voidwalker).",
+    suffering = "Shows the active Voidwalker's Suffering ability and its cooldown when known.",
+    phaseshift = "Shows the active Imp's Phase Shift ability and its cooldown when known.",
+    lashofpain = "Shows the active Succubus or Incubus's Lash of Pain ability and its cooldown when known.",
+    soothingkiss = "Shows the active Succubus or Incubus's Soothing Kiss ability and its cooldown when known.",
+    devourmagic = "Shows the active Felhunter's Devour Magic ability and its cooldown when known.",
+    spelllock = "Shows the active Felhunter's Spell Lock ability and its cooldown when known.",
     demon = "Flash a warning when no demon is summoned and no active Demonic Sacrifice is detected.",
     sacrifice = "Shows an active Demonic Sacrifice effect with its native duration.",
     soullink = "Remind you when Soul Link is known, a demon is summoned, and the buff is confirmed missing.",
@@ -259,7 +273,9 @@ local function IconForKey(key)
         end
     end
     local spellIDs = {
-        fear = 5782, banish = 710, conflagrate = 1293817,
+        fear = 5782, banish = 710, conflagrate = 1293817, torment = 3716,
+        suffering = 17735, phaseshift = 4511, lashofpain = 7814,
+        soothingkiss = 6360, devourmagic = 19505, spelllock = 19244,
         armor = 706, wellfed = 19705, flask = 17628,
         spelldamage = 16889, shadow = 11474, fire = 26276,
         manaregen = 24363,
@@ -269,6 +285,16 @@ local function IconForKey(key)
         thorns = 467, breath = 5697,
         powerinfusion = 10060, nightfall = 17941, soulharvest = 1242853,
     }
+    if spellIDs[key] and api.PetSpellID and C_Spell
+        and C_Spell.GetSpellTexture then
+        for _, petSpell in ipairs(api.PetCooldowns or {}) do
+            if petSpell.key == key then
+                local spellID = api.PetSpellID(petSpell.name)
+                if spellID then return C_Spell.GetSpellTexture(spellID) end
+                break
+            end
+        end
+    end
     if key == "wizardoil" then
         return C_Item and C_Item.GetItemIconByID and C_Item.GetItemIconByID(20749)
     end

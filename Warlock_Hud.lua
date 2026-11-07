@@ -272,6 +272,7 @@ local KnownSpellID = WarlockHudSpellbook.KnownSpellID
 local KnownSpell = WarlockHudSpellbook.KnownSpell
 local LearnedAnySpell = WarlockHudSpellbook.LearnedAnySpell
 local KnowsDemonicBrand = WarlockHudSpellbook.KnowsDemonicBrand
+local PetSpellID = WarlockHudSpellbook.PetSpellID
 local DRAIN_SOUL_SPELL
 for _, spell in ipairs(SPELLS) do
     if spell.name == "Drain Soul" then DRAIN_SOUL_SPELL = spell; break end
@@ -345,6 +346,18 @@ local function VisibleOrder(order)
             hasSpell = KnownSpellID(19028) == true
         elseif key == "conflagrate" then
             hasSpell = WarlockHudRowVisibility.ConflagrateSpellID() ~= nil
+        elseif key == "torment" or key == "suffering"
+            or key == "phaseshift" or key == "lashofpain"
+            or key == "soothingkiss" or key == "devourmagic"
+            or key == "spelllock" then
+            local spellName
+            for _, petCooldown in ipairs(WarlockHudPlayerEffects.PetCooldowns) do
+                if key == petCooldown.key then
+                    spellName = petCooldown.name
+                    break
+                end
+            end
+            hasSpell = spellName ~= nil and PetSpellID(spellName) ~= nil
         elseif key == "demon" then
             hasSpell = KnownSpellID(688) == true
                 and groupBuffIcons.demonLayoutVisible == true
@@ -1739,6 +1752,29 @@ local function Build()
         icon:SetDesaturated(true)
     end
 
+    for _, petSpell in ipairs(WarlockHudPlayerEffects.PetCooldowns) do
+        local spellID = PetSpellID(petSpell.name)
+        local anchor, x, iconSize = RowPlacement(
+            petSpell.key, mainOrder, cooldownOrder)
+        if spellID and x then
+            local icon = anchor:CreateTexture(nil, "ARTWORK")
+            icon:SetSize(iconSize, iconSize)
+            icon:SetPoint("CENTER", anchor, "CENTER", x, 0)
+            icon:SetTexture(C_Spell.GetSpellTexture(spellID))
+            icon:SetTexCoord(ICON_CROP, 1 - ICON_CROP, ICON_CROP, 1 - ICON_CROP)
+            local cooldown = CreateFrame("Cooldown", nil, anchor,
+                "CooldownFrameTemplate")
+            cooldown:SetAllPoints(icon)
+            cooldown:SetDrawBling(false)
+            cooldown:SetDrawEdge(false)
+            cooldown:SetHideCountdownNumbers(false)
+            spellCooldownIcons[#spellCooldownIcons + 1] = {
+                spellID = spellID, cooldown = cooldown,
+                border = MakeBorder(anchor, x, iconSize),
+            }
+        end
+    end
+
     local demonAnchor, demonX, demonSize = RowPlacement("demon", mainOrder, cooldownOrder)
     if demonX then
         local icon = demonAnchor:CreateTexture(nil, "ARTWORK")
@@ -2345,7 +2381,11 @@ events:SetScript("OnEvent", function(_, event)
             WarlockHudRowVisibility.containers.pet:UpdateAllAuras()
         end
         UpdateGroupBuffs()
-        UpdateRowVisibility()
+        if event == "UNIT_PET" then
+            if not Rebuild() then pendingKnownRebuild = true end
+        else
+            UpdateRowVisibility()
+        end
     elseif event == "GROUP_ROSTER_UPDATE" or event == "PLAYER_ENTERING_WORLD"
         or event == "ZONE_CHANGED_NEW_AREA" then
         if event == "PLAYER_ENTERING_WORLD" then UpdateSpecProfile() end
@@ -2618,6 +2658,8 @@ WarlockHudAPI = {
         return order
     end,
     CooldownKeys = COOLDOWN_KEYS,
+    PetCooldowns = WarlockHudPlayerEffects.PetCooldowns,
+    PetSpellID = PetSpellID,
     BuffKeys = BUFF_KEYS,
     ConsumeKeys = consumeState.keys,
     Buffs = BUFFS,

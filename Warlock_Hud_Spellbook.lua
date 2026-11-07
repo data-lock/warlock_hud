@@ -76,6 +76,27 @@ local function ConflagrateSpellID()
     end
 end
 
+local function PetSpellID(spellName)
+    if not UnitExists or not UnitExists("pet") or not C_SpellBook
+        or not C_SpellBook.HasPetSpells
+        or not C_SpellBook.GetSpellBookItemInfo then return nil end
+    local count = C_SpellBook.HasPetSpells()
+    local bank = Enum and Enum.SpellBookSpellBank
+        and Enum.SpellBookSpellBank.Pet
+    if type(count) ~= "number" or count < 1 or bank == nil then return nil end
+    for slot = 1, count do
+        local info = C_SpellBook.GetSpellBookItemInfo(slot, bank)
+        local name = info and info.name
+        if name then
+            name = name:gsub("%s*%([Rr]ank%s*%d+%)$", "")
+        end
+        if name and name:lower() == spellName:lower() then
+            local spellID = info.spellID or info.actionID
+            if type(spellID) == "number" then return spellID end
+        end
+    end
+end
+
 local function CastSpellTexture(spell, currentID)
     if not spell or not C_Spell or not C_Spell.GetSpellTexture then return nil end
     local identifiers = {}
@@ -98,4 +119,5 @@ WarlockHudSpellbook.KnownSpell = KnownSpell
 WarlockHudSpellbook.LearnedAnySpell = LearnedAnySpell
 WarlockHudSpellbook.KnowsDemonicBrand = KnowsDemonicBrand
 WarlockHudSpellbook.ConflagrateSpellID = ConflagrateSpellID
+WarlockHudSpellbook.PetSpellID = PetSpellID
 WarlockHudSpellbook.CastSpellTexture = CastSpellTexture
