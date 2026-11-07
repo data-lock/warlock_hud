@@ -849,6 +849,7 @@ WarlockHudMultiTarget = {
                     name = "name unavailable"
                 end
                 output(row.unit .. " = " .. name
+                    .. "; relevant=" .. tostring(row.relevant)
                     .. "; source=" .. tostring(row.source)
                     .. "; GUID=" .. ReadableGuid(row.unit)
                     .. "; cached GUID=" .. tostring(row.lastGuid or "none")
