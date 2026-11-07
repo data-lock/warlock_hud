@@ -792,28 +792,6 @@ WarlockHudMultiTarget = {
         if WarlockHudTraceHUD then
             WarlockHudTraceHUD("Multi-Target ratios: "
                 .. damage.DebugSnapshot())
-            WarlockHudTraceHUD("Multi-Target rows: snapshot follows")
-            local included = 0
-            for _, row in ipairs(rows) do
-                if row.eligible or row.present then
-                    local ok, name = pcall(UnitName, row.unit)
-                    if not ok or not Plain(name) or type(name) ~= "string" then
-                        name = "name unavailable"
-                    end
-                    WarlockHudTraceHUD("Multi-Target row " .. row.unit
-                        .. " name=" .. name
-                        .. "; source=" .. tostring(row.source)
-                        .. "; GUID=" .. ReadableGuid(row.unit)
-                        .. "; cached GUID=" .. tostring(row.lastGuid or "none")
-                        .. "; DoT GUID=" .. tostring(row.ghostGuid or "none")
-                        .. "; eligible=" .. tostring(row.eligible)
-                        .. "; present=" .. tostring(row.present))
-                    included = included + 1
-                end
-            end
-            if included == 0 then
-                WarlockHudTraceHUD("Multi-Target rows: none eligible or present")
-            end
         end
     end,
     ToggleDamageDebug = function()
