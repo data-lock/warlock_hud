@@ -1,5 +1,18 @@
 # Changelog
 
+## v1.1.4
+
+- Improve demon trainer grimoire recognition, including rankless grimoires such
+  as Phase Shift, and show their known or missing status in the tooltip.
+- Mark grimoires above the character's level in red, and preserve known-book
+  marks when merchant rows refresh after a purchase.
+- Reduce repeated merchant work by scanning pet spellbooks on pet or spellbook
+  events and skipping unchanged merchant pages.
+- Add an optional Grimoire Log toggle to the debug trace with merchant row,
+  availability, item-level, and pet-scan details.
+
+See `releases/v1.1.4.md` for release notes.
+
 ## v1.1.3
 
 - Prevent duplicate Multi-Target rows during combat when unit identities are

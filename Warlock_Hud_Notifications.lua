@@ -356,7 +356,7 @@ end
 local tradeLines = {}
 local tradeWindow, tradeText, tradeScroll, tradeStatus
 local tradeToggle, soulstoneToggle, summonToggle, assignmentToggle, channelToggle
-local unitProbeToggle, dotDebugToggle
+local unitProbeToggle, dotDebugToggle, grimoireToggle
 
 local function RefreshTradeWindow()
     if not tradeWindow then return end
@@ -364,7 +364,9 @@ local function RefreshTradeWindow()
         .. " / Soulstone " .. (soulstoneDebug and "on" or "off")
         .. " / Summon " .. (summonDebug and "on" or "off")
         .. " / Assignments " .. (assignmentDebug and "on" or "off")
-        .. " / Channel " .. (channelDebug and "on" or "off"))
+        .. " / Channel " .. (channelDebug and "on" or "off")
+        .. " / Grimoire " .. (WarlockHudGrimoireDebugEnabled
+            and WarlockHudGrimoireDebugEnabled() and "on" or "off"))
     if tradeToggle then
         tradeToggle:SetText("Trade: " .. (tradeDebug and "On" or "Off"))
     end
@@ -390,6 +392,11 @@ local function RefreshTradeWindow()
             and WarlockHudMultiTarget.DamageDebugRunning
             and WarlockHudMultiTarget.DamageDebugRunning()
         dotDebugToggle:SetText("DoT Ratios: " .. (running and "On" or "Off"))
+    end
+    if grimoireToggle then
+        local enabled = WarlockHudGrimoireDebugEnabled
+            and WarlockHudGrimoireDebugEnabled()
+        grimoireToggle:SetText("Grimoire Log: " .. (enabled and "On" or "Off"))
     end
     tradeText:SetText(table.concat(tradeLines, "\n"))
     tradeText:SetHeight(math.max(330, #tradeLines * 16 + 20))
@@ -536,6 +543,15 @@ local function OpenTradeWindow()
             if WarlockHudMultiTarget and WarlockHudMultiTarget.PrintDebug then
                 WarlockHudMultiTarget.PrintDebug()
             end
+        end)
+        grimoireToggle = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate")
+        grimoireToggle:SetSize(135, 24)
+        grimoireToggle:SetPoint("LEFT", mtdSnapshot, "RIGHT", 8, 0)
+        grimoireToggle:SetScript("OnClick", function()
+            if WarlockHudToggleGrimoireDebug then
+                WarlockHudToggleGrimoireDebug()
+            end
+            RefreshTradeWindow()
         end)
         tradeWindow, tradeText, tradeScroll = frame, edit, scroll
     end
