@@ -2633,6 +2633,10 @@ SlashCmdList.WARLOCKHUD = function(message)
         WarlockHudToggleSoulstoneDebug()
         return
     end
+    if message == "grimdebug" and WarlockHudToggleGrimoireDebug then
+        WarlockHudToggleGrimoireDebug()
+        return
+    end
     if message == "debug" then
         if WarlockHudOpenDebugTrace then WarlockHudOpenDebugTrace() end
         DebugState()

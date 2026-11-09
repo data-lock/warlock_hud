@@ -6,12 +6,37 @@ tooltip:SetOwner(UIParent, "ANCHOR_NONE")
 local petScanQueued = false
 local merchantPaintQueued = false
 local merchantHooked = false
+local merchantLastPaintSignature
+local petScanRevision = 0
+local grimoireDebug = false
 local iconBorders = {}
 local iconTints = {}
 local petNames = { "Imp", "Voidwalker", "Succubus", "Felhunter",
     "Felguard", "Infernal", "Doomguard" }
 local petFamilyAliases = { incubus = "succubus", sayaad = "succubus" }
 local QueueMerchantPaint
+
+local function DebugValue(value)
+    if issecretvalue and issecretvalue(value) then return "restricted" end
+    if value == nil then return "nil" end
+    return tostring(value):gsub("[%c]", " ")
+end
+
+local function TraceGrimoire(event, details)
+    if not grimoireDebug or not WarlockHudTraceHUD then return end
+    WarlockHudTraceHUD("Grimoire " .. event
+        .. (details and (" " .. details) or ""))
+end
+
+function WarlockHudGrimoireDebugEnabled()
+    return grimoireDebug
+end
+
+function WarlockHudToggleGrimoireDebug()
+    grimoireDebug = not grimoireDebug
+    if WarlockHudOpenDebugTrace then WarlockHudOpenDebugTrace() end
+    TraceGrimoire("DEBUG", grimoireDebug and "enabled" or "disabled")
+end
 
 local function CanonicalFamily(family)
     local key = type(family) == "string" and family:lower()
@@ -60,7 +85,13 @@ local function ScanPet()
             spells[key] = math.max(spells[key] or 0, rank or 1)
         end
     end
-    if not next(spells) then return false end
+    if not next(spells) then
+        TraceGrimoire("PET_SCAN", "family=" .. tostring(family)
+            .. "; spells=none")
+        return false
+    end
+    local spellCount = 0
+    for _ in pairs(spells) do spellCount = spellCount + 1 end
     local store = Store()
     if store then
         local known = store[family] or {}
@@ -68,6 +99,9 @@ local function ScanPet()
             known[name] = math.max(known[name] or 0, rank)
         end
         store[family] = known
+        petScanRevision = petScanRevision + 1
+        TraceGrimoire("PET_SCAN", "family=" .. tostring(family)
+            .. "; spells=" .. spellCount)
         return true
     end
     return false
@@ -107,26 +141,36 @@ end
 local function GrimoireInfo(index)
     local itemName = MerchantName(index)
     if type(itemName) ~= "string" then return nil end
-    local spellName = itemName:match("^[Gg]rimoire of (.-)%s*%([Rr]ank%s*%d+%)")
+    local spellName = itemName:match(
+        "^[Gg]rimoire of (.-)%s*%([Rr]ank%s*%d+%)$")
     local rank = Rank(itemName)
+    if not spellName then
+        spellName = itemName:match("^[Gg]rimoire of (.+)$")
+        rank = spellName and 1 or nil
+    end
     if not spellName or not rank then return nil end
     tooltip:ClearLines()
     tooltip:SetMerchantItem(index)
     local store = Store()
     local families = {}
+    local familyPatterns = {}
     for _, family in ipairs(petNames) do
         local key = CanonicalFamily(family)
         families[family:lower()] = { key = key, display = FamilyLabel(key) }
+        familyPatterns[#familyPatterns + 1] = family:lower()
     end
     families.incubus = { key = "succubus", display = FamilyLabel("succubus") }
     families.sayaad = { key = "succubus", display = FamilyLabel("succubus") }
+    familyPatterns[#familyPatterns + 1] = "incubus"
+    familyPatterns[#familyPatterns + 1] = "sayaad"
     if store then
         for family in pairs(store) do
             local key = CanonicalFamily(family)
             families[family] = { key = key, display = FamilyLabel(key) }
+            familyPatterns[#familyPatterns + 1] = family
         end
     end
-    for line = 2, tooltip:NumLines() do
+    for line = 1, tooltip:NumLines() do
         local textRegion = _G[tooltip:GetName() .. "TextLeft" .. line]
         local text = textRegion and textRegion:GetText()
         if type(text) == "string" then
@@ -137,6 +181,29 @@ local function GrimoireInfo(index)
                 end
             end
         end
+    end
+    if grimoireDebug then
+        local tooltipLines = {}
+        for line = 1, tooltip:NumLines() do
+            local textRegion = _G[tooltip:GetName() .. "TextLeft" .. line]
+            local text = textRegion and textRegion:GetText()
+            if type(text) == "string" and text ~= "" then
+                tooltipLines[#tooltipLines + 1] = text
+            end
+        end
+        local haystack = table.concat(tooltipLines, " "):lower()
+        local matchedFamily
+        for _, family in ipairs(familyPatterns) do
+            if haystack:find(family, 1, true) then
+                matchedFamily = family
+                break
+            end
+        end
+        TraceGrimoire("CLASSIFY", "index=" .. DebugValue(index)
+            .. "; item=" .. DebugValue(itemName)
+            .. "; tooltipLineCount=" .. DebugValue(#tooltipLines)
+            .. "; family=unmatched"
+            .. "; candidate=" .. DebugValue(matchedFamily))
     end
 end
 
@@ -166,7 +233,9 @@ local function KnownState(index)
 end
 
 local function BorderFor(button, visible)
-    if iconBorders[visible] then return iconBorders[visible] end
+    local existing = iconBorders[visible]
+    if existing and existing.frame:GetParent() == button then return existing end
+    if existing then existing.frame:Hide() end
     local border = CreateFrame("Frame", nil, button)
     border:EnableMouse(false)
     border:SetPoint("TOPLEFT", button, "TOPLEFT", -2, 2)
@@ -226,14 +295,29 @@ local function MerchantAvailable(index)
     return false
 end
 
-local function MeetsItemLevel(index)
+local function MerchantAvailabilityDetails(index)
+    local info = C_MerchantFrame and C_MerchantFrame.GetItemInfo
+        and C_MerchantFrame.GetItemInfo(index)
+    if info then
+        return "usable=" .. DebugValue(info.isUsable)
+            .. "; purchasable=" .. DebugValue(info.isPurchasable)
+            .. "; stock=" .. DebugValue(info.numAvailable)
+    end
+    if GetMerchantItemInfo then
+        local _, _, _, _, stock, usable = GetMerchantItemInfo(index)
+        return "usable=" .. DebugValue(usable)
+            .. "; stock=" .. DebugValue(stock)
+    end
+    return "api=unavailable"
+end
+
+local function RequiredItemLevel(index)
     local link = GetMerchantItemLink and GetMerchantItemLink(index)
-    if not link then return false end
+    if not link then return nil end
     local getInfo = C_Item and C_Item.GetItemInfo or GetItemInfo
-    if not getInfo then return false end
+    if not getInfo then return nil end
     local _, _, _, _, requiredLevel = getInfo(link)
-    return type(requiredLevel) == "number"
-        and UnitLevel("player") >= requiredLevel
+    return type(requiredLevel) == "number" and requiredLevel or nil
 end
 
 local function AvailableRanks()
@@ -261,37 +345,108 @@ local function HigherAvailableRank(spell, rank, family, ranks)
     return highest and highest > rank and highest or nil
 end
 
+local function MerchantPageSignature(perPage, total)
+    local parts = {
+        DebugValue(MerchantFrame.selectedTab),
+        DebugValue(total),
+        DebugValue(UnitLevel("player")),
+        DebugValue(petScanRevision),
+    }
+    for visible = 1, perPage do
+        local button = _G["MerchantItem" .. visible .. "ItemButton"]
+        local index = button and button:GetID()
+        local link = type(index) == "number" and GetMerchantItemLink
+            and GetMerchantItemLink(index)
+        local itemID = type(link) == "string"
+            and link:match("|Hitem:(%d+)") or ""
+        local available = ""
+        local requiredLevel = ""
+        if MerchantFrame.selectedTab == 1 and type(index) == "number"
+            and index <= total then
+            available = DebugValue(MerchantAvailable(index))
+            requiredLevel = DebugValue(RequiredItemLevel(index))
+        end
+        parts[#parts + 1] = table.concat({
+            DebugValue(index), itemID, available, requiredLevel,
+        }, ":")
+    end
+    return table.concat(parts, "|")
+end
+
 local function PaintMerchant()
     merchantPaintQueued = false
     if not MerchantFrame or not MerchantFrame:IsShown()
         or not GetMerchantNumItems then return end
-    if not ScanPet() then QueuePetScan(4) end
     local perPage = MERCHANT_ITEMS_PER_PAGE or 10
     local total = GetMerchantNumItems()
-    local availableRanks = MerchantFrame.selectedTab == 1
-        and AvailableRanks() or {}
+    local signature = MerchantPageSignature(perPage, total)
+    if signature == merchantLastPaintSignature then return end
+    merchantLastPaintSignature = signature
+    TraceGrimoire("PAINT", "tab=" .. DebugValue(MerchantFrame.selectedTab)
+        .. "; total=" .. DebugValue(total)
+        .. "; visibleSlots=" .. DebugValue(perPage))
+    -- Clear previous grimoire colors before reading the current merchant page.
+    -- Merchant buttons are recycled between vendors and pages, and one stale
+    -- item-info read must not leave a grimoire mark on an ordinary item.
+    for visible = 1, perPage do
+        local button = _G["MerchantItem" .. visible .. "ItemButton"]
+        if button then
+            local border = BorderFor(button, visible)
+            TintIcon(button, visible)
+            border.frame:Hide()
+        end
+    end
+    local availableRanks = {}
+    if MerchantFrame.selectedTab == 1 then
+        local ok, ranks = pcall(AvailableRanks)
+        if ok and type(ranks) == "table" then availableRanks = ranks end
+    end
     for visible = 1, perPage do
         local button = _G["MerchantItem" .. visible .. "ItemButton"]
         if button then
             local border = BorderFor(button, visible)
             local index = button and button:GetID()
-            local state, spell, rank, family
+            local state, spell, rank, family, classifyError
+            local itemName
+            if grimoireDebug and type(index) == "number" then
+                local nameOK, name = pcall(MerchantName, index)
+                if nameOK then itemName = name end
+            end
             if MerchantFrame.selectedTab == 1 and button:IsShown()
                 and type(index) == "number" and index <= total then
-                local displayName
-                state, displayName, spell, rank, family = KnownState(index)
+                local ok, currentState, _, currentSpell, currentRank,
+                    currentFamily = pcall(KnownState, index)
+                if ok then
+                    state, spell, rank, family = currentState, currentSpell,
+                        currentRank, currentFamily
+                else
+                    classifyError = currentState
+                end
             end
             local r, g, b
-            if state == "known" then
+            local requiredLevel
+            if state and type(index) == "number" then
+                local levelOK, value = pcall(RequiredItemLevel, index)
+                if levelOK then requiredLevel = value end
+            end
+            local belowLevel = requiredLevel
+                and UnitLevel("player") < requiredLevel
+            if state == "known" or belowLevel then
                 r, g, b = 1, 0.2, 0.2
-            elseif state == "unscanned" and MeetsItemLevel(index) then
-                r, g, b = 0.6, 0.6, 0.6
-            elseif state == "missing" and MerchantAvailable(index) then
-                if HigherAvailableRank(spell, rank, family,
-                    availableRanks) then
-                    r, g, b = 1, 0.82, 0.15
-                else
-                    r, g, b = 0.25, 1, 0.35
+            elseif state == "unscanned" then
+                if requiredLevel and UnitLevel("player") >= requiredLevel then
+                    r, g, b = 0.6, 0.6, 0.6
+                end
+            elseif state == "missing" then
+                local ok, available = pcall(MerchantAvailable, index)
+                if ok and available then
+                    local rankOK, higher = pcall(HigherAvailableRank,
+                        spell, rank, family, availableRanks)
+                    if rankOK and higher then
+                        r, g, b = 1, 0.82, 0.15
+                    else
+                        r, g, b = 0.25, 1, 0.35
+                    end
                 end
             end
             if r then
@@ -300,9 +455,44 @@ local function PaintMerchant()
                     edge:SetVertexColor(r, g, b)
                 end
                 border.frame:Show()
-            else
-                TintIcon(button, visible)
-                border.frame:Hide()
+            end
+            if grimoireDebug then
+                local link
+                if type(index) == "number" then
+                    if GetMerchantItemLink then
+                        local linkOK, itemLink = pcall(GetMerchantItemLink, index)
+                        if linkOK then link = itemLink end
+                    end
+                end
+                local itemID = type(link) == "string"
+                    and link:match("|Hitem:(%d+)") or nil
+                local available = "n/a"
+                local availabilityDetails = "n/a"
+                if MerchantFrame.selectedTab == 1 and type(index) == "number"
+                    and index <= total then
+                    local ok, result = pcall(MerchantAvailable, index)
+                    available = ok and tostring(result) or "error"
+                    local detailsOK, details = pcall(MerchantAvailabilityDetails, index)
+                    if detailsOK then availabilityDetails = details end
+                end
+                local mark = r and string.format("rgb(%.2f,%.2f,%.2f)", r, g, b)
+                    or "cleared"
+                TraceGrimoire("ROW", "slot=" .. DebugValue(visible)
+                    .. "; index=" .. DebugValue(index)
+                    .. "; tab=" .. DebugValue(MerchantFrame.selectedTab)
+                    .. "; item=" .. DebugValue(itemName)
+                    .. "; itemID=" .. DebugValue(itemID)
+                    .. "; state=" .. DebugValue(state)
+                    .. "; spell=" .. DebugValue(spell)
+                    .. "; rank=" .. DebugValue(rank)
+                    .. "; family=" .. DebugValue(family)
+                    .. "; requiredLevel=" .. DebugValue(requiredLevel)
+                    .. "; playerLevel=" .. DebugValue(UnitLevel("player"))
+                    .. "; available=" .. available
+                    .. "; " .. availabilityDetails
+                    .. "; iconTint=" .. DebugValue(r and "applied" or "reset")
+                    .. "; classifyError=" .. DebugValue(classifyError)
+                    .. "; mark=" .. mark)
             end
         end
     end
@@ -324,14 +514,15 @@ local function HookMerchant()
     if type(MerchantFrame_UpdateMerchantInfo) == "function" then
         hooksecurefunc("MerchantFrame_UpdateMerchantInfo", QueueMerchantPaint)
     end
-    if type(MerchantFrame_Update) == "function" then
-        hooksecurefunc("MerchantFrame_Update", QueueMerchantPaint)
-    end
     if MerchantNextPageButton then
-        MerchantNextPageButton:HookScript("OnClick", QueueMerchantPaint)
+        MerchantNextPageButton:HookScript("OnClick", function()
+            QueueMerchantPaint()
+        end)
     end
     if MerchantPrevPageButton then
-        MerchantPrevPageButton:HookScript("OnClick", QueueMerchantPaint)
+        MerchantPrevPageButton:HookScript("OnClick", function()
+            QueueMerchantPaint()
+        end)
     end
     if GameTooltip and GameTooltip.SetMerchantItem then
         hooksecurefunc(GameTooltip, "SetMerchantItem", function(self, index)
@@ -374,11 +565,18 @@ frame:SetScript("OnEvent", function(_, event, unit)
     end
     if event == "MERCHANT_SHOW" then
         HookMerchant()
+        merchantLastPaintSignature = nil
         QueuePetScan(4)
     end
+    if event == "MERCHANT_UPDATE" then
+        -- Buying an item may cause Blizzard to reset the merchant icon tint
+        -- even when stock and row identity are unchanged. Force our mark back.
+        merchantLastPaintSignature = nil
+    end
     if event == "MERCHANT_SHOW" or event == "MERCHANT_UPDATE"
-        or event == "GET_ITEM_INFO_RECEIVED" or event == "SPELLS_CHANGED"
-        or event == "PET_BAR_UPDATE" then
+        or event == "GET_ITEM_INFO_RECEIVED" then
+        QueueMerchantPaint()
+    elseif event == "SPELLS_CHANGED" or event == "PET_BAR_UPDATE" then
         QueueMerchantPaint()
     end
 end)
