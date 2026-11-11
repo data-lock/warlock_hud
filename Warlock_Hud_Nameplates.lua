@@ -3,6 +3,12 @@
 local markers = setmetatable({}, { __mode = "k" })
 local events = CreateFrame("Frame")
 
+local function IsForbidden(frame)
+    if not frame or not isforbidden then return false end
+    local ok, forbidden = pcall(isforbidden, frame)
+    return not ok or forbidden == true
+end
+
 local function Enabled()
     local profile = WarlockHudAPI and WarlockHudAPI.GetProfile()
     return WarlockHudAPI and WarlockHudAPI.IsAddonEnabled()
@@ -10,7 +16,14 @@ local function Enabled()
 end
 
 local function UpdateMarker(bar, marker)
-    local width, height = bar:GetWidth(), bar:GetHeight()
+    if IsForbidden(bar) then return end
+    local widthOK, width = pcall(function() return bar:GetWidth() end)
+    local heightOK, height = pcall(function() return bar:GetHeight() end)
+    if not widthOK or not heightOK then return end
+    if issecretvalue and (issecretvalue(width) or issecretvalue(height)) then
+        return
+    end
+    if type(width) ~= "number" or type(height) ~= "number" then return end
     if width <= 0 or height <= 0 then return end
     if marker.lastWidth == width and marker.lastHeight == height then return end
     marker.lastWidth, marker.lastHeight = width, height
@@ -22,6 +35,7 @@ local function UpdateMarker(bar, marker)
 end
 
 local function GetMarker(bar, compact)
+    if IsForbidden(bar) then return nil end
     local marker = markers[bar]
     if marker then return marker end
     marker = {}
@@ -57,14 +71,14 @@ end
 local function UpdatePlate(unit)
     if not C_NamePlate or not C_NamePlate.GetNamePlateForUnit then return end
     local ok, plate = pcall(C_NamePlate.GetNamePlateForUnit, unit)
-    if not ok or not plate or (isforbidden and isforbidden(plate)) then return end
+    if not ok or not plate or IsForbidden(plate) then return end
     local found, bar = pcall(function()
         local unitFrame = plate.UnitFrame
-        if not unitFrame or (isforbidden and isforbidden(unitFrame)) then return end
+        if not unitFrame or IsForbidden(unitFrame) then return end
         return unitFrame.healthBar
             or (unitFrame.HealthBarsContainer and unitFrame.HealthBarsContainer.healthBar)
     end)
-    if not found or not bar or (isforbidden and isforbidden(bar)) then return end
+    if not found or not bar or IsForbidden(bar) then return end
     local attackable = false
     if Enabled() then
         local canCheck, result = pcall(UnitCanAttack, "player", unit)

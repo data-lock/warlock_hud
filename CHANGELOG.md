@@ -1,5 +1,12 @@
 # Changelog
 
+## v1.1.6
+
+- Guard the execute-threshold marker against secret or unavailable health-bar
+  dimensions and forbidden frames.
+
+See `releases/v1.1.6.md` for release notes.
+
 ## v1.1.5
 
 - Add a profile-level Enable Buffs row checkbox to the Buffs settings page.
