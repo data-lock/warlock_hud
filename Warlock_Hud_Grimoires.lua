@@ -7,6 +7,24 @@ local petScanQueued = false
 local merchantPaintQueued = false
 local merchantHooked = false
 local merchantLastPaintSignature
+local merchantHasGrimoires
+local merchantGeneration = 0
+local grimoireVendorNames = {
+    ["Cylina Darkheart"] = true,
+    ["Dane Winslow"] = true,
+    ["Dannie Fizzwizzle"] = true,
+    ["Gina Lang"] = true,
+    ["Greshka"] = true,
+    ["Hraug"] = true,
+    ["Jubahl Corpseeker"] = true,
+    ["Jubahl Corpseseeker"] = true,
+    ["Kayla Smithe"] = true,
+    ["Kitha"] = true,
+    ["Kurgul"] = true,
+    ["Martha Strain"] = true,
+    ["Spackle Thornberry"] = true,
+    ["Wren Darkspring"] = true,
+}
 local petScanRevision = 0
 local grimoireDebug = false
 local iconBorders = {}
@@ -136,6 +154,22 @@ local function MerchantName(index)
     if link and C_Item and C_Item.GetItemInfo then
         return C_Item.GetItemInfo(link)
     end
+end
+
+local function MerchantHasGrimoires()
+    if merchantHasGrimoires ~= nil then return merchantHasGrimoires end
+    local vendorName
+    if MerchantNameText and MerchantNameText.GetText then
+        vendorName = MerchantNameText:GetText()
+    end
+    if type(vendorName) ~= "string" or vendorName == "" then
+        local ok, name = pcall(UnitName, "npc")
+        if ok then vendorName = name end
+    end
+    if type(vendorName) ~= "string" or vendorName == "" then return nil end
+    merchantHasGrimoires = type(vendorName) == "string"
+        and grimoireVendorNames[vendorName] == true or false
+    return merchantHasGrimoires
 end
 
 local function GrimoireInfo(index)
@@ -282,6 +316,20 @@ local function TintIcon(button, visible, r, g, b)
     end
 end
 
+local function ClearMerchantMark(button, visible)
+    TintIcon(button, visible)
+    local border = BorderFor(button, visible)
+    border.frame:Hide()
+end
+
+local function ClearMerchantMarks()
+    local perPage = MERCHANT_ITEMS_PER_PAGE or 10
+    for visible = 1, perPage do
+        local button = _G["MerchantItem" .. visible .. "ItemButton"]
+        if button then ClearMerchantMark(button, visible) end
+    end
+end
+
 local function MerchantAvailable(index)
     local info = C_MerchantFrame and C_MerchantFrame.GetItemInfo
         and C_MerchantFrame.GetItemInfo(index)
@@ -377,6 +425,7 @@ local function PaintMerchant()
     merchantPaintQueued = false
     if not MerchantFrame or not MerchantFrame:IsShown()
         or not GetMerchantNumItems then return end
+    if MerchantHasGrimoires() ~= true then return end
     local perPage = MERCHANT_ITEMS_PER_PAGE or 10
     local total = GetMerchantNumItems()
     local signature = MerchantPageSignature(perPage, total)
@@ -391,9 +440,7 @@ local function PaintMerchant()
     for visible = 1, perPage do
         local button = _G["MerchantItem" .. visible .. "ItemButton"]
         if button then
-            local border = BorderFor(button, visible)
-            TintIcon(button, visible)
-            border.frame:Hide()
+            ClearMerchantMark(button, visible)
         end
     end
     local availableRanks = {}
@@ -499,10 +546,16 @@ local function PaintMerchant()
 end
 
 QueueMerchantPaint = function()
+    if MerchantFrame and MerchantFrame:IsShown()
+        and MerchantHasGrimoires() ~= true then return end
     if merchantPaintQueued then return end
     merchantPaintQueued = true
+    local generation = merchantGeneration
     if C_Timer and C_Timer.After then
-        C_Timer.After(0.05, PaintMerchant)
+        C_Timer.After(0.05, function()
+            if generation ~= merchantGeneration then return end
+            PaintMerchant()
+        end)
     else
         PaintMerchant()
     end
@@ -526,6 +579,7 @@ local function HookMerchant()
     end
     if GameTooltip and GameTooltip.SetMerchantItem then
         hooksecurefunc(GameTooltip, "SetMerchantItem", function(self, index)
+            if MerchantHasGrimoires() == false then return end
             local state, family, spell, rank, familyKey = KnownState(index)
             if state == "known" then
                 self:AddLine("Already known by your " .. family .. ".",
@@ -565,8 +619,15 @@ frame:SetScript("OnEvent", function(_, event, unit)
     end
     if event == "MERCHANT_SHOW" then
         HookMerchant()
+        merchantGeneration = merchantGeneration + 1
+        merchantPaintQueued = false
         merchantLastPaintSignature = nil
+        merchantHasGrimoires = nil
+        ClearMerchantMarks()
         QueuePetScan(4)
+    end
+    if event == "GET_ITEM_INFO_RECEIVED" and merchantHasGrimoires == nil then
+        merchantLastPaintSignature = nil
     end
     if event == "MERCHANT_UPDATE" then
         -- Buying an item may cause Blizzard to reset the merchant icon tint

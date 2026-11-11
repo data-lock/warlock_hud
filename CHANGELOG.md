@@ -1,5 +1,14 @@
 # Changelog
 
+## v1.1.7
+
+- Restrict grimoire availability marks and repaint scheduling to the known
+  Horde and Alliance demon trainers that sell grimoires.
+- Clear stale merchant marks once when opening another vendor, and discard
+  delayed repaint callbacks when the merchant window changes.
+
+See `releases/v1.1.7.md` for release notes.
+
 ## v1.1.6
 
 - Guard the execute-threshold marker against secret or unavailable health-bar
