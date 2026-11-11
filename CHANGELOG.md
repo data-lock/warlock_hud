@@ -1,5 +1,13 @@
 # Changelog
 
+## v1.1.5
+
+- Add a profile-level Enable Buffs row checkbox to the Buffs settings page.
+  Disabled rows remain visible in Edit Mode for positioning.
+- Include the Buffs row setting in profile sharing.
+
+See `releases/v1.1.5.md` for release notes.
+
 ## v1.1.4
 
 - Improve demon trainer grimoire recognition, including rankless grimoires such

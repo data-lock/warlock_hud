@@ -130,6 +130,14 @@ function WarlockHudOptionsRows.BuildBuffs(context)
     local buffLayout = Panel("Warlock HUD - Buffs")
     Text(buffLayout, "Move this row in Edit Mode. Drag icons to reorder them; use the checks to show or hide them.",
         20, -50, "GameFontHighlightSmall")
+    Check(buffLayout, 430, -78, "Enable Buffs row",
+        function() return Profile().buffsEnabled ~= false end,
+        function(value)
+            Profile().buffsEnabled = value
+            if api.RefreshRowVisibility then api.RefreshRowVisibility() end
+        end,
+        "Show or hide the Buffs row. The row stays available in Edit Mode when disabled.",
+        false)
     Text(buffLayout, "Icon size", 20, -85, "GameFontNormal")
     SizeSlider(buffLayout, "Buff icon size", "buffSize", 16, 64, 20, -110)
     local trackedFrame = CreateFrame("Frame", nil, buffLayout)

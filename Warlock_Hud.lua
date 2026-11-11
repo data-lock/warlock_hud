@@ -557,6 +557,9 @@ local function RowAlpha(key)
     if key == "consumes" and profile.consumesEnabled == false and not editMode then
         return 0
     end
+    if key == "buffs" and profile.buffsEnabled == false and not editMode then
+        return 0
+    end
     local settings = profile.showOutOfCombat or {}
     return (InCombatLockdown() or editMode or settings[key] ~= false) and 1 or 0
 end
