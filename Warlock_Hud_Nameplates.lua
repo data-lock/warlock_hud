@@ -9,10 +9,11 @@ local function IsForbidden(frame)
     return not ok or forbidden == true
 end
 
-local function Enabled()
+local function Settings()
     local profile = WarlockHudAPI and WarlockHudAPI.GetProfile()
-    return WarlockHudAPI and WarlockHudAPI.IsAddonEnabled()
-        and profile and profile.enabled.executeMarker ~= false
+    if not WarlockHudAPI or not WarlockHudAPI.IsAddonEnabled()
+        or not profile or type(profile.enabled) ~= "table" then return nil end
+    return profile.enabled
 end
 
 local function UpdateMarker(bar, marker)
@@ -30,15 +31,13 @@ local function UpdateMarker(bar, marker)
     for _, texture in ipairs({ marker.outline, marker.line }) do
         texture:SetHeight(math.max(6, height + (marker.heightPadding or 6)))
         texture:ClearAllPoints()
-        texture:SetPoint("CENTER", bar, "LEFT", width * 0.2, 0)
+        texture:SetPoint("CENTER", bar, "LEFT", width * marker.position, 0)
     end
 end
 
-local function GetMarker(bar, compact)
+local function CreateMarker(bar, compact, position)
     if IsForbidden(bar) then return nil end
-    local marker = markers[bar]
-    if marker then return marker end
-    marker = {}
+    local marker = { position = position }
     local outline = bar:CreateTexture(nil, "OVERLAY", nil, -2)
     outline:SetWidth(compact and 4 or 5)
     outline:SetColorTexture(0, 0, 0, 1)
@@ -47,6 +46,8 @@ local function GetMarker(bar, compact)
     line:SetColorTexture(0.78, 0.43, 0.20, 1)
     marker.outline, marker.line = outline, line
     marker.heightPadding = compact and -2 or 6
+    outline:Hide()
+    line:Hide()
     function marker:Show()
         self.outline:Show()
         self.line:Show()
@@ -63,9 +64,31 @@ local function GetMarker(bar, compact)
             UpdateMarker(bar, marker)
         end
     end)
-    markers[bar] = marker
     UpdateMarker(bar, marker)
     return marker
+end
+
+local function GetMarkers(bar, compact)
+    if IsForbidden(bar) then return nil end
+    local entry = markers[bar]
+    if entry then return entry end
+    entry = {
+        twenty = CreateMarker(bar, compact, 0.20),
+        thirtyFive = CreateMarker(bar, compact, 0.35),
+    }
+    if not entry.twenty or not entry.thirtyFive then return nil end
+    markers[bar] = entry
+    return entry
+end
+
+local function SetMarkers(entry, settings)
+    if not entry then return end
+    local show20 = settings and settings.executeMarker ~= false or false
+    local show35 = settings and settings.executeMarker35 ~= false or false
+    entry.twenty.outline:SetShown(show20)
+    entry.twenty.line:SetShown(show20)
+    entry.thirtyFive.outline:SetShown(show35)
+    entry.thirtyFive.line:SetShown(show35)
 end
 
 local function UpdatePlate(unit)
@@ -79,8 +102,10 @@ local function UpdatePlate(unit)
             or (unitFrame.HealthBarsContainer and unitFrame.HealthBarsContainer.healthBar)
     end)
     if not found or not bar or IsForbidden(bar) then return end
+    local settings = Settings()
     local attackable = false
-    if Enabled() then
+    if settings and (settings.executeMarker ~= false
+        or settings.executeMarker35 ~= false) then
         local canCheck, result = pcall(UnitCanAttack, "player", unit)
         if canCheck and (not issecretvalue or not issecretvalue(result)) then
             attackable = result == true
@@ -88,13 +113,14 @@ local function UpdatePlate(unit)
     end
     local marker = markers[bar]
     if not attackable then
-        if marker then marker:Hide() end
+        if marker then SetMarkers(marker, nil) end
         return
     end
-    local created, result = pcall(GetMarker, bar)
+    local created, result = pcall(GetMarkers, bar)
     if created and result then
-        result:Show()
-        UpdateMarker(bar, result)
+        SetMarkers(result, settings)
+        UpdateMarker(bar, result.twenty)
+        UpdateMarker(bar, result.thirtyFive)
     end
 end
 
@@ -103,17 +129,20 @@ local function UpdateTargetFrame(create)
         or (TargetFrame and TargetFrame.healthbar)
     if not bar then return end
     local marker = markers[bar]
-    if not Enabled() then
-        if marker then marker:Hide() end
+    local settings = Settings()
+    if not settings or (settings.executeMarker == false
+        and settings.executeMarker35 == false) then
+        if marker then SetMarkers(marker, nil) end
         return
     end
     if not marker and create and not InCombatLockdown() then
-        local ok, result = pcall(GetMarker, bar, true)
+        local ok, result = pcall(GetMarkers, bar, true)
         if ok then marker = result end
     end
     if marker then
-        marker:Show()
-        UpdateMarker(bar, marker)
+        SetMarkers(marker, settings)
+        UpdateMarker(bar, marker.twenty)
+        UpdateMarker(bar, marker.thirtyFive)
     end
 end
 

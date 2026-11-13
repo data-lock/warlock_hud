@@ -4,6 +4,11 @@ local warned = {}
 local queued = false
 local highestRanks = {}
 
+local function Enabled()
+    local profile = WarlockHudAPI and WarlockHudAPI.GetProfile()
+    return profile and profile.enabled and profile.enabled.downrankWarnings ~= false
+end
+
 local function Rank(text)
     return type(text) == "string"
         and tonumber(text:match("[Rr]ank%s*(%d+)")) or nil
@@ -53,7 +58,7 @@ end
 
 local function CheckActionBars()
     queued = false
-    if not WarlockHudAPI or not WarlockHudAPI.IsAddonEnabled()
+    if not WarlockHudAPI or not WarlockHudAPI.IsAddonEnabled() or not Enabled()
         or not GetActionInfo then return end
     local highest = HighestKnownRanks()
     highestRanks = highest
@@ -90,6 +95,7 @@ end
 local function CheckCast(unit, _, spellID)
     if unit ~= "player" or not WarlockHudAPI
         or not WarlockHudAPI.IsAddonEnabled() then return end
+    if not Enabled() then return end
     if issecretvalue and issecretvalue(spellID) then return end
     if type(spellID) ~= "number" then return end
     local name, rank = SpellDetails(spellID)
@@ -109,6 +115,11 @@ local function QueueCheck()
     else
         CheckActionBars()
     end
+end
+
+function WarlockHudRefreshDownrankWarnings()
+    warned = {}
+    QueueCheck()
 end
 
 frame:RegisterEvent("PLAYER_LOGIN")

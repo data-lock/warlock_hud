@@ -346,6 +346,19 @@ local function VisibleOrder(order)
             hasSpell = KnownSpellID(19028) == true
         elseif key == "conflagrate" then
             hasSpell = WarlockHudRowVisibility.ConflagrateSpellID() ~= nil
+        elseif key == "deathcoil" or key == "shadowward" then
+            hasSpell = false
+            for _, spell in ipairs(WarlockHudPlayerEffects.WarlockCooldowns) do
+                if spell.key == key then
+                    for _, spellID in ipairs(spell.ids) do
+                        if KnownSpellID(spellID) == true then
+                            hasSpell = true
+                            break
+                        end
+                    end
+                    break
+                end
+            end
         elseif key == "torment" or key == "suffering"
             or key == "phaseshift" or key == "lashofpain"
             or key == "soothingkiss" or key == "devourmagic"
@@ -661,6 +674,34 @@ local function UpdateSpellCooldowns()
         local duration = C_Spell.GetSpellCooldownDuration(entry.spellID, true)
         if duration then
             pcall(entry.cooldown.SetCooldownFromDurationObject, entry.cooldown, duration)
+        end
+    end
+end
+
+local function ConfigureCooldownNumbers(cooldown)
+    if cooldown.SetHideCountdownNumbers then
+        cooldown:SetHideCountdownNumbers(false)
+    end
+    if cooldown.SetCountdownMillisecondsThreshold then
+        cooldown:SetCountdownMillisecondsThreshold(0)
+    end
+    if cooldown.SetCountdownAbbrevThreshold then
+        cooldown:SetCountdownAbbrevThreshold(3600)
+    end
+    if cooldown.SetCountdownFont then
+        local name = "WarlockHudCooldownCountdownFont"
+        local font = _G[name] or (CreateFont and CreateFont(name))
+        if font then
+            local size = math.min(12, profile and profile.fontTimerSize or 10)
+            local ok, applied = pcall(font.SetFont, font,
+                WarlockHudFonts.Path(profile), size, "OUTLINE")
+            if not ok or applied == false then
+                font:SetFont(STANDARD_TEXT_FONT or "Fonts\\FRIZQT__.TTF",
+                    size, "OUTLINE")
+            end
+            font:SetShadowColor(0, 0, 0, 1)
+            font:SetShadowOffset(1, -1)
+            cooldown:SetCountdownFont(name)
         end
     end
 end
@@ -1693,7 +1734,7 @@ local function Build()
         cooldown:SetAllPoints(icon)
         cooldown:SetDrawBling(false)
         cooldown:SetDrawEdge(false)
-        cooldown:SetHideCountdownNumbers(true)
+        ConfigureCooldownNumbers(cooldown)
         local border = MakeBorder(anchor, x, iconSize)
         local glow
         if stone.name == "Soulstone" then
@@ -1720,7 +1761,7 @@ local function Build()
         cooldown:SetAllPoints(icon)
         cooldown:SetDrawBling(false)
         cooldown:SetDrawEdge(false)
-        cooldown:SetHideCountdownNumbers(true)
+        ConfigureCooldownNumbers(cooldown)
         spellCooldownIcons[#spellCooldownIcons + 1] = {
             spellID = racial[2], cooldown = cooldown,
             border = MakeBorder(anchor, x, iconSize),
@@ -1741,7 +1782,7 @@ local function Build()
         cooldown:SetAllPoints(icon)
         cooldown:SetDrawBling(false)
         cooldown:SetDrawEdge(false)
-        cooldown:SetHideCountdownNumbers(false)
+        ConfigureCooldownNumbers(cooldown)
         spellCooldownIcons[#spellCooldownIcons + 1] = {
             spellID = conflagrateID, cooldown = cooldown,
             border = MakeBorder(conflagrateAnchor, conflagrateX, conflagrateSize),
@@ -1753,6 +1794,35 @@ local function Build()
             icon = icon, glow = glow, immolateButtons = {},
         }
         icon:SetDesaturated(true)
+    end
+
+    for _, spell in ipairs(WarlockHudPlayerEffects.WarlockCooldowns) do
+        local spellID
+        for _, rankID in ipairs(spell.ids) do
+            if KnownSpellID(rankID) == true then
+                spellID = rankID
+                break
+            end
+        end
+        local anchor, x, iconSize = RowPlacement(
+            spell.key, mainOrder, cooldownOrder)
+        if spellID and x then
+            local icon = anchor:CreateTexture(nil, "ARTWORK")
+            icon:SetSize(iconSize, iconSize)
+            icon:SetPoint("CENTER", anchor, "CENTER", x, 0)
+            icon:SetTexture(C_Spell.GetSpellTexture(spellID))
+            icon:SetTexCoord(ICON_CROP, 1 - ICON_CROP, ICON_CROP, 1 - ICON_CROP)
+            local cooldown = CreateFrame("Cooldown", nil, anchor,
+                "CooldownFrameTemplate")
+            cooldown:SetAllPoints(icon)
+            cooldown:SetDrawBling(false)
+            cooldown:SetDrawEdge(false)
+            ConfigureCooldownNumbers(cooldown)
+            spellCooldownIcons[#spellCooldownIcons + 1] = {
+                spellID = spellID, cooldown = cooldown,
+                border = MakeBorder(anchor, x, iconSize),
+            }
+        end
     end
 
     for _, petSpell in ipairs(WarlockHudPlayerEffects.PetCooldowns) do
@@ -1770,7 +1840,7 @@ local function Build()
             cooldown:SetAllPoints(icon)
             cooldown:SetDrawBling(false)
             cooldown:SetDrawEdge(false)
-            cooldown:SetHideCountdownNumbers(false)
+            ConfigureCooldownNumbers(cooldown)
             spellCooldownIcons[#spellCooldownIcons + 1] = {
                 spellID = spellID, cooldown = cooldown,
                 border = MakeBorder(anchor, x, iconSize),
@@ -2672,6 +2742,7 @@ WarlockHudAPI = {
         return order
     end,
     CooldownKeys = COOLDOWN_KEYS,
+    WarlockCooldowns = WarlockHudPlayerEffects.WarlockCooldowns,
     PetCooldowns = WarlockHudPlayerEffects.PetCooldowns,
     PetSpellID = PetSpellID,
     BuffKeys = BUFF_KEYS,

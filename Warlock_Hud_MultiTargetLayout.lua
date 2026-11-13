@@ -27,6 +27,8 @@ function WarlockHudMultiTargetLayout.New(getRows, dotSlots, iconSize, rowHeight,
         local iconWidth = showIcons and (dotSlots() * (ICON_SIZE + 3) + 3) or 0
         local showExecute = profile and profile.enabled
             and profile.enabled.executeMarker ~= false
+        local showExecute35 = profile and profile.enabled
+            and profile.enabled.executeMarker35 ~= false
         local step = ROW_HEIGHT
         local present = 0
         for _, row in ipairs(getRows()) do
@@ -75,6 +77,11 @@ function WarlockHudMultiTargetLayout.New(getRows, dotSlots, iconSize, rowHeight,
                     tick:ClearAllPoints()
                     tick:SetPoint("CENTER", row.healthBar, "LEFT", healthWidth * 0.2, 0)
                     tick:SetShown(showExecute)
+                end
+                for _, tick in ipairs({ row.execute35Outline, row.execute35Line }) do
+                    tick:ClearAllPoints()
+                    tick:SetPoint("CENTER", row.healthBar, "LEFT", healthWidth * 0.35, 0)
+                    tick:SetShown(showExecute35)
                 end
             end
         end

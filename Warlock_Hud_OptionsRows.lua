@@ -15,7 +15,7 @@ function WarlockHudOptionsRows.BuildLayout(context)
     SizeSlider(layout, "Utility icon size", "cooldownSize", 16, 64, 20, -125)
     local nameplatesY = LinkedTargetUtilityRows(layout)
     Text(layout, "Nameplates", 20, nameplatesY, "GameFontNormal")
-    Check(layout, 20, nameplatesY - 20, "20% marker on attackable nameplates",
+    Check(layout, 20, nameplatesY - 20, "20% health marker",
         function() return Profile().enabled.executeMarker ~= false end,
         function(value)
             if value then
@@ -23,12 +23,24 @@ function WarlockHudOptionsRows.BuildLayout(context)
             else
                 Profile().enabled.executeMarker = false
             end
-        end)
+        end,
+        "Show the marker on attackable nameplates, the target health bar, and Multi-Target rows.")
+    Check(layout, 235, nameplatesY - 20, "35% health marker",
+        function() return Profile().enabled.executeMarker35 ~= false end,
+        function(value)
+            if value then
+                Profile().enabled.executeMarker35 = nil
+            else
+                Profile().enabled.executeMarker35 = false
+            end
+        end,
+        "Show the marker on attackable nameplates, the target health bar, and Multi-Target rows.")
     ResetPageButton(layout, "Rows & Layout", function()
         local defaults = DefaultProfile()
         ResetRowValues("mainSize", "mainOrder", api.MainKeys, defaults)
         ResetRowValues("cooldownSize", "cooldownOrder", api.CooldownKeys, defaults)
         Profile().enabled.executeMarker = nil
+        Profile().enabled.executeMarker35 = nil
         MarkChanged()
     end, 470, nameplatesY - 48)
 end

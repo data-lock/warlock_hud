@@ -1,5 +1,20 @@
 # Changelog
 
+## v1.1.8
+
+- Add four castbar tick markers for Rain of Fire while preserving the existing
+  Drain channel markers, with a General setting to turn channel markers off.
+- Add a General setting to turn lower-rank spell warnings on or off.
+- Add Death Coil and Shadow Ward cooldowns to the configurable Utility row.
+- Show native cooldown countdown text in whole seconds and minute:second format
+  without millisecond decimals.
+- Add an independently configurable 35% health marker beside the 20% marker on
+  attackable nameplates, the target health bar, and Multi-Target rows.
+- Clarify Soul Shard deletion behavior and document how Warlock HUD differs from
+  WarlockToolsForever.
+
+See `releases/v1.1.8.md` for release notes.
+
 ## v1.1.7
 
 - Restrict grimoire availability marks and repaint scheduling to the known

@@ -4,7 +4,7 @@ WarlockHudOptionsGeneral = {}
 function WarlockHudOptionsGeneral.Build(context)
     local api, general = context.api, context.general
     local Text, Check = context.Text, context.Check
-    local Profile = context.Profile
+    local Profile, MarkChanged = context.Profile, context.MarkChanged
 
     Text(general, "Addon", 24, -55, "GameFontNormal")
     Check(general, 24, -82, "Enable Warlock HUD on this character",
@@ -34,8 +34,31 @@ function WarlockHudOptionsGeneral.Build(context)
             false)
     end
 
-    Text(general, "HUD Recovery", 24, -340, "GameFontNormal")
+    Text(general, "Spell Feedback", 24, -315, "GameFontNormal")
+    Check(general, 24, -342, "Show channel tick markers on the castbar",
+        function() return Profile().enabled.channelTicks ~= false end,
+        function(value)
+            if value then Profile().enabled.channelTicks = nil
+            else Profile().enabled.channelTicks = false end
+            MarkChanged(false)
+        end,
+        "Shows timing markers for supported channels, including Rain of Fire and Drain spells.",
+        false)
+    Check(general, 24, -372, "Warn about lower-rank spells",
+        function() return Profile().enabled.downrankWarnings ~= false end,
+        function(value)
+            if value then Profile().enabled.downrankWarnings = nil
+            else Profile().enabled.downrankWarnings = false end
+            if WarlockHudRefreshDownrankWarnings then
+                WarlockHudRefreshDownrankWarnings()
+            end
+            MarkChanged(false)
+        end,
+        "Warns when an action-bar spell is below your highest known rank and after casting a lower rank.",
+        false)
+
+    Text(general, "HUD Recovery", 24, -420, "GameFontNormal")
     Text(general,
         "If you reload during combat, protected HUD elements may appear after combat ends.",
-        24, -366, "GameFontHighlightSmall")
+        24, -446, "GameFontHighlightSmall")
 end
