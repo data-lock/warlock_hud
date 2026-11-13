@@ -45,13 +45,31 @@ so you can see the full layout before choosing what to track. Open it from
 | --- | --- |
 | Main row | Corruption, Immolate, Siphon Life, Banes, Curses, Drain spells, and Demonic Brand when talented. Banes, Curses, and Drains each share an icon slot. Active target effects show a native countdown, with optional decimals near expiration. Brand also shows Blizzard's native application count. |
 | Multi-Target DoTs (optional) | Up to 16 view-only rows drawn from available nameplates, your current target, and group target tokens, plus grey last-seen rows for mobs with readable GUIDs and active estimated DoTs. Live rows have native slots for your tracked effects, including Demonic Brand when talented and enabled in Target DoTs settings. Brand shows a native countdown and application count. Mobs with confirmed group threat, mobs targeting someone in your group, or a safely verified player effect appear; a group member selecting an idle mob is not enough, and matching tokens are deduplicated by identity. Each live row has the mob's portrait, any assigned raid marker, a name with threat beneath it, right-aligned DoT icons, and a separate health bar with current HP and percent. A 20% health tick appears when the execute marker is enabled, with a slim gold accent when selected. Target through world nameplates or Tab. New standalone profiles enable the window by default; the first-run Basic preset hides it, and an existing off choice stays off. Use `/whud mtd` to open or close it outside combat. Outside combat, drag the title to move it or the lower-right grip to resize it. Shorter windows keep fixed row spacing and show a scroll bar when needed. Settings can hide it outside combat, adjust transparency, and set its scale on the Multi-Target DoTs page. Moving and resizing are unavailable during combat. |
-| Cooldown row | Healthstone, Soulstone, Fear, Banish, Conflagrate when learned, available racial abilities, and an optional flashing Sense Demons reminder when no demon or active Demonic Sacrifice is confirmed. Conflagrate shows its cooldown and pulses while your Immolate is active on the current target. |
+| Cooldown row | Healthstone, Soulstone, Fear, Banish, Death Coil, Shadow Ward, Conflagrate when learned, available racial abilities, pet abilities, and an optional flashing Sense Demons reminder when no demon or active Demonic Sacrifice is confirmed. Cooldowns show Blizzard-native countdown text in whole seconds and minute:second format. Conflagrate pulses while your Immolate is active on the current target. |
 | Consumes row | Well Fed plus optional Flask of Supreme Power, Arcane Elixir family, Shadow Power, Greater Firepower, Mageblood family, and Wizard Oil or Firestone tracking. Aura effects use native countdowns. Firestone shows remaining time when the client exposes it; Wizard Oil has no HUD timer. The missing-enchant reminder is labeled Weapon Buff. Each category has its own tracking and reminder choice. The row has its own position, icon size, visibility, and color settings. |
 | Buff row | Demon Armor / Demon Skin, Fortitude, Mark or Gift of the Wild, Intellect, Spirit, Kings, Salvation, Thorns, Demonic Sacrifice, Soul Link, and Unending Breath. Active buffs show colored icons with native countdowns when available; a setting reverses active and missing colors. Soul Link reminds when known, a demon is present, and its buff is confirmed missing. Thorns follows the same Druid-aware missing-buff reminder and active-buff formatting as Mark of the Wild. Unending Breath appears at the right end only while active. Visible buffs pack left to right. |
 | Proc row | Power Infusion, Nightfall, Decimation, and Soul Harvest appear only while active, with a pulsing glow and native countdown. |
-| Soul Shards | A separate icon near the Player Frame shows your shard count. It flashes red at or below the low warning threshold (default 4), or yellow at or above the high threshold (default 18) or when shards occupy regular bags alongside an equipped Soul Bag. Each click destroys one shard from a regular bag, stopping when those bags are clear or your configured minimum remains. The default minimum is 8. Shards cannot be destroyed in combat. |
-| Nameplates | A copper tick marks 20% health on attackable enemies' health bars. |
+| Soul Shards | A separate icon near the Player Frame shows your shard count. It flashes red at or below the low warning threshold (default 4), or yellow at or above the high threshold (default 18) or when shards occupy regular bags alongside an equipped Soul Bag. Clicking the icon permanently destroys one shard from a regular bag; it does not run automatically. Each click stops if the total shard count is at your configured minimum (8 by default), the only shards left are in Soul Bags, or deletion is unavailable. Shards cannot be destroyed in combat, and you must clear your cursor first. |
+| Nameplates | Copper ticks mark 20% and 35% health on attackable enemies' health bars. Each marker can be enabled independently; the same settings also control the target health bar and Multi-Target rows. |
 | Stones | A Soulstone recipient label centered below the Utility row only while the aura is confirmed active; details and a Healthstone distribution list are on the Stones settings page. |
+
+### How Warlock HUD differs from WarlockToolsForever
+
+Both addons are for Warlocks in WoW: Forever and cover DoT tracking, Soul Shards,
+stones, and announcements. Warlock HUD centers on a configurable, Blizzard-native
+combat HUD, with multi-target health, threat, and estimated DoT damage, plus group
+assignments, a summon request queue, profile sharing, and Edit Mode positioning.
+
+[WarlockToolsForever](https://github.com/jbedworth/WarlockToolsForever) offers
+clickable Soulstone and Healthstone tools, configurable announcement messages,
+and a Fear/Banish control bar. Its README says its multi-mob DoT tracker,
+nameplate dots, control bar, and predictive DoT damage use Dyre's Toolkit's
+shared engines; its Soul Shards, Stones, and announcements still work without
+that toolkit. The addons have different shard cleanup behavior: Warlock HUD
+destroys one regular-bag shard per deliberate icon click, while
+WarlockToolsForever describes automatic deletion of newly created shards above
+its limit when the game permits it. Choose based on the workflow and features
+you want; this comparison describes documented features, not an in-game test.
 
 Live Multi-Target rows show an approximate remaining DoT total next to HP and
 percent. Colored segments compare Corruption, Bane of Agony, Siphon Life, and
@@ -194,6 +212,7 @@ downloadable ZIP in the repository's Actions artifacts.
 
 Open the AddOns settings or type **`/whub`** (also **`/whud`**). Settings include
 icon-size sliders with one-pixel step buttons, icon visibility, drag-to-reorder controls, notification choices,
+castbar channel tick and lower-rank warning toggles, independent 20% and 35% health markers,
 Soul Shard minimum and warning thresholds, and profiles. Move each row and the Soul Shards icon in Edit
 Mode; they snap to the grid. Profiles save the layout and can switch with your
 active talent spec. The Profiles page validates names as you type and confirms

@@ -571,6 +571,12 @@ local function Build()
         local executeLine = executeLayer:CreateTexture(nil, "OVERLAY", nil, -1)
         executeLine:SetSize(2, 15)
         executeLine:SetColorTexture(0.78, 0.43, 0.20, 1)
+        local execute35Outline = executeLayer:CreateTexture(nil, "OVERLAY", nil, -2)
+        execute35Outline:SetSize(4, 15)
+        execute35Outline:SetColorTexture(0, 0, 0, 1)
+        local execute35Line = executeLayer:CreateTexture(nil, "OVERLAY", nil, -1)
+        execute35Line:SetSize(2, 15)
+        execute35Line:SetColorTexture(0.78, 0.43, 0.20, 1)
         healthBar:SetMinMaxValues(0, 1)
         healthBar:SetValue(0)
         local healthText = display:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
@@ -663,6 +669,7 @@ local function Build()
             siphonMarker = siphonMarker, immolateMarker = immolateMarker,
             healthEdge = healthEdge, damageEdge = damageEdge,
             executeOutline = executeOutline, executeLine = executeLine,
+            execute35Outline = execute35Outline, execute35Line = execute35Line,
             portrait = portrait, portraitWarning = portraitWarning,
             portraitCover = portraitCover, marker = marker,
             target = selection, auras = auras,

@@ -1,17 +1,23 @@
--- Four interior tick markers for five-tick drains, drawn over Blizzard's
--- player castbar without changing the castbar itself.
+-- Tick markers for channeled Warlock spells, drawn over Blizzard's player
+-- castbar without changing the castbar itself.
 local DRAIN_IDS = {
     [1120] = true, [8288] = true, [8289] = true, [11675] = true,
     [689] = true, [699] = true, [709] = true, [7651] = true,
     [11699] = true, [11700] = true,
     [5138] = true, [6226] = true, [11703] = true, [11704] = true,
 }
+local RAIN_OF_FIRE_IDS = {
+    [5740] = true, [6219] = true, [11677] = true, [11678] = true,
+    [27212] = true,
+}
 local DRAIN_NAMES = {
     ["Drain Life"] = true, ["Drain Mana"] = true, ["Drain Soul"] = true,
 }
+local DRAIN_TICK_POSITIONS = { 0.2, 0.4, 0.6, 0.8 }
+local RAIN_OF_FIRE_TICK_POSITIONS = { 0.25, 0.5, 0.75, 1 }
 local frame = CreateFrame("Frame")
 local overlays = {}
-local eventDrain = false
+local eventTickPositions
 local elapsed = 0
 local channelState = "unknown"
 
@@ -19,9 +25,14 @@ local function Public(value)
     return value ~= nil and (not issecretvalue or not issecretvalue(value))
 end
 
-local function IsDrain(name, spellID)
-    return (Public(spellID) and DRAIN_IDS[spellID])
-        or (Public(name) and type(name) == "string" and DRAIN_NAMES[name])
+local function TickPositions(name, spellID)
+    if Public(spellID) and RAIN_OF_FIRE_IDS[spellID] then
+        return RAIN_OF_FIRE_TICK_POSITIONS
+    end
+    if (Public(spellID) and DRAIN_IDS[spellID])
+        or (Public(name) and type(name) == "string" and DRAIN_NAMES[name]) then
+        return DRAIN_TICK_POSITIONS
+    end
 end
 
 local function CurrentChannel()
@@ -38,8 +49,10 @@ local function CurrentChannel()
     if not Public(name) and not Public(spellID) then
         return nil, "channel identity unavailable"
     end
-    if not IsDrain(name, spellID) then return false, "other channel" end
-    return true, "drain channel"
+    local positions = TickPositions(name, spellID)
+    if not positions then return false, "other channel" end
+    local isRainOfFire = Public(spellID) and RAIN_OF_FIRE_IDS[spellID]
+    return positions, isRainOfFire and "Rain of Fire channel" or "drain channel"
 end
 
 local function CreateOverlay(bar)
@@ -66,11 +79,15 @@ end
 
 local function Update()
     EnsureOverlays()
+    local profile = WarlockHudAPI.GetProfile()
+    local enabled = profile and profile.enabled
+        and profile.enabled.channelTicks ~= false
     local fromAPI, reason = CurrentChannel()
     channelState = reason
-    local draining = fromAPI == true or (fromAPI == nil and eventDrain)
+    local tickPositions = fromAPI or (fromAPI == nil and eventTickPositions)
     for bar, entry in pairs(overlays) do
-        local shown = WarlockHudAPI.IsAddonEnabled() and draining and bar:IsShown()
+        local shown = WarlockHudAPI.IsAddonEnabled() and enabled
+            and tickPositions and bar:IsShown()
         local width = shown and bar:GetWidth()
         if not Public(width) or type(width) ~= "number" or width < 20 then
             shown = false
@@ -78,8 +95,12 @@ local function Update()
         if shown then
             for index, marker in ipairs(entry.markers) do
                 marker:ClearAllPoints()
-                marker:SetPoint("CENTER", entry.frame, "LEFT",
-                    width * index / 5, 0)
+                if tickPositions[index] == 1 then
+                    marker:SetPoint("RIGHT", entry.frame, "LEFT", width, 0)
+                else
+                    marker:SetPoint("CENTER", entry.frame, "LEFT",
+                        width * tickPositions[index], 0)
+                end
             end
             entry.frame:Show()
         else
@@ -116,7 +137,7 @@ function WarlockHudChannelTickTraceState()
                 or "missing")
     end
     WarlockHudTraceChannel("STATE", "api=" .. channelState
-        .. " eventDrain=" .. tostring(eventDrain)
+        .. " eventTicks=" .. tostring(eventTickPositions ~= nil)
         .. " " .. table.concat(pieces, " "), true)
 end
 
@@ -128,9 +149,9 @@ frame:RegisterUnitEvent("UNIT_SPELLCAST_CHANNEL_UPDATE", "player")
 frame:RegisterUnitEvent("UNIT_SPELLCAST_CHANNEL_STOP", "player")
 frame:SetScript("OnEvent", function(_, event, unit, _, spellID)
     if event == "UNIT_SPELLCAST_CHANNEL_START" and unit == "player" then
-        eventDrain = IsDrain(nil, spellID) and true or false
+        eventTickPositions = TickPositions(nil, spellID)
     elseif event == "UNIT_SPELLCAST_CHANNEL_STOP" and unit == "player" then
-        eventDrain = false
+        eventTickPositions = nil
     end
     Update()
     if event == "UNIT_SPELLCAST_CHANNEL_START" and unit == "player" then
