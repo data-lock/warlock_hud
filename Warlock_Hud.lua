@@ -610,6 +610,13 @@ local function UpdateStones()
             end
         end
         local start, duration = C_Item.GetItemCooldown(chosen)
+        local showOnlyActive = profile and profile.onlyActiveCooldowns == true
+        local cooldownActive
+        if (not issecretvalue or (not issecretvalue(start)
+            and not issecretvalue(duration)))
+            and type(start) == "number" and type(duration) == "number" then
+            cooldownActive = duration > 0 and start + duration > GetTime()
+        end
         if start and duration then
             -- The widget accepts cooldown values without inspecting them in Lua.
             pcall(entry.cooldown.SetCooldown, entry.cooldown, start, duration)
@@ -646,6 +653,12 @@ local function UpdateStones()
         else
             entry.icon:SetDesaturated(not owned)
         end
+        local shown = not showOnlyActive or cooldownActive ~= false
+        if entry.icon then entry.icon:SetShown(shown) end
+        if entry.border then entry.border:SetShown(shown) end
+        if entry.cooldown.SetShown then entry.cooldown:SetShown(shown) end
+        if entry.glow then entry.glow:SetShown(shown
+            and entry.glow:IsShown()) end
     end
 end
 
@@ -666,16 +679,77 @@ function WarlockHudRefreshSoulstoneWarning()
     UpdateStones()
 end
 
-local function UpdateSpellCooldowns()
-    if not C_Spell or not C_Spell.GetSpellCooldownDuration then
-        return
-    end
-    for _, entry in ipairs(spellCooldownIcons) do
-        local duration = C_Spell.GetSpellCooldownDuration(entry.spellID, true)
-        if duration then
-            pcall(entry.cooldown.SetCooldownFromDurationObject, entry.cooldown, duration)
+local function SpellCooldownActive(spellID)
+    if C_Spell and C_Spell.GetSpellCooldown then
+        local ok, info = pcall(C_Spell.GetSpellCooldown, spellID)
+        if ok and type(info) == "table" then
+            local active = info.isActive
+            if type(active) == "boolean"
+                and (not issecretvalue or not issecretvalue(active)) then
+                return active
+            end
+            local start, duration = info.startTime, info.duration
+            if (not issecretvalue or (not issecretvalue(start)
+                and not issecretvalue(duration)))
+                and type(start) == "number" and type(duration) == "number" then
+                return duration > 0 and start > 0 and start + duration > GetTime()
+            end
         end
     end
+    if C_Spell and C_Spell.GetSpellCooldownDuration then
+        local ok, duration = pcall(C_Spell.GetSpellCooldownDuration,
+            spellID, true)
+        if ok and duration and duration.IsZero then
+            local zeroOk, isZero = pcall(duration.IsZero, duration)
+            if zeroOk and type(isZero) == "boolean"
+                and (not issecretvalue or not issecretvalue(isZero)) then
+                return not isZero
+            end
+        end
+    end
+end
+
+local function UpdateSpellCooldowns()
+    for _, entry in ipairs(spellCooldownIcons) do
+        local active = SpellCooldownActive(entry.spellID)
+        if C_Spell and C_Spell.GetSpellCooldownDuration then
+            local ok, duration = pcall(C_Spell.GetSpellCooldownDuration,
+                entry.spellID, true)
+            if ok and duration then
+                pcall(entry.cooldown.SetCooldownFromDurationObject,
+                    entry.cooldown, duration)
+            end
+        end
+        local shown = not (profile and profile.onlyActiveCooldowns == true)
+            or active ~= false
+        if entry.icon then entry.icon:SetShown(shown) end
+        if entry.border then entry.border:SetShown(shown) end
+        if entry.cooldown.SetShown then entry.cooldown:SetShown(shown) end
+        if active == nil and profile and profile.onlyActiveCooldowns == true then
+            -- If the duration is restricted or unavailable, keep the native
+            -- cooldown visible rather than infer a ready state in Lua.
+            if entry.icon then entry.icon:SetShown(true) end
+            if entry.border then entry.border:SetShown(true) end
+            if entry.cooldown.SetShown then entry.cooldown:SetShown(true) end
+        end
+    end
+    for _, entry in ipairs(icons) do
+        if entry.spell and entry.spell.group == 2 then
+            local spellID = C_Spell and C_Spell.GetSpellIDForSpellIdentifier
+                and C_Spell.GetSpellIDForSpellIdentifier(entry.spell.name)
+                or entry.spell.ids[1]
+            local active = spellID and SpellCooldownActive(spellID)
+            local shown = not (profile and profile.onlyActiveCooldowns == true)
+                or active ~= false
+            if entry.icon then entry.icon:SetShown(shown) end
+            if entry.border then entry.border:SetShown(shown) end
+        end
+    end
+end
+
+function WarlockHudRefreshCooldownVisibility()
+    UpdateStones()
+    UpdateSpellCooldowns()
 end
 
 local function ConfigureCooldownNumbers(cooldown)
@@ -1763,7 +1837,7 @@ local function Build()
         cooldown:SetDrawEdge(false)
         ConfigureCooldownNumbers(cooldown)
         spellCooldownIcons[#spellCooldownIcons + 1] = {
-            spellID = racial[2], cooldown = cooldown,
+            spellID = racial[2], icon = icon, cooldown = cooldown,
             border = MakeBorder(anchor, x, iconSize),
         }
         end
@@ -1784,7 +1858,7 @@ local function Build()
         cooldown:SetDrawEdge(false)
         ConfigureCooldownNumbers(cooldown)
         spellCooldownIcons[#spellCooldownIcons + 1] = {
-            spellID = conflagrateID, cooldown = cooldown,
+            spellID = conflagrateID, icon = icon, cooldown = cooldown,
             border = MakeBorder(conflagrateAnchor, conflagrateX, conflagrateSize),
         }
         local glow = MakeReminderGlow(conflagrateAnchor, conflagrateX, nil,
@@ -1819,7 +1893,7 @@ local function Build()
             cooldown:SetDrawEdge(false)
             ConfigureCooldownNumbers(cooldown)
             spellCooldownIcons[#spellCooldownIcons + 1] = {
-                spellID = spellID, cooldown = cooldown,
+                spellID = spellID, icon = icon, cooldown = cooldown,
                 border = MakeBorder(anchor, x, iconSize),
             }
         end
@@ -1842,7 +1916,7 @@ local function Build()
             cooldown:SetDrawEdge(false)
             ConfigureCooldownNumbers(cooldown)
             spellCooldownIcons[#spellCooldownIcons + 1] = {
-                spellID = spellID, cooldown = cooldown,
+                spellID = spellID, icon = icon, cooldown = cooldown,
                 border = MakeBorder(anchor, x, iconSize),
             }
         end
@@ -2779,5 +2853,9 @@ WarlockHudAPI = {
         UpdateConsumableGlows()
     end,
     RefreshRowVisibility = UpdateRowVisibility,
+    RefreshCooldownVisibility = function()
+        UpdateStones()
+        UpdateSpellCooldowns()
+    end,
     Rebuild = Rebuild,
 }

@@ -1,5 +1,16 @@
 # Changelog
 
+## v1.1.9
+
+- Add a General setting to hide ready cooldown abilities and show them while
+  their cooldown is active, including spells, pet abilities, and racial traits.
+- Fix cooldown visibility updates for Fear and Banish tracker icons, and ensure
+  the setting saves without a settings callback error.
+- Batch Multi-Target health, aura, target, threat, and nameplate refreshes every
+  150 ms to reduce repeated row normalization and layout work during event bursts.
+
+See `releases/v1.1.9.md` for release notes.
+
 ## v1.1.8
 
 - Add four castbar tick markers for Rain of Fire while preserving the existing

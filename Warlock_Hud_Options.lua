@@ -951,6 +951,7 @@ WarlockHudOptionsGeneral.Build({
     Check = Check,
     Button = Button,
     Profile = Profile,
+    MarkChanged = MarkChanged,
     ShowIconDemo = ShowIconDemo,
     IsDemoShown = function() return iconDemo and iconDemo:IsShown() end,
     refreshers = refreshers,

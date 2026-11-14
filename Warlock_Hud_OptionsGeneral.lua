@@ -57,8 +57,19 @@ function WarlockHudOptionsGeneral.Build(context)
         "Warns when an action-bar spell is below your highest known rank and after casting a lower rank.",
         false)
 
-    Text(general, "HUD Recovery", 24, -420, "GameFontNormal")
+    Text(general, "Cooldown Display", 24, -420, "GameFontNormal")
+    Check(general, 24, -447, "Show abilities only while on cooldown",
+        function() return Profile().onlyActiveCooldowns == true end,
+        function(value)
+            Profile().onlyActiveCooldowns = value and true or nil
+            if api.RefreshCooldownVisibility then api.RefreshCooldownVisibility() end
+            MarkChanged(false)
+        end,
+        "Hides ready cooldown icons. Icons reappear while their cooldown is active.",
+        false)
+
+    Text(general, "HUD Recovery", 24, -492, "GameFontNormal")
     Text(general,
         "If you reload during combat, protected HUD elements may appear after combat ends.",
-        24, -446, "GameFontHighlightSmall")
+        24, -518, "GameFontHighlightSmall")
 end
