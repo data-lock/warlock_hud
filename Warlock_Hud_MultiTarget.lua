@@ -915,7 +915,9 @@ local function ClearQueuedRefresh()
     refreshQueued = false
     refreshElapsed = 0
     refreshAllIdentities = false
-    wipe(refreshIdentityUnits)
+    for unit in pairs(refreshIdentityUnits) do
+        refreshIdentityUnits[unit] = nil
+    end
 end
 
 local function FlushQueuedRefresh()
@@ -930,7 +932,9 @@ local function FlushQueuedRefresh()
         end
     end
     refreshAllIdentities = false
-    wipe(refreshIdentityUnits)
+    for unit in pairs(refreshIdentityUnits) do
+        refreshIdentityUnits[unit] = nil
+    end
     NormalizeRows()
     UpdateGhostRows()
     UpdateStatus()
