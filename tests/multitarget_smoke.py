@@ -234,7 +234,11 @@ lua.execute(Path("Warlock_Hud_Fonts.lua").read_text(encoding="utf-8"))
 lua.execute(Path("Warlock_Hud_WindowChrome.lua").read_text(encoding="utf-8"))
 lua.execute(Path("Warlock_Hud_MultiTarget.lua").read_text(encoding="utf-8"))
 lua.execute(r'''
-eventFrame.scripts.OnEvent(nil, 'PLAYER_LOGIN')
+local function FireEvent(event, ...)
+    eventFrame.scripts.OnEvent(nil, event, ...)
+    eventFrame.scripts.OnUpdate(eventFrame, 0.15)
+end
+FireEvent('PLAYER_LOGIN')
 local root = frames.WarlockHudMultiTargetWindow
 assert(root and root.shown == true, table.concat(chat, '; '))
 local viewport = frames.WarlockHudMultiTargetScroll
@@ -318,7 +322,7 @@ assert(WarlockHudMultiTarget.Refresh() == true)
 assert(firstContainer.children[1].point[4] < 335) -- reordered spell moves into the first slot
 plates.nameplate2 = 'First Mob'
 raidMarkers.nameplate2 = 8
-eventFrame.scripts.OnEvent(nil, 'NAME_PLATE_UNIT_ADDED', 'nameplate2')
+FireEvent('NAME_PLATE_UNIT_ADDED', 'nameplate2')
 assert(status.text == '1 engaged or dotted target')
 local display = Display(2)
 assert(display.mtdRow.threatLabel.text == 'LOW')
@@ -347,22 +351,22 @@ assert(portrait.portraitUnit == 'nameplate2')
 assert(marker.shown == true and marker.texCoord[1] == 0.75)
 local firstPortraitCalls = portraitCalls
 raidMarkers.nameplate2 = 1
-eventFrame.scripts.OnEvent(nil, 'RAID_TARGET_UPDATE')
+FireEvent('RAID_TARGET_UPDATE')
 assert(marker.shown == true and marker.texCoord[1] == 0)
 raidMarkers.nameplate2 = nil
 guids.nameplate2 = 'Creature-test-2'
 raidMarkers['Creature-test-2'] = 8
-eventFrame.scripts.OnEvent(nil, 'RAID_TARGET_UPDATE')
+FireEvent('RAID_TARGET_UPDATE')
 assert(marker.shown == true and marker.texCoord[1] == 0.75)
 raidMarkers['Creature-test-2'] = nil
 guids.nameplate2 = nil
 raidMarkers.nameplate2 = 'SECRET'
-eventFrame.scripts.OnEvent(nil, 'RAID_TARGET_UPDATE')
+FireEvent('RAID_TARGET_UPDATE')
 assert(marker.shown == true and marker.texCoord[1] == 0.25)
 assert(WarlockHudMultiTarget.ProbeRunning() == false)
 raidMarkers.nameplate2 = 1
 assert(portraitCalls == firstPortraitCalls) -- routine updates keep the portrait
-eventFrame.scripts.OnEvent(nil, 'UNIT_PORTRAIT_UPDATE', 'nameplate2')
+FireEvent('UNIT_PORTRAIT_UPDATE', 'nameplate2')
 assert(portraitCalls == firstPortraitCalls + 3)
 firstPortraitCalls = portraitCalls
 local row = display.mtdRow
@@ -406,7 +410,7 @@ assert(trace[#trace]:find('total 0.0%', 1, true))
 chat = {}
 health.nameplate2 = 45
 maximum.nameplate2 = 150
-eventFrame.scripts.OnEvent(nil, 'UNIT_HEALTH', 'nameplate2')
+FireEvent('UNIT_HEALTH', 'nameplate2')
 assert(name.text == 'First Mob')
 assert(healthText.text == '45 30%')
 assert(bar.value == 45 and bar.maximum == 150)
@@ -424,33 +428,33 @@ WarlockHudMultiTarget.Probe('off')
 assert(WarlockHudMultiTarget.ProbeRunning() == false)
 plates.nameplate3 = 'Dotted Mob'
 dots.nameplate3 = 172
-eventFrame.scripts.OnEvent(nil, 'NAME_PLATE_UNIT_ADDED', 'nameplate3')
+FireEvent('NAME_PLATE_UNIT_ADDED', 'nameplate3')
 local dottedDisplay = Display(3)
 local rowStep = 43
 assert(dottedDisplay.point[5] == -rowStep)
 assert(dottedDisplay.mtdRow.name.text == 'Dotted Mob')
 assert(status.text == '2 engaged or dotted targets')
 plates.nameplate4 = 'Idle Mob'
-eventFrame.scripts.OnEvent(nil, 'NAME_PLATE_UNIT_ADDED', 'nameplate4')
+FireEvent('NAME_PLATE_UNIT_ADDED', 'nameplate4')
 local idleDisplay = Display(4)
 assert(idleDisplay.alpha == 0 and idleDisplay.mtdRow.name.text == '')
 targetUnit = 'nameplate4'
-eventFrame.scripts.OnEvent(nil, 'PLAYER_TARGET_CHANGED')
+FireEvent('PLAYER_TARGET_CHANGED')
 assert(idleDisplay.alpha == 0) -- selecting an idle mob is not combat evidence
 targetUnit = 'nameplate2'
-eventFrame.scripts.OnEvent(nil, 'PLAYER_TARGET_CHANGED')
+FireEvent('PLAYER_TARGET_CHANGED')
 assert(status.text == '2 engaged or dotted targets')
 mobTargets.nameplate4target = 'player'
-eventFrame.scripts.OnEvent(nil, 'UNIT_TARGET', 'nameplate4')
+FireEvent('UNIT_TARGET', 'nameplate4')
 assert(idleDisplay.alpha == 1)
 mobTargets.nameplate4target = nil
-eventFrame.scripts.OnEvent(nil, 'UNIT_TARGET', 'nameplate4')
+FireEvent('UNIT_TARGET', 'nameplate4')
 assert(idleDisplay.alpha == 0)
 grouped = true
 mobTargets.party1target = 'nameplate4'
 guids.nameplate4 = 'Creature-group-test'
 guids.party1target = 'Creature-group-test'
-eventFrame.scripts.OnEvent(nil, 'UNIT_TARGET', 'party1')
+FireEvent('UNIT_TARGET', 'party1')
 assert(idleDisplay.alpha == 1)
 local partyDisplay = Display(18)
 assert(partyDisplay.alpha == 0) -- nameplate copy wins the GUID dedupe
@@ -458,54 +462,54 @@ guids.party1target = nil
 guids.nameplate4 = nil
 mobTargets.party1target = nil
 grouped = false
-eventFrame.scripts.OnEvent(nil, 'UNIT_TARGET', 'party1')
+FireEvent('UNIT_TARGET', 'party1')
 assert(idleDisplay.alpha == 0)
 plates.party1target = 'Group-only Mob'
 guids.party1target = 'Creature-party-only'
 grouped = true
-eventFrame.scripts.OnEvent(nil, 'UNIT_TARGET', 'party1')
+FireEvent('UNIT_TARGET', 'party1')
 assert(partyDisplay.alpha == 1)
 assert(partyDisplay.mtdRow.name.text == 'Group-only Mob')
 plates.party1target = nil
 guids.party1target = nil
 grouped = false
-eventFrame.scripts.OnEvent(nil, 'GROUP_ROSTER_UPDATE')
+FireEvent('GROUP_ROSTER_UPDATE')
 assert(partyDisplay.alpha == 0)
 plates.target = 'Player-only target'
 dots.target = 172
 targetUnit = 'target'
-eventFrame.scripts.OnEvent(nil, 'PLAYER_TARGET_CHANGED')
+FireEvent('PLAYER_TARGET_CHANGED')
 assert(Display(17).alpha == 1)
 plates.target = nil
 dots.target = nil
 targetUnit = 'nameplate2'
-eventFrame.scripts.OnEvent(nil, 'PLAYER_TARGET_CHANGED')
+FireEvent('PLAYER_TARGET_CHANGED')
 assert(Display(17).alpha == 0)
 plates.party4target = 'Fifth member target'
 grouped = true
-eventFrame.scripts.OnEvent(nil, 'UNIT_TARGET', 'party4')
+FireEvent('UNIT_TARGET', 'party4')
 assert(Display(21).alpha == 1)
 plates.party4target = nil
 grouped = false
-eventFrame.scripts.OnEvent(nil, 'GROUP_ROSTER_UPDATE')
+FireEvent('GROUP_ROSTER_UPDATE')
 plates.raid40target = 'Last raid member target'
 raiding = true
-eventFrame.scripts.OnEvent(nil, 'UNIT_TARGET', 'raid40')
+FireEvent('UNIT_TARGET', 'raid40')
 assert(Display(61).alpha == 1)
 plates.raid40target = nil
 raiding = false
-eventFrame.scripts.OnEvent(nil, 'GROUP_ROSTER_UPDATE')
+FireEvent('GROUP_ROSTER_UPDATE')
 -- A DoT makes an otherwise idle row visible, and clearing it hides the row.
 dots.nameplate4 = 172
-eventFrame.scripts.OnEvent(nil, 'UNIT_AURA', 'nameplate4')
+FireEvent('UNIT_AURA', 'nameplate4')
 assert(idleDisplay.alpha == 1 and idleDisplay.point[5] == -2 * rowStep)
 assert(status.text == '3 engaged or dotted targets')
 dots.nameplate4 = nil
-eventFrame.scripts.OnEvent(nil, 'UNIT_AURA', 'nameplate4')
+FireEvent('UNIT_AURA', 'nameplate4')
 assert(idleDisplay.alpha == 0 and idleDisplay.children[12].text == '')
 assert(status.text == '2 engaged or dotted targets')
 plates.nameplate5 = 'Unreadable Mob'
-eventFrame.scripts.OnEvent(nil, 'NAME_PLATE_UNIT_ADDED', 'nameplate5')
+FireEvent('NAME_PLATE_UNIT_ADDED', 'nameplate5')
 local unknownDisplay = Display(5)
 assert(unknownDisplay.alpha == 0 and unknownDisplay.children[12].text == '')
 assert(status.text == '2 engaged or dotted targets')
@@ -516,7 +520,7 @@ for _, child in ipairs(display.children[15].children) do
 end
 assert(reusedContainer)
 local refreshesBeforeReuse = rawget(reusedContainer, 'auraRefreshes') or 0
-eventFrame.scripts.OnEvent(nil, 'NAME_PLATE_UNIT_REMOVED', 'nameplate2')
+FireEvent('NAME_PLATE_UNIT_REMOVED', 'nameplate2')
 assert((rawget(reusedContainer, 'auraRefreshes') or 0) == refreshesBeforeReuse + 1)
 assert(name.text == '')
 assert(display.alpha == 0)
@@ -527,42 +531,42 @@ assert(status.text == '1 engaged or dotted target')
 assert(dottedDisplay.point[5] == 0)
 plates.nameplate2 = 'Second Mob'
 raidMarkers.nameplate2 = nil
-eventFrame.scripts.OnEvent(nil, 'NAME_PLATE_UNIT_ADDED', 'nameplate2')
+FireEvent('NAME_PLATE_UNIT_ADDED', 'nameplate2')
 assert((rawget(reusedContainer, 'auraRefreshes') or 0) == refreshesBeforeReuse + 2)
 assert(name.text == 'Second Mob' and healthText.text == '45 30%')
 assert(portrait.portraitUnit == 'nameplate2' and marker.shown == false)
 assert(portraitCalls > firstPortraitCalls)
 dead.nameplate2 = true
-eventFrame.scripts.OnEvent(nil, 'UNIT_HEALTH', 'nameplate2')
+FireEvent('UNIT_HEALTH', 'nameplate2')
 assert(name.text == '' and status.text == '1 engaged or dotted target')
 assert(dottedDisplay.point[5] == 0) -- surviving rows compact after death
 dead.nameplate2 = false
-eventFrame.scripts.OnEvent(nil, 'UNIT_FLAGS', 'nameplate2')
+FireEvent('UNIT_FLAGS', 'nameplate2')
 assert(name.text == 'Second Mob' and healthText.text == '45 30%')
 assert(dottedDisplay.point[5] == -rowStep)
 combat = true
 local dottedPosition = dottedDisplay.point[5]
-eventFrame.scripts.OnEvent(nil, 'UNIT_AURA', 'nameplate3')
+FireEvent('UNIT_AURA', 'nameplate3')
 assert(dottedDisplay.alpha == 1) -- keep a previously confirmed DoT row
 dead.nameplate2 = true
-eventFrame.scripts.OnEvent(nil, 'UNIT_HEALTH', 'nameplate2')
+FireEvent('UNIT_HEALTH', 'nameplate2')
 assert(display.alpha == 0 and dottedDisplay.point[5] == 0)
 dead.nameplate2 = false
-eventFrame.scripts.OnEvent(nil, 'UNIT_FLAGS', 'nameplate2')
+FireEvent('UNIT_FLAGS', 'nameplate2')
 assert(dottedDisplay.point[5] == dottedPosition)
 plates.nameplate2 = nil
-eventFrame.scripts.OnEvent(nil, 'NAME_PLATE_UNIT_REMOVED', 'nameplate2')
+FireEvent('NAME_PLATE_UNIT_REMOVED', 'nameplate2')
 assert(name.text == '' and dottedDisplay.point[5] == 0)
 plates.nameplate2 = 'Second Mob'
-eventFrame.scripts.OnEvent(nil, 'NAME_PLATE_UNIT_ADDED', 'nameplate2')
+FireEvent('NAME_PLATE_UNIT_ADDED', 'nameplate2')
 assert(dottedDisplay.point[5] == dottedPosition)
 health.nameplate2 = 'SECRET'
-eventFrame.scripts.OnEvent(nil, 'UNIT_HEALTH', 'nameplate2')
+FireEvent('UNIT_HEALTH', 'nameplate2')
 assert(name.text == 'Second Mob')
 assert(healthText.text == '')
 health.nameplate2 = 45
 local previousChecks = auraChecks
-eventFrame.scripts.OnEvent(nil, 'UNIT_AURA', 'nameplate4')
+FireEvent('UNIT_AURA', 'nameplate4')
 assert(auraChecks == previousChecks)
 assert(WarlockHudMultiTarget.Toggle() == false)
 assert(profile.multiDotEnabled == true and root.shown == true)
@@ -573,7 +577,7 @@ close.scripts.OnClick()
 assert(profile.multiDotEnabled == false)
 WarlockHudMultiTarget.Refresh()
 assert(root.shown == false)
-eventFrame.scripts.OnEvent(nil, 'PLAYER_REGEN_ENABLED')
+FireEvent('PLAYER_REGEN_ENABLED')
 assert(root.shown == false)
 assert(dottedDisplay.alpha == 1) -- safely rechecked after combat
 profile.multiDotEnabled = true
@@ -583,17 +587,17 @@ for i = 1, 16 do
     local unit = 'nameplate' .. i
     plates[unit] = 'Mob ' .. i
     dots[unit] = 172
-    eventFrame.scripts.OnEvent(nil, 'NAME_PLATE_UNIT_ADDED', unit)
+    FireEvent('NAME_PLATE_UNIT_ADDED', unit)
 end
 assert(status.text == '16 engaged or dotted targets')
 assert(Display(16).alpha == 1) -- nameplate16 is the last visible row
 plates.target = 'Overflow target'
 dots.target = 172
 targetUnit = 'target'
-eventFrame.scripts.OnEvent(nil, 'PLAYER_TARGET_CHANGED')
+FireEvent('PLAYER_TARGET_CHANGED')
 assert(Display(17).alpha == 0) -- seventeenth candidate waits
 plates.nameplate1 = nil
-eventFrame.scripts.OnEvent(nil, 'NAME_PLATE_UNIT_REMOVED', 'nameplate1')
+FireEvent('NAME_PLATE_UNIT_REMOVED', 'nameplate1')
 assert(Display(17).alpha == 1)
 assert(status.text == '16 engaged or dotted targets')
 local priorWidth = root.width
@@ -611,7 +615,7 @@ assert(viewport.scrollOffset == 58)
 for i = 2, 16 do
     local unit = 'nameplate' .. i
     plates[unit] = nil
-    eventFrame.scripts.OnEvent(nil, 'NAME_PLATE_UNIT_REMOVED', unit)
+    FireEvent('NAME_PLATE_UNIT_REMOVED', unit)
 end
 assert(scroll.shown == false and viewport.scrollOffset == 0)
 combat = false
@@ -626,11 +630,11 @@ assert(root.alpha == 0.6 and root.shown == false)
 assert(root.driver[1] == 'visibility' and root.driver[2] == '[combat]show;hide')
 combat = true
 root:SetShown(true) -- the client applies the secure visibility driver
-eventFrame.scripts.OnEvent(nil, 'PLAYER_REGEN_DISABLED')
+FireEvent('PLAYER_REGEN_DISABLED')
 assert(root.shown == true)
 combat = false
 root:SetShown(false)
-eventFrame.scripts.OnEvent(nil, 'PLAYER_REGEN_ENABLED')
+FireEvent('PLAYER_REGEN_ENABLED')
 assert(root.shown == false)
 close.scripts.OnClick()
 assert(profile.multiDotEnabled == false)
@@ -668,17 +672,17 @@ assert(brandedContainer.point[4] + brandedContainer.width
     <= brandedDisplay.width - 3)
 plates.nameplate3 = 'Other Branded Mob'
 dots.nameplate3 = 172
-eventFrame.scripts.OnEvent(nil, 'NAME_PLATE_UNIT_ADDED', 'nameplate3')
+FireEvent('NAME_PLATE_UNIT_ADDED', 'nameplate3')
 plates.nameplate2 = 'Branded Mob'
 dots.nameplate2 = 172
-eventFrame.scripts.OnEvent(nil, 'NAME_PLATE_UNIT_ADDED', 'nameplate2')
+FireEvent('NAME_PLATE_UNIT_ADDED', 'nameplate2')
 local brandedSecond = brandedViewport.scrollChild.children[2]
 local brandedThird = brandedViewport.scrollChild.children[3]
 assert(brandedSecond.alpha == 1 and brandedSecond.mtdRow.name.text == 'Branded Mob')
 assert(brandedThird.point[5] == -43)
 plates.nameplate2 = nil
 dots.nameplate2 = nil
-eventFrame.scripts.OnEvent(nil, 'NAME_PLATE_UNIT_REMOVED', 'nameplate2')
+FireEvent('NAME_PLATE_UNIT_REMOVED', 'nameplate2')
 assert(brandedSecond.alpha == 0 and brandedSecond.mtdRow.name.text == '')
 assert(brandedThird.point[5] == 0)
 table.insert(WarlockHudAPI.MainKeys, 'extra')
@@ -760,12 +764,12 @@ end
 local clock = 0
 GetTime = function() return clock end
 plates.target = nil
-eventFrame.scripts.OnEvent(nil, 'PLAYER_TARGET_CHANGED')
+FireEvent('PLAYER_TARGET_CHANGED')
 plates.nameplate2 = 'Lost Mob'
 dots.nameplate2 = 172
 guids.nameplate2 = 'Creature-lost-2'
 guids.target = 'Creature-lost-2'
-eventFrame.scripts.OnEvent(nil, 'NAME_PLATE_UNIT_ADDED', 'nameplate2')
+FireEvent('NAME_PLATE_UNIT_ADDED', 'nameplate2')
 assert(decimalsViewport.scrollChild.children[2].children[12].text == 'Lost Mob')
 combat = true
 damageDriver.scripts.OnEvent(nil, 'UNIT_SPELLCAST_SUCCEEDED', 'player', nil, 172)
@@ -774,7 +778,7 @@ assert(trace[#trace]:find('Multi-Target damage: Corruption', 1, true),
 plates.nameplate2 = nil
 dots.nameplate2 = nil
 guids.nameplate2 = nil
-eventFrame.scripts.OnEvent(nil, 'NAME_PLATE_UNIT_REMOVED', 'nameplate2')
+FireEvent('NAME_PLATE_UNIT_REMOVED', 'nameplate2')
 local ghost = decimalsViewport.scrollChild.children[62]
 assert(ghost.alpha == 0.55 and ghost.children[12].text == 'Lost Mob',
     tostring(ghost.alpha) .. '/' .. tostring(ghost.children[12].text)
@@ -792,13 +796,13 @@ assert(activeSnapshotIcon)
 plates.target = 'Lost Mob'
 dots.target = 172
 targetUnit = 'target'
-eventFrame.scripts.OnEvent(nil, 'PLAYER_TARGET_CHANGED')
+FireEvent('PLAYER_TARGET_CHANGED')
 assert(ghost.alpha == 0) -- live target token takes over
 plates.target = nil
 dots.target = nil
 guids.target = nil
 targetUnit = 'nameplate2'
-eventFrame.scripts.OnEvent(nil, 'PLAYER_TARGET_CHANGED')
+FireEvent('PLAYER_TARGET_CHANGED')
 assert(ghost.alpha == 0.55) -- lost again
 clock = 19
 eventFrame.scripts.OnUpdate(nil, 0.21)
@@ -808,7 +812,7 @@ plates.nameplate2 = 'Lost Mob'
 dots.nameplate2 = 172
 guids.nameplate2 = 'Creature-lost-2'
 guids.target = 'Creature-lost-2'
-eventFrame.scripts.OnEvent(nil, 'NAME_PLATE_UNIT_ADDED', 'nameplate2')
+FireEvent('NAME_PLATE_UNIT_ADDED', 'nameplate2')
 assert(decimalsViewport.scrollChild.children[2].children[12].text == 'Lost Mob',
     tostring(decimalsViewport.scrollChild.children[2].alpha) .. '/'
     .. tostring(decimalsViewport.scrollChild.children[2].children[12].text))
@@ -817,37 +821,37 @@ damageDriver.scripts.OnEvent(nil, 'UNIT_SPELLCAST_SUCCEEDED', 'player', nil, 172
 plates.nameplate2 = nil
 dots.nameplate2 = nil
 guids.nameplate2 = nil
-eventFrame.scripts.OnEvent(nil, 'NAME_PLATE_UNIT_REMOVED', 'nameplate2')
+FireEvent('NAME_PLATE_UNIT_REMOVED', 'nameplate2')
 assert(ghost.alpha == 0.55, tostring(ghost.alpha) .. '/'
     .. tostring(ghost.children[12].text) .. '/' .. tostring(status.text))
 plates.nameplate4 = 'Second Lost'
 mobTargets.nameplate4target = 'player'
 guids.nameplate4 = 'Creature-lost-4'
 guids.target = 'Creature-lost-4'
-eventFrame.scripts.OnEvent(nil, 'NAME_PLATE_UNIT_ADDED', 'nameplate4')
+FireEvent('NAME_PLATE_UNIT_ADDED', 'nameplate4')
 damageDriver.scripts.OnEvent(nil, 'UNIT_SPELLCAST_SUCCEEDED', 'player', nil, 172)
 plates.nameplate4 = nil
 mobTargets.nameplate4target = nil
 guids.nameplate4 = nil
-eventFrame.scripts.OnEvent(nil, 'NAME_PLATE_UNIT_REMOVED', 'nameplate4')
+FireEvent('NAME_PLATE_UNIT_REMOVED', 'nameplate4')
 local secondGhost = decimalsViewport.scrollChild.children[63]
 assert(ghost.alpha == 0.55 and secondGhost.alpha == 0.55)
 assert(ghost.children[12].text == 'Lost Mob'
     and secondGhost.children[12].text == 'Second Lost')
 plates.nameplate2 = 'Lost Mob'
 guids.nameplate2 = 'Creature-lost-2'
-eventFrame.scripts.OnEvent(nil, 'NAME_PLATE_UNIT_ADDED', 'nameplate2')
+FireEvent('NAME_PLATE_UNIT_ADDED', 'nameplate2')
 dead.nameplate2 = true
-eventFrame.scripts.OnEvent(nil, 'UNIT_FLAGS', 'nameplate2')
+FireEvent('UNIT_FLAGS', 'nameplate2')
 plates.nameplate2 = nil
 guids.nameplate2 = nil
-eventFrame.scripts.OnEvent(nil, 'NAME_PLATE_UNIT_REMOVED', 'nameplate2')
+FireEvent('NAME_PLATE_UNIT_REMOVED', 'nameplate2')
 assert(ghost.children[12].text ~= 'Lost Mob' or ghost.alpha == 0)
 assert(secondGhost.children[12].text ~= 'Lost Mob' or secondGhost.alpha == 0)
 assert((ghost.alpha == 0.55 and ghost.children[12].text == 'Second Lost')
     or (secondGhost.alpha == 0.55 and secondGhost.children[12].text == 'Second Lost'))
 combat = false
-eventFrame.scripts.OnEvent(nil, 'PLAYER_REGEN_ENABLED')
+FireEvent('PLAYER_REGEN_ENABLED')
 assert(ghost.alpha == 0)
 assert(secondGhost.alpha == 0)
 ''')

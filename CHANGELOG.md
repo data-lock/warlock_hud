@@ -1,5 +1,15 @@
 # Changelog
 
+## v1.1.10
+
+- Keep nameplate identity clearing and native aura refreshes immediate while
+  batching expensive Multi-Target health, aura, target, threat, and layout work
+  at 150 ms intervals.
+- Update the Multi-Target smoke harness to flush queued event batches and check
+  the new refresh timing.
+
+See `releases/v1.1.10.md` for release notes.
+
 ## v1.1.9
 
 - Add a General setting to hide ready cooldown abilities and show them while
