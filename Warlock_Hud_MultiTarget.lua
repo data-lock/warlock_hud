@@ -896,6 +896,48 @@ WarlockHudMultiTarget = {
 }
 
 local events = CreateFrame("Frame")
+local REFRESH_INTERVAL = 0.15
+local refreshElapsed = 0
+local refreshQueued = false
+local refreshAllIdentities = false
+local refreshIdentityUnits = {}
+
+local function QueueRefresh(unit)
+    refreshQueued = true
+    if type(unit) == "string" then
+        refreshIdentityUnits[unit] = true
+    else
+        refreshAllIdentities = true
+    end
+end
+
+local function ClearQueuedRefresh()
+    refreshQueued = false
+    refreshElapsed = 0
+    refreshAllIdentities = false
+    wipe(refreshIdentityUnits)
+end
+
+local function FlushQueuedRefresh()
+    if not refreshQueued or not built then return end
+    refreshQueued = false
+    refreshElapsed = 0
+    if refreshAllIdentities then
+        for _, row in ipairs(rows) do UpdateIdentity(row) end
+    else
+        for _, row in ipairs(rows) do
+            if refreshIdentityUnits[row.unit] then UpdateIdentity(row) end
+        end
+    end
+    refreshAllIdentities = false
+    wipe(refreshIdentityUnits)
+    NormalizeRows()
+    UpdateGhostRows()
+    UpdateStatus()
+    ReflowRows()
+    damage.Update()
+end
+
 for _, event in ipairs({ "PLAYER_LOGIN", "PLAYER_REGEN_ENABLED",
     "PLAYER_REGEN_DISABLED",
     "ACTIVE_TALENT_GROUP_CHANGED", "PLAYER_TALENT_UPDATE", "SPELLS_CHANGED",
@@ -935,6 +977,7 @@ events:SetScript("OnEvent", function(_, event, unit)
         UpdateStatus()
         ReflowRows()
         damage.Update()
+        ClearQueuedRefresh()
     elseif event == "UNIT_PORTRAIT_UPDATE" or event == "PORTRAITS_UPDATED" then
         if event == "PORTRAITS_UPDATED" then
             for _, row in ipairs(rows) do UpdatePortrait(row) end
@@ -950,7 +993,6 @@ events:SetScript("OnEvent", function(_, event, unit)
                 -- A newly assigned token may refer to a different mob.
                 ClearIdentity(row)
                 damage.Clear(row)
-                if event == "NAME_PLATE_UNIT_ADDED" then UpdateIdentity(row) end
                 -- The token may now denote another creature. Ask Blizzard's
                 -- container to discard any aura display from its old occupant.
                 if row.auras and row.auras.UpdateAllAuras then
@@ -963,11 +1005,7 @@ events:SetScript("OnEvent", function(_, event, unit)
                 break
             end
         end
-        NormalizeRows()
-        UpdateGhostRows()
-        UpdateStatus()
-        ReflowRows()
-        damage.Update()
+        QueueRefresh(unit)
     elseif event == "PLAYER_TARGET_CHANGED" or event == "RAID_TARGET_UPDATE"
         or event == "GROUP_ROSTER_UPDATE" or event == "UNIT_THREAT_LIST_UPDATE"
         or event == "UNIT_THREAT_SITUATION_UPDATE" or event == "UNIT_AURA"
@@ -996,17 +1034,10 @@ events:SetScript("OnEvent", function(_, event, unit)
         end
         if event ~= "UNIT_TARGET" and Plain(unit) and type(unit) == "string"
             and unit:match("^nameplate%d+$") then
-            for _, row in ipairs(rows) do
-                if row.unit == unit then UpdateIdentity(row); break end
-            end
+            QueueRefresh(unit)
         else
-            for _, row in ipairs(rows) do UpdateIdentity(row) end
+            QueueRefresh()
         end
-        NormalizeRows()
-        UpdateGhostRows()
-        UpdateStatus()
-        ReflowRows()
-        damage.Update()
     end
 end)
 local ghostElapsed, retryElapsed = 0, 0
@@ -1020,6 +1051,12 @@ events:SetScript("OnUpdate", function(_, delta)
             end
         end
         return
+    end
+    if refreshQueued then
+        refreshElapsed = refreshElapsed + delta
+        if refreshElapsed >= REFRESH_INTERVAL then
+            FlushQueuedRefresh()
+        end
     end
     ghostElapsed = ghostElapsed + delta
     if ghostElapsed < 0.2 then return end
