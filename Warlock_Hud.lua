@@ -58,6 +58,7 @@ local wellFedIDs = WarlockHudPlayerEffects.WellFedIDs
 consumeState.effects = WarlockHudPlayerEffects.Consumables
 consumeState.oilEnchantIDs = WarlockHudPlayerEffects.OilEnchantIDs
 consumeState.firestoneEnchantIDs = WarlockHudPlayerEffects.FirestoneEnchantIDs
+consumeState.spellstoneEnchantIDs = WarlockHudPlayerEffects.SpellstoneEnchantIDs
 local buffIDs = {}
 local buffSlotCreated = {}
 
@@ -852,11 +853,12 @@ local function ReadConsumableEffect(effect)
 end
 
 local function ReadWeaponCoating()
-    -- Oils and Firestone are temporary weapon enchants, not UNIT_AURA buffs.
-    -- Read their remaining time only when the client exposes a plain value.
-    if InCombatLockdown() or not C_Item or not C_Item.GetWeaponEnchantInfo
-        or (C_Secrets and C_Secrets.ShouldAurasBeSecret
-            and C_Secrets.ShouldAurasBeSecret()) then return nil end
+    -- Weapon coatings are not UNIT_AURA data. Check each returned field below;
+    -- the global secret-aura state must not suppress an otherwise readable
+    -- empty weapon-enchant list (which confirms the buff is missing).
+    if InCombatLockdown() or not C_Item or not C_Item.GetWeaponEnchantInfo then
+        return nil
+    end
     local ok, status, remainingMs = pcall(function()
         local enchants = C_Item.GetWeaponEnchantInfo(0)
         if (issecretvalue and issecretvalue(enchants))
@@ -876,6 +878,9 @@ local function ReadWeaponCoating()
                     return "firestone"
                 end
                 return "firestone", type(timeLeft) == "number" and timeLeft or nil
+            end
+            if present and consumeState.spellstoneEnchantIDs[id] then
+                return "spellstone"
             end
             if present and consumeState.oilEnchantIDs[id] then oilFound = true end
         end
@@ -907,8 +912,10 @@ local function UpdateConsumableGlows()
             profile.colorActiveConsumes)
         if coating ~= nil and consumeState.oilIcon then
             consumeState.coating = coating
-            consumeState.oilIcon:SetTexture(coating == "firestone"
-                and consumeState.firestoneTexture or consumeState.oilTexture)
+            local texture = coating == "firestone" and consumeState.firestoneTexture
+                or coating == "spellstone" and consumeState.spellstoneTexture
+                or consumeState.oilTexture
+            consumeState.oilIcon:SetTexture(texture)
             if coating == "firestone" and type(remainingMs) == "number"
                 and remainingMs > 0 and consumeState.coatingCooldown then
                 local seconds = math.min(7200, remainingMs / 1000)
@@ -2108,15 +2115,18 @@ local function Build()
     end
     local oilHolder = consumeHolders.wizardoil
     consumeState.oilIcon, consumeState.oilTexture = nil, nil
-    consumeState.firestoneTexture, consumeState.coating = nil, nil
+    consumeState.firestoneTexture, consumeState.spellstoneTexture = nil, nil
+    consumeState.coating = nil
     consumeState.coatingCooldown, consumeState.coatingExpiresAt = nil, nil
     if oilHolder then
         oilHolder:EnableMouse(true)
         oilHolder:SetScript("OnEnter", function(self)
             GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-            GameTooltip:SetText(consumeState.coating == "firestone"
-                and "Firestone" or "Wizard Oil / Firestone")
-            GameTooltip:AddLine("Tracks Wizard Oil or Firestone on your weapon.",
+            local coatingNames = {
+                firestone = "Firestone", spellstone = "Spellstone", oil = "Wizard Oil",
+            }
+            GameTooltip:SetText(coatingNames[consumeState.coating] or "Weapon Buff")
+            GameTooltip:AddLine("Tracks Wizard Oil, Firestone, or Spellstone on your weapon.",
                 1, 1, 1, true)
             if consumeState.coating == "firestone" then
                 if consumeState.coatingExpiresAt then
@@ -2133,7 +2143,7 @@ local function Build()
                         1, 1, 1, true)
                 end
             else
-                GameTooltip:AddLine("No HUD timer is shown for Wizard Oil.",
+                GameTooltip:AddLine("No HUD timer is shown for this weapon buff.",
                     1, 1, 1, true)
             end
             GameTooltip:Show()
@@ -2147,6 +2157,8 @@ local function Build()
         consumeState.oilIcon = oilIcon
         consumeState.oilTexture = oilIcon:GetTexture()
         consumeState.firestoneTexture = 134085
+        consumeState.spellstoneTexture = C_Item and C_Item.GetItemIconByID
+            and C_Item.GetItemIconByID(5522) or 136121
         oilIcon:SetTexCoord(ICON_CROP, 1 - ICON_CROP, ICON_CROP, 1 - ICON_CROP)
         oilIcon:SetDesaturated(profile.colorActiveConsumes ~= false)
         local coatingCooldown = CreateFrame("Cooldown", nil, oilHolder,
@@ -2520,6 +2532,7 @@ events:SetScript("OnEvent", function(_, event)
     elseif event == "BAG_UPDATE_DELAYED" or event == "BAG_UPDATE_COOLDOWN" then
         UpdateStones()
         UpdateShardCount()
+        UpdateConsumableGlows()
     elseif event == "PLAYER_EQUIPMENT_CHANGED" then
         UpdateShardCount()
         UpdateConsumableGlows()
@@ -2678,6 +2691,23 @@ local function DebugState()
             end
             output(row[1] .. ": " .. (#enabled > 0 and table.concat(enabled, ", ") or "none"))
         end
+        local consumeStates, consumeSlots = {}, {}
+        for _, key in ipairs(consumeState.keys) do
+            consumeStates[#consumeStates + 1] = key .. "="
+                .. (Enabled(key) and "on" or "off") .. "/remind-"
+                .. (profile.consumeReminders[key] == true and "on" or "off")
+            local glow = key == "wellfed" and wellFedGlow
+                or consumeState.glows and consumeState.glows[key]
+            local slotBuilt = key == "wellfed" and wellFedSlotCreated or glow ~= nil
+            local glowShown = glow and glow.IsShown and glow:IsShown()
+            consumeSlots[#consumeSlots + 1] = key .. "="
+                .. (slotBuilt and "built" or "absent") .. "/glow-"
+                .. (glowShown and "shown" or "hidden")
+        end
+        output("Consumes config: row="
+            .. (profile.consumesEnabled ~= false and "on" or "off")
+            .. "; " .. table.concat(consumeStates, ", "))
+        output("Consumes slots: " .. table.concat(consumeSlots, ", "))
     end
     output("Trackers: target " .. (container and "ready" or "not initialized")
         .. ", player " .. (playerAuraContainer and "ready" or "not initialized")

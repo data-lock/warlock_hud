@@ -27,7 +27,7 @@ local LABELS = {
     armor = "Armor / Skin", wellfed = "Well Fed",
     flask = "Flask", spelldamage = "Spell Damage Elixir",
     shadow = "Shadow Damage Elixir", fire = "Fire Damage Elixir",
-    wizardoil = "Wizard Oil / Firestone", manaregen = "Mana Regeneration",
+    wizardoil = "Weapon Buff", manaregen = "Mana Regeneration",
     racial1 = "Racial ability 1", racial2 = "Racial ability 2",
     fort = "Fortitude", motw = "Mark of the Wild", int = "Intellect",
     spirit = "Spirit", kings = "Kings", salv = "Salvation",
@@ -37,7 +37,7 @@ local LABELS = {
 }
 local TILE_LABELS = { motw = "Wild", breath = "Breath",
     spelldamage = "Spell Dmg", shadow = "Shadow", fire = "Fire",
-    wizardoil = "Oil", manaregen = "Mana",
+    wizardoil = "Weapon", manaregen = "Mana",
     demonicbrand = "Brand", demon = "Missing Demon" }
 
 local ICON_HELP = {
@@ -74,7 +74,7 @@ local ICON_HELP = {
     spelldamage = "Lesser, regular, or Greater Arcane Elixir effect. Native aura countdown.",
     shadow = "Shadow Power elixir effect. Native aura countdown.",
     fire = "Fire Power or Greater Firepower elixir effect. Native aura countdown.",
-    wizardoil = "Wizard Oil or Firestone on your weapon. Firestone shows its remaining time when readable; Wizard Oil has no HUD timer. Protected states may delay updates.",
+    wizardoil = "Wizard Oil, Firestone, or Spellstone on your weapon. Firestone shows its remaining time when readable. Available before learning a stone spell; protected states may delay updates.",
     manaregen = "Mageblood family effects, including Mana Regeneration. Native aura countdown.",
     fort = "Includes Power Word: Fortitude and Prayer of Fortitude.",
     motw = "Includes Mark of the Wild and Gift of the Wild.",
@@ -300,7 +300,8 @@ local function IconForKey(key)
         end
     end
     if key == "wizardoil" then
-        return C_Item and C_Item.GetItemIconByID and C_Item.GetItemIconByID(20749)
+        return C_Item and C_Item.GetItemIconByID and C_Item.GetItemIconByID(5522)
+            or "Interface\\Icons\\INV_Stone_04"
     end
     if key == "healthstone" or key == "soulstone" or key == "soulshards" then
         return C_Item and C_Item.GetItemIconByID
@@ -493,6 +494,9 @@ local function OrderSection(parent, title, orderKey, defaults, y, columns, onRes
     strip:SetPoint("TOPLEFT", parent, "TOPLEFT", stripX or 24, y - 29)
     local tiles = {}
     for index = 1, #defaults do
+        -- Keep each widget's position stable inside its event closures on the
+        -- WoW Lua runtime; otherwise clicks can write the wrong order entry.
+        local tileIndex = index
         local tile = CreateFrame("Button", nil, strip)
         local tileSize = cornerControls and 34 or 42
         tile:SetSize(tileSize, tileSize)
@@ -566,9 +570,9 @@ local function OrderSection(parent, title, orderKey, defaults, y, columns, onRes
                     math.floor((cursorX - left - rowOffset) / cellWidth) + 1))
                 local lastMovable = orderKey == "buffOrder" and #defaults - 1 or #defaults
                 local destination = math.min(lastMovable, (row - 1) * columns + column)
-                if destination ~= index then
+                if destination ~= tileIndex then
                     local order = Profile()[orderKey]
-                    local moved = table.remove(order, index)
+                    local moved = table.remove(order, tileIndex)
                     table.insert(order, destination, moved)
                     MarkChanged()
                     return
@@ -585,8 +589,10 @@ local function OrderSection(parent, title, orderKey, defaults, y, columns, onRes
             check:SetPoint("TOP", tile, "BOTTOM", 0, -19)
         end
         check:SetScript("OnClick", function(self)
-            local key = Profile()[orderKey][index]
-            if self:GetChecked() then
+            local key = Profile()[orderKey][tileIndex]
+            local enabled = not IsFeatureEnabled(key)
+            self:SetChecked(enabled)
+            if enabled then
                 Profile().enabled[key] = orderKey == "consumeOrder"
                     and key ~= "wellfed" and true or nil
             else

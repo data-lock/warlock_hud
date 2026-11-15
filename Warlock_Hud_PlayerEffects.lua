@@ -127,4 +127,9 @@ WarlockHudPlayerEffects = {
         [2627] = true, [2628] = true },
     -- Confirmed from C_Item.GetWeaponEnchantInfo(0) in Forever.
     FirestoneEnchantIDs = { [1803] = true },
+    -- Spellstone weapon enchant ranks.
+    SpellstoneEnchantIDs = {
+        [3615] = true, [3616] = true, [3617] = true,
+        [3618] = true, [3619] = true, [3620] = true,
+    },
 }
