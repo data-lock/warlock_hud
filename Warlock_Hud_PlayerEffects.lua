@@ -84,7 +84,24 @@ WarlockHudPlayerEffects = {
         { key = "soullink", name = "Soul Link", activeOnly = true,
             names = { "Soul Link" }, ids = { 25228, 19028 } },
     },
-    WellFedIDs = { [19705] = true },
+    -- Known Classic/TBC food-effect aura IDs, plus later client variants.
+    -- Keep the name-based learner in Warlock_Hud.lua for server-specific IDs.
+    WellFedIDs = {
+        [18125] = true, [18141] = true,
+        [19705] = true, [19706] = true, [19708] = true, [19709] = true,
+        [19710] = true, [19711] = true, [20875] = true, [23697] = true,
+        [24799] = true, [24870] = true, [25037] = true, [25694] = true,
+        [25722] = true, [25804] = true, [25941] = true,
+        [33254] = true, [33256] = true, [33257] = true, [33259] = true,
+        [33261] = true, [33263] = true, [33265] = true, [33268] = true,
+        [33272] = true, [35272] = true, [40323] = true, [42293] = true,
+        [43722] = true, [43764] = true, [43771] = true,
+        [44097] = true, [44098] = true, [44099] = true, [44100] = true,
+        [44101] = true, [44102] = true, [44104] = true, [44105] = true,
+        [44106] = true, [45245] = true, [45619] = true, [45694] = true,
+        [46899] = true, [53284] = true, [58468] = true, [58479] = true,
+        [65365] = true, [69559] = true,
+    },
     -- Forever aura IDs are item effects, not alchemy recipe or item IDs. The
     -- unverified Greater Mageblood effect ID can be learned out of combat.
     Consumables = {

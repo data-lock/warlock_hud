@@ -793,6 +793,19 @@ local function ReadPlayerBuffNames(names)
     return false
 end
 
+local function ReadPlayerBuffIDs(spellIDs)
+    if InCombatLockdown() or not C_UnitAuras
+        or not C_UnitAuras.GetPlayerAuraBySpellID
+        or (C_Secrets and C_Secrets.ShouldAurasBeSecret
+            and C_Secrets.ShouldAurasBeSecret()) then return nil end
+    for spellID in pairs(spellIDs) do
+        local ok, aura = pcall(C_UnitAuras.GetPlayerAuraBySpellID, spellID)
+        if not ok or (issecretvalue and issecretvalue(aura)) then return nil end
+        if aura then return true end
+    end
+    return false
+end
+
 local function SetMissingGlow(glow, status, colorActive)
     if not glow then return end
     if status ~= nil and glow.pulseIcon and profile then
@@ -810,8 +823,13 @@ local function UpdateArmorGlow()
 end
 
 local function UpdateWellFedGlow()
-    SetMissingGlow(wellFedGlow, ReadPlayerBuffNames({ "Well Fed" }),
-        profile.colorActiveConsumes)
+    local active = ReadPlayerBuffIDs(wellFedIDs)
+    if active ~= true then
+        local named = ReadPlayerBuffNames({ "Well Fed" })
+        if named == true then active = true
+        elseif active == nil then active = named end
+    end
+    SetMissingGlow(wellFedGlow, active, profile.colorActiveConsumes)
     if wellFedGlow and profile.consumeReminders.wellfed == false then
         wellFedGlow:Hide()
         if wellFedGlow.pulseIcon then wellFedGlow.pulseIcon:SetAlpha(1) end
