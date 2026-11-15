@@ -1,5 +1,18 @@
 # Changelog
 
+## v1.1.11
+
+- Detect Well Fed by aura spell ID across client locales, retaining the localized
+  name fallback for server-specific effects.
+- Track Spellstone weapon enchants alongside Wizard Oil and Firestone, with a
+  matching icon and weapon-buff reminder.
+- Fix tracker checkbox state handling and clarify enable/disable controls across
+  Rows & Layouts, Consumes, Buffs, and Procs.
+- Compact the Target DoTs and Utility layout controls so the grids and reset
+  buttons fit in the settings panel, with both reset buttons aligned.
+
+See `releases/v1.1.11.md` for release notes.
+
 ## v1.1.10
 
 - Keep nameplate identity clearing and native aura refreshes immediate while

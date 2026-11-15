@@ -154,6 +154,7 @@ function WarlockHudProfile.CreateNormalizer(keys)
         p.consumesSchemaVersion = 2
         if type(p.consumeReminders) ~= "table" then p.consumeReminders = {} end
         if p.consumeReminders.wellfed == nil then p.consumeReminders.wellfed = true end
+        if p.consumeReminders.wizardoil == nil then p.consumeReminders.wizardoil = true end
         p.consumeSize = math.max(16, math.min(64, tonumber(p.consumeSize) or 24))
         p.procSize = math.max(20, math.min(64, tonumber(p.procSize) or 32))
         local validFonts = { friz = true, arial = true, morpheus = true,

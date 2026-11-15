@@ -8,7 +8,7 @@ function WarlockHudOptionsRows.BuildLayout(context)
     local ResetRowValues, ResetPageButton = context.ResetRowValues, context.ResetPageButton
     local DefaultProfile, Profile, MarkChanged = context.DefaultProfile, context.Profile, context.MarkChanged
 
-    Text(layout, "Drag gold grips to reorder or move icons. Use checks to show or hide them; move rows in Edit Mode.",
+    Text(layout, "Top-right checks enable or disable each icon. Drag grips to reorder; move rows in Edit Mode.",
         20, -50, "GameFontHighlightSmall")
     Text(layout, "Icon sizes", 20, -72, "GameFontNormal")
     SizeSlider(layout, "Target DoT icon size", "mainSize", 16, 96, 20, -95)
@@ -53,7 +53,7 @@ function WarlockHudOptionsRows.BuildConsumes(context)
     local DefaultProfile, Profile, MarkChanged = context.DefaultProfile, context.Profile, context.MarkChanged
 
     local consumeLayout = Panel("Warlock HUD - Consumes")
-    Text(consumeLayout, "Move this row in Edit Mode. Drag icons to reorder them; use the checks to show or hide them.",
+    Text(consumeLayout, "Tile checkboxes enable or disable each tracker. Drag gold grips to reorder; move row in Edit Mode.",
         20, -50, "GameFontHighlightSmall")
     Check(consumeLayout, 20, -80, "Enable Consumes row",
         function() return Profile().consumesEnabled ~= false end,
@@ -92,7 +92,7 @@ function WarlockHudOptionsRows.BuildConsumes(context)
             MarkChanged()
         end, 127, 68, true, true, 50, 50)
     Text(consumeLayout, "Reminder settings", 20, -300, "GameFontNormal")
-    Text(consumeLayout, "Only enabled trackers can show a missing reminder.",
+    Text(consumeLayout, "Reminder checkboxes control flashing alerts only; tile checks control tracker visibility.",
         20, -320, "GameFontHighlightSmall")
     for index, option in ipairs({
         { "wellfed", "Well Fed" }, { "flask", "Flask" },
@@ -140,7 +140,7 @@ function WarlockHudOptionsRows.BuildBuffs(context)
     local Profile, MarkChanged = context.Profile, context.MarkChanged
 
     local buffLayout = Panel("Warlock HUD - Buffs")
-    Text(buffLayout, "Move this row in Edit Mode. Drag icons to reorder them; use the checks to show or hide them.",
+    Text(buffLayout, "Top-right checks enable or disable each buff. Drag grips to reorder; move row in Edit Mode.",
         20, -50, "GameFontHighlightSmall")
     Check(buffLayout, 430, -78, "Enable Buffs row",
         function() return Profile().buffsEnabled ~= false end,
@@ -199,7 +199,7 @@ function WarlockHudOptionsRows.BuildProcs(context)
     local MarkChanged = context.MarkChanged
 
     local procLayout = Panel("Warlock HUD - Procs")
-    Text(procLayout, "Move this row in Edit Mode. Its icons appear only while a proc is active.",
+    Text(procLayout, "Top-right checks enable or disable each proc. Procs show only while active; drag grips to reorder.",
         20, -50, "GameFontHighlightSmall")
     Text(procLayout, "Icon size", 20, -85, "GameFontNormal")
     SizeSlider(procLayout, "Proc icon size", "procSize", 20, 64, 20, -110)
