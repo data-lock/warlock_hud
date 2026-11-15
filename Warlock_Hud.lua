@@ -879,7 +879,8 @@ local function ReadWeaponCoating()
                 end
                 return "firestone", type(timeLeft) == "number" and timeLeft or nil
             end
-            if present and consumeState.spellstoneEnchantIDs[id] then
+            if present and consumeState.spellstoneEnchantIDs
+                and consumeState.spellstoneEnchantIDs[id] then
                 return "spellstone"
             end
             if present and consumeState.oilEnchantIDs[id] then oilFound = true end

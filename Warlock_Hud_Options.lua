@@ -534,9 +534,7 @@ local function OrderSection(parent, title, orderKey, defaults, y, columns, onRes
             if cornerControls then
                 GameTooltip:AddLine("Drag this icon tile by its gold grip to reorder it.",
                     1, 1, 1, true)
-                GameTooltip:AddLine(orderKey == "consumeOrder"
-                    and "Top-right checkmark enables/disables this tracker; unchecked trackers are hidden."
-                    or "Use the checkmark to enable/show or disable/hide this tracker.",
+                GameTooltip:AddLine("Top-right checkmark enables/shows or disables/hides this tracker.",
                     1, 1, 1, true)
             elseif orderKey == "buffOrder" and self.key == "breath" then
                 GameTooltip:AddLine("Fixed at the right end of the buff row", 1, 1, 1)
@@ -725,7 +723,8 @@ local function LinkedTargetUtilityRows(parent)
                 end
                 GameTooltip:AddLine("Drag this icon tile by its gold grip. Drop in either grid to reorder or move it.",
                     1, 1, 1, true)
-                GameTooltip:AddLine("Use the checkmark to show or hide it.", 1, 1, 1, true)
+                GameTooltip:AddLine("Top-right checkmark enables/shows or disables/hides this tracker.",
+                    1, 1, 1, true)
                 GameTooltip:Show()
             end)
             tile:SetScript("OnLeave", function() GameTooltip:Hide() end)

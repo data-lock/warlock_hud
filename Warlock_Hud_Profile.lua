@@ -153,13 +153,8 @@ function WarlockHudProfile.CreateNormalizer(keys)
         end
         p.consumesSchemaVersion = 2
         if type(p.consumeReminders) ~= "table" then p.consumeReminders = {} end
-        -- A tracked consume should warn when its missing state is readable.
-        -- Preserve any explicit per-tracker off choice.
-        for _, key in ipairs(keys.consume) do
-            if p.consumeReminders[key] == nil then
-                p.consumeReminders[key] = true
-            end
-        end
+        if p.consumeReminders.wellfed == nil then p.consumeReminders.wellfed = true end
+        if p.consumeReminders.wizardoil == nil then p.consumeReminders.wizardoil = true end
         p.consumeSize = math.max(16, math.min(64, tonumber(p.consumeSize) or 24))
         p.procSize = math.max(20, math.min(64, tonumber(p.procSize) or 32))
         local validFonts = { friz = true, arial = true, morpheus = true,
