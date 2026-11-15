@@ -534,7 +534,10 @@ local function OrderSection(parent, title, orderKey, defaults, y, columns, onRes
             if cornerControls then
                 GameTooltip:AddLine("Drag this icon tile by its gold grip to reorder it.",
                     1, 1, 1, true)
-                GameTooltip:AddLine("Use the checkmark to show or hide it.", 1, 1, 1, true)
+                GameTooltip:AddLine(orderKey == "consumeOrder"
+                    and "Top-right checkmark enables/disables this tracker; unchecked trackers are hidden."
+                    or "Use the checkmark to enable/show or disable/hide this tracker.",
+                    1, 1, 1, true)
             elseif orderKey == "buffOrder" and self.key == "breath" then
                 GameTooltip:AddLine("Fixed at the right end of the buff row", 1, 1, 1)
             else
@@ -636,13 +639,13 @@ local function LinkedTargetUtilityRows(parent)
     local titles = { "Target DoTs", "Utility" }
     local strips = {}
     local allKeys = #api.MainKeys + #api.CooldownKeys
-    local columns, boxColumns, cellWidth, cellHeight = 11, 12, 50, 53
+    local columns, boxColumns, cellWidth, cellHeight = 11, 12, 50, 38
     local gridRows = math.max(1, math.ceil(allKeys / columns))
     local firstTitleY = -155
-    local gridHeight = gridRows * cellHeight + 30
+    local gridHeight = gridRows * cellHeight + 18
     local secondTitleY = firstTitleY - 20 - gridHeight - 15
     local nameplatesY = secondTitleY - 20 - gridHeight - 10
-    local resetY = nameplatesY - 44
+    local resetY = nameplatesY - 48
 
     local function ResetBoth()
         local defaults = DefaultProfile()
@@ -657,7 +660,7 @@ local function LinkedTargetUtilityRows(parent)
         local strip = CreateFrame("Frame", nil, parent)
         local rowKeys = orderKey == "mainOrder" and api.MainKeys or api.CooldownKeys
         local visibleRows = gridRows
-        strip:SetSize(boxColumns * cellWidth, visibleRows * cellHeight + 30)
+        strip:SetSize(boxColumns * cellWidth, visibleRows * cellHeight + 18)
         strip:SetPoint("TOP", parent, "TOP", 0, y - 20)
         local back = strip:CreateTexture(nil, "BACKGROUND")
         back:SetAllPoints(strip)
@@ -677,7 +680,7 @@ local function LinkedTargetUtilityRows(parent)
         local tiles = {}
         for index = 1, allKeys do
             local tile = CreateFrame("Button", nil, strip)
-            tile:SetSize(34, 34)
+            tile:SetSize(24, 24)
             tile:SetMovable(true)
             tile:EnableMouse(true)
             tile:RegisterForDrag("LeftButton")
@@ -691,7 +694,7 @@ local function LinkedTargetUtilityRows(parent)
             tile.icon = icon
             local grip = tile:CreateTexture(nil, "OVERLAY")
             grip:SetPoint("TOPLEFT", tile, "TOPLEFT", 3, -3)
-            grip:SetSize(10, 13)
+            grip:SetSize(8, 11)
             grip:SetColorTexture(0.04, 0.035, 0.025, 0.85)
             for dot = 1, 6 do
                 local mark = tile:CreateTexture(nil, "OVERLAY")
@@ -701,7 +704,7 @@ local function LinkedTargetUtilityRows(parent)
                 mark:SetColorTexture(1, 0.82, 0.25, 1)
             end
             local check = CreateFrame("CheckButton", nil, tile, "UICheckButtonTemplate")
-            check:SetSize(16, 16)
+            check:SetSize(14, 14)
             check:SetPoint("TOPRIGHT", tile, "TOPRIGHT", 0, 0)
             check:SetScript("OnClick", function(self)
                 if not tile.key then return end
@@ -776,7 +779,7 @@ local function LinkedTargetUtilityRows(parent)
                 RefreshAll()
             end)
             local label = strip:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
-            label:SetSize(cellWidth, 14)
+            label:SetSize(cellWidth, 12)
             label:SetPoint("TOP", tile, "BOTTOM", 0, -2)
             label:SetJustifyH("CENTER")
             tiles[index] = { frame = tile, check = check, label = label }

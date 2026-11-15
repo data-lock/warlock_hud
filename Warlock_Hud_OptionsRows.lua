@@ -53,7 +53,7 @@ function WarlockHudOptionsRows.BuildConsumes(context)
     local DefaultProfile, Profile, MarkChanged = context.DefaultProfile, context.Profile, context.MarkChanged
 
     local consumeLayout = Panel("Warlock HUD - Consumes")
-    Text(consumeLayout, "Move this row in Edit Mode. Drag icons to reorder them; use the checks to show or hide them.",
+    Text(consumeLayout, "Move this row in Edit Mode. In Tracked consumables, check a tile to enable/show that tracker; uncheck it to disable/hide it. Drag the gold grip to reorder.",
         20, -50, "GameFontHighlightSmall")
     Check(consumeLayout, 20, -80, "Enable Consumes row",
         function() return Profile().consumesEnabled ~= false end,
@@ -92,7 +92,7 @@ function WarlockHudOptionsRows.BuildConsumes(context)
             MarkChanged()
         end, 127, 68, true, true, 50, 50)
     Text(consumeLayout, "Reminder settings", 20, -300, "GameFontNormal")
-    Text(consumeLayout, "Only enabled trackers can show a missing reminder.",
+    Text(consumeLayout, "Reminder checkboxes only control flashing alerts. The tile checkboxes above control whether each tracker appears.",
         20, -320, "GameFontHighlightSmall")
     for index, option in ipairs({
         { "wellfed", "Well Fed" }, { "flask", "Flask" },
