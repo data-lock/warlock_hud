@@ -1,5 +1,13 @@
 # Changelog
 
+## v1.1.12
+
+- Recognize German Satt alongside English Well Fed in the active-buff fallback and when learning aura IDs.
+- Add confirmed WoW Forever Well Fed food and drink aura IDs from Wowhead's Forever database, including the new food stat and spell damage buffs.
+- Keep runtime name-based ID learning for additional localized or undiscovered food effects.
+
+See `releases/v1.1.12.md` for release notes.
+
 ## v1.1.11
 
 - Detect Well Fed by aura spell ID across client locales, retaining the localized
