@@ -55,6 +55,9 @@ local STONES = WarlockHudPlayerEffects.Stones
 local SACRIFICE_BUFF = BUFFS[#BUFFS - 1]
 local profile
 local wellFedIDs = WarlockHudPlayerEffects.WellFedIDs
+-- Keep both locales: spell-name lookup is also the fallback when an aura ID
+-- is not in the static list or has not yet been learned on this character.
+local WELL_FED_NAMES = { "Well Fed", "Satt" }
 consumeState.effects = WarlockHudPlayerEffects.Consumables
 consumeState.oilEnchantIDs = WarlockHudPlayerEffects.OilEnchantIDs
 consumeState.firestoneEnchantIDs = WarlockHudPlayerEffects.FirestoneEnchantIDs
@@ -103,16 +106,21 @@ local function LearnWellFed()
         or (C_Secrets and C_Secrets.ShouldAurasBeSecret and C_Secrets.ShouldAurasBeSecret()) then
         return
     end
-    local ok, spellID = pcall(function()
-        local aura = C_UnitAuras.GetAuraDataBySpellName("player", "Well Fed", "HELPFUL")
-        if aura then return aura.spellId end
-    end)
-    if not ok or (issecretvalue and issecretvalue(spellID)) then return end
-    if type(spellID) ~= "number" or wellFedIDs[spellID] then return end
-    wellFedIDs[spellID] = true
-    WarlockHudDB.wellFedIDs = WarlockHudDB.wellFedIDs or {}
-    WarlockHudDB.wellFedIDs[spellID] = true
-    if consumeState.auraContainer and wellFedSlotCreated then
+    local learned = false
+    for _, name in ipairs(WELL_FED_NAMES) do
+        local ok, spellID = pcall(function()
+            local aura = C_UnitAuras.GetAuraDataBySpellName("player", name, "HELPFUL")
+            if aura then return aura.spellId end
+        end)
+        if ok and not (issecretvalue and issecretvalue(spellID))
+            and type(spellID) == "number" and not wellFedIDs[spellID] then
+            wellFedIDs[spellID] = true
+            WarlockHudDB.wellFedIDs = WarlockHudDB.wellFedIDs or {}
+            WarlockHudDB.wellFedIDs[spellID] = true
+            learned = true
+        end
+    end
+    if learned and consumeState.auraContainer and wellFedSlotCreated then
         consumeState.auraContainer:SetAuraSlotCandidateFilters("Well Fed", { includeSpellIDs = wellFedIDs })
         consumeState.auraContainer:UpdateAllAuras()
     end
@@ -826,7 +834,7 @@ end
 local function UpdateWellFedGlow()
     local active = ReadPlayerBuffIDs(wellFedIDs)
     if active ~= true then
-        local named = ReadPlayerBuffNames({ "Well Fed" })
+        local named = ReadPlayerBuffNames(WELL_FED_NAMES)
         if named == true then active = true
         elseif active == nil then active = named end
     end
