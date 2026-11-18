@@ -13,7 +13,8 @@ lua.execute("""
 consumeState = { keys = {'wellfed', 'flask', 'spelldamage', 'shadow', 'fire', 'wizardoil', 'manaregen'} }
 NormalizeProfileForTest = WarlockHudProfile.CreateNormalizer({
     consume = consumeState.keys, cooldown = {'healthstone'},
-    buff = {'fort', 'motw', 'armor', 'breath'}, proc = {'nightfall'},
+    buff = {'fort', 'motw', 'armor', 'breath', 'burningshadow',
+        'felstamina', 'touchoffire', 'felenergy'}, proc = {'nightfall'},
 })
 """)
 lua.execute("""
@@ -62,7 +63,8 @@ assert(fresh.consumeOrder[1] == 'wellfed' and fresh.consumeSize == 24)
 assert(fresh.consumeReminders.wellfed == true and fresh.enabled.wizardoil == false)
 assert(fresh.multiDotEnabled == true)
 assert(NormalizeProfileForTest({ multiDotEnabled = false }).multiDotEnabled == false)
-assert(fresh.multiDotHideOutOfCombat == false and fresh.multiDotAlpha == 1)
+assert(fresh.multiDotHideOutOfCombat == false
+    and fresh.multiDotBackgroundAlpha == 1 and fresh.multiDotBorderAlpha == 1)
 assert(fresh.multiDotScale == 1)
 assert(fresh.multiDotWidth == 420 and fresh.multiDotHeight == 420)
 assert(NormalizeProfileForTest({ multiDotHeight = 120 }).multiDotHeight == 150)
@@ -73,6 +75,16 @@ NormalizeProfileForTest(oldWindow)
 assert(oldWindow.multiDotWidth == 500)
 local appearance = NormalizeProfileForTest({ multiDotHideOutOfCombat = true,
     multiDotAlpha = 0.1 })
-assert(appearance.multiDotHideOutOfCombat == true and appearance.multiDotAlpha == 0.3)
+assert(appearance.multiDotHideOutOfCombat == true
+    and appearance.multiDotBackgroundAlpha == 0.1
+    and appearance.multiDotBorderAlpha == 1 and appearance.multiDotAlpha == nil)
+local sacrifices = NormalizeProfileForTest({ enabled = { sacrifice = false },
+    buffOrder = {'motw', 'sacrifice', 'breath'} })
+assert(sacrifices.enabled.burningshadow == false
+    and sacrifices.enabled.felstamina == false
+    and sacrifices.enabled.touchoffire == false
+    and sacrifices.enabled.felenergy == false)
+assert(sacrifices.buffOrder[2] == 'burningshadow'
+    and sacrifices.buffOrder[5] == 'felenergy')
 """)
 print("Consumes migration smoke tests OK")

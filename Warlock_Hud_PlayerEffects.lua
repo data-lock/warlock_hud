@@ -43,7 +43,7 @@ WarlockHudPlayerEffects = {
         [8] = { { "Berserking", 20554 }, { "Rapid Regeneration", 1260270 } },
     },
     ProcKeys = { "powerinfusion", "nightfall", "decimation", "soulharvest" },
-    BuffKeys = { "fort", "motw", "int", "spirit", "kings", "salv", "armor", "thorns", "sacrifice", "soullink", "breath" },
+    BuffKeys = { "fort", "motw", "int", "spirit", "kings", "salv", "armor", "thorns", "burningshadow", "felstamina", "touchoffire", "felenergy", "soullink", "breath" },
     Procs = {
         { key = "powerinfusion", name = "Power Infusion", ids = { 10060 } },
         { key = "nightfall", name = "Shadow Trance", ids = { 17941 } },
@@ -78,9 +78,16 @@ WarlockHudPlayerEffects = {
             ids = { 467, 782, 1075, 8914, 9756, 9910, 26992, 53307 } },
         { key = "breath", name = "Unending Breath", activeOnly = true,
             names = { "Unending Breath" }, ids = { 5697 } },
-        { key = "sacrifice", name = "Demonic Sacrifice", activeOnly = true,
-            names = { "Burning Shadow", "Fel Stamina", "Touch of Fire", "Fel Energy" },
-            ids = { 18789, 18790, 18791, 18792 } },
+        -- Keep each sacrifice effect separate: Demonic Pact allows multiple
+        -- pet sacrifices to remain active at once.
+        { key = "burningshadow", name = "Burning Shadow", activeOnly = true,
+            names = { "Burning Shadow" }, ids = { 18789 } },
+        { key = "felstamina", name = "Fel Stamina", activeOnly = true,
+            names = { "Fel Stamina" }, ids = { 18790 } },
+        { key = "touchoffire", name = "Touch of Fire", activeOnly = true,
+            names = { "Touch of Fire" }, ids = { 18791 } },
+        { key = "felenergy", name = "Fel Energy", activeOnly = true,
+            names = { "Fel Energy" }, ids = { 18792 } },
         { key = "soullink", name = "Soul Link", activeOnly = true,
             names = { "Soul Link" }, ids = { 25228, 19028 } },
     },

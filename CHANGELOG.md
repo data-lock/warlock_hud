@@ -1,5 +1,13 @@
 # Changelog
 
+## v1.1.13
+
+- Track Burning Shadow, Fel Stamina, Touch of Fire, and Fel Energy as separate Buffs entries so simultaneous Demonic Sacrifice effects can each display.
+- Add independent MTD window background and border transparency controls from 0% to 100%; text remains fully opaque. Existing MTD transparency carries over to the background.
+- Show the MTD close button only while the window is hovered.
+
+See `releases/v1.1.13.md` for release notes.
+
 ## v1.1.12
 
 - Recognize German Satt alongside English Well Fed in the active-buff fallback and when learning aura IDs.

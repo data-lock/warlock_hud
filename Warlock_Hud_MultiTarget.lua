@@ -7,6 +7,7 @@ local status
 local damageDebug = true
 local mover
 local scrollFrame, scrollContent, scrollBar
+local backgrounds, borders = {}, {}
 local visibilityDriver = false
 local built, pending, auraWarning, failed = false, false, false, false
 local builtTimerMilliseconds
@@ -88,7 +89,13 @@ local function ApplyAppearance()
     if not root then return false end
     local p = Profile()
     if not p then return false end
-    root:SetAlpha(math.max(0.3, math.min(1, tonumber(p.multiDotAlpha) or 1)))
+    root:SetAlpha(1)
+    local backgroundAlpha = math.max(0, math.min(1,
+        tonumber(p.multiDotBackgroundAlpha) or 1))
+    local borderAlpha = math.max(0, math.min(1,
+        tonumber(p.multiDotBorderAlpha) or 1))
+    for _, texture in ipairs(backgrounds) do texture:SetAlpha(backgroundAlpha) end
+    for _, texture in ipairs(borders) do texture:SetAlpha(borderAlpha) end
     if Safe() then
         local nextScale = math.max(0.5, math.min(1,
             tonumber(p.multiDotWindowScale) or 1))
@@ -413,13 +420,16 @@ local function Build()
         return buildCount == 1 and name or nil
     end
     root = CreateFrame("Frame", FrameName("WarlockHudMultiTargetWindow"), UIParent)
+    backgrounds, borders = {}, {}
     root:SetSize(width, height)
     root:SetFrameStrata("MEDIUM")
     root:SetMovable(true)
     root:SetClampedToScreen(true)
     Position()
-    WarlockHudWindowChrome.SetBackground(root, 0.5)
-    WarlockHudWindowChrome.AddBorder(root)
+    WarlockHudWindowChrome.SetBackground(root, 0.5,
+        function(texture) backgrounds[#backgrounds + 1] = texture end)
+    WarlockHudWindowChrome.AddBorder(root,
+        function(texture) borders[#borders + 1] = texture end)
     local title = root:CreateFontString(nil, "ARTWORK", "GameFontNormalSmall")
     WarlockHudFonts.Apply(title, p, "fontMultiTargetSize", 10, "multiTargetFontFace")
     title:SetPoint("TOPLEFT", root, "TOPLEFT", 9, -8)
@@ -451,11 +461,21 @@ local function Build()
             current.multiDotY = y / UIParent:GetHeight()
         end
     end)
-    WarlockHudWindowChrome.CreateCloseButton(root, function()
+    local closeButton = WarlockHudWindowChrome.CreateCloseButton(root, function()
         if InCombatLockdown() then return end
         Profile().multiDotEnabled = false
         ApplyAppearance()
     end, FrameName("WarlockHudMultiTargetClose"))
+    closeButton:Hide()
+    root:EnableMouse(true)
+    local function UpdateCloseButtonVisibility()
+        closeButton:SetShown(root:IsMouseOver() or closeButton:IsMouseOver())
+    end
+    root:HookScript("OnEnter", UpdateCloseButtonVisibility)
+    root:HookScript("OnLeave", UpdateCloseButtonVisibility)
+    closeButton:HookScript("OnEnter", UpdateCloseButtonVisibility)
+    closeButton:HookScript("OnLeave", UpdateCloseButtonVisibility)
+    WarlockHudMultiTarget.CloseButton = closeButton
     local resize = CreateFrame("Button", FrameName("WarlockHudMultiTargetResize"), root)
     resize:SetSize(19, 19)
     resize:SetPoint("BOTTOMRIGHT", root, "BOTTOMRIGHT", -2, 2)
@@ -506,6 +526,7 @@ local function Build()
     scrollBar:SetPoint("TOPRIGHT", root, "TOPRIGHT", -5, -54)
     scrollBar:SetPoint("BOTTOMRIGHT", root, "BOTTOMRIGHT", -5, 11)
     local scrollTrack = scrollBar:CreateTexture(nil, "BACKGROUND")
+    backgrounds[#backgrounds + 1] = scrollTrack
     scrollTrack:SetAllPoints(scrollBar)
     scrollTrack:SetColorTexture(0.02, 0.02, 0.025, 0.55)
     scrollBar:SetThumbTexture("Interface\\Buttons\\WHITE8X8")
