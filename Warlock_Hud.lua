@@ -28,7 +28,6 @@ local icons = {}
 local itemIcons = {}
 local spellCooldownIcons = {}
 local groupBuffIcons = {}
-local sacrificeState
 WarlockHudRowVisibility = {
     masks = {},
     containers = {},
@@ -52,7 +51,13 @@ local PROC_KEYS = WarlockHudPlayerEffects.ProcKeys
 local PROCS = WarlockHudPlayerEffects.Procs
 local BUFFS = WarlockHudPlayerEffects.Buffs
 local STONES = WarlockHudPlayerEffects.Stones
-local SACRIFICE_BUFF = BUFFS[#BUFFS - 1]
+local SACRIFICE_BUFFS = {}
+local SACRIFICE_KEYS = { "burningshadow", "felstamina", "touchoffire", "felenergy" }
+local SACRIFICE_KEY_SET = {}
+for _, key in ipairs(SACRIFICE_KEYS) do SACRIFICE_KEY_SET[key] = true end
+for _, buff in ipairs(BUFFS) do
+    if SACRIFICE_KEY_SET[buff.key] then SACRIFICE_BUFFS[buff.key] = buff end
+end
 local profile
 local wellFedIDs = WarlockHudPlayerEffects.WellFedIDs
 -- Keep both locales: spell-name lookup is also the fallback when an aura ID
@@ -992,8 +997,14 @@ local function ReadDemonologyBuff(buff)
 end
 
 function WarlockHudRowVisibility.DemonLayoutNeeded()
-    return DemonPresence() == false
-        and ReadDemonologyBuff(SACRIFICE_BUFF) == false
+    if DemonPresence() ~= false then return false end
+    local anyActive, allInactive = false, true
+    for _, key in ipairs(SACRIFICE_KEYS) do
+        local state = ReadDemonologyBuff(SACRIFICE_BUFFS[key])
+        if state == true then anyActive = true end
+        if state ~= false then allInactive = false end
+    end
+    return not anyActive and allInactive
 end
 
 local function ReadSoulLink()
@@ -1013,20 +1024,26 @@ end
 local function UpdateDemonology()
     if not profile then return end
     local pet = DemonPresence()
-    local sacrifice = ReadDemonologyBuff(SACRIFICE_BUFF)
-    -- Combat aura reads can be unavailable. Keep the last readable result so
-    -- an unknown state cannot insert an empty buff slot during combat.
-    if sacrifice ~= nil then sacrificeState = sacrifice end
+    groupBuffIcons.sacrificeStates = groupBuffIcons.sacrificeStates or {}
+    local sacrifice, allSacrificesInactive = false, true
+    for _, key in ipairs(SACRIFICE_KEYS) do
+        local state = ReadDemonologyBuff(SACRIFICE_BUFFS[key])
+        if state ~= nil then groupBuffIcons.sacrificeStates[key] = state end
+        if groupBuffIcons.sacrificeStates[key] == true then sacrifice = true end
+        if state ~= false then allSacrificesInactive = false end
+        local holder = groupBuffIcons.holders and groupBuffIcons.holders[key]
+        if holder then holder:SetShown(groupBuffIcons.sacrificeStates[key] == true) end
+    end
     local demonReminder = groupBuffIcons.demonReminder
     if demonReminder then
-        local missing = pet == false and sacrifice == false
+        local missing = pet == false and allSacrificesInactive
         demonReminder.icon:SetShown(missing)
         demonReminder.border:SetShown(missing)
         demonReminder.glow:SetShown(missing)
         if not missing then demonReminder.icon:SetAlpha(1) end
     end
-    if (pet == true or sacrifice == true or (pet == false and sacrifice == false))
-        and groupBuffIcons.demonLayoutVisible ~= (pet == false and sacrifice == false) then
+    if (pet == true or sacrifice or allSacrificesInactive)
+        and groupBuffIcons.demonLayoutVisible ~= (pet == false and allSacrificesInactive) then
         pendingDemonRebuild = true
     end
     local soulLinkReminder = groupBuffIcons.soulLinkReminder
@@ -1040,9 +1057,6 @@ local function UpdateDemonology()
         if active ~= nil then groupBuffIcons.soulLinkState = active end
         soulLinkReminder.holder:SetShown(pet == true
             or groupBuffIcons.soulLinkState == true)
-    end
-    if groupBuffIcons.holders and groupBuffIcons.holders.sacrifice then
-        groupBuffIcons.holders.sacrifice:SetShown(sacrificeState == true)
     end
 end
 
@@ -1100,7 +1114,9 @@ local function UpdateGroupBuffs()
                 breathHolder = holder
             else
                 local shown = key == "armor"
-                    or (key == "sacrifice" and sacrificeState == true)
+                    or (SACRIFICE_KEY_SET[key]
+                        and groupBuffIcons.sacrificeStates
+                        and groupBuffIcons.sacrificeStates[key] == true)
                     or (key == "soullink" and groupBuffIcons.soulLinkReminder
                         and groupBuffIcons.soulLinkReminder.holder:IsShown())
                 if not shown then

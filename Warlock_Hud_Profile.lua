@@ -112,7 +112,12 @@ function WarlockHudProfile.CreateNormalizer(keys)
         p.summonQueueWindow.scale = math.max(0.5,
             math.min(1, tonumber(p.summonQueueWindow.scale) or 1))
         p.multiDotHideOutOfCombat = p.multiDotHideOutOfCombat == true
-        p.multiDotAlpha = math.max(0.3, math.min(1, tonumber(p.multiDotAlpha) or 1))
+        local legacyMultiDotAlpha = tonumber(p.multiDotAlpha)
+        p.multiDotBackgroundAlpha = math.max(0, math.min(1,
+            tonumber(p.multiDotBackgroundAlpha) or legacyMultiDotAlpha or 1))
+        p.multiDotBorderAlpha = math.max(0, math.min(1,
+            tonumber(p.multiDotBorderAlpha) or 1))
+        p.multiDotAlpha = nil
         p.multiDotScale = math.max(0.7, math.min(1.6, tonumber(p.multiDotScale) or 1))
         if not p.multiDotHealthLayoutVersion then
             p.multiDotWidth = math.max(350,
@@ -197,6 +202,34 @@ function WarlockHudProfile.CreateNormalizer(keys)
                 end
             end
             p.banishUtilityOrderV1 = true
+        end
+        local sacrificeKeys = { "burningshadow", "felstamina", "touchoffire", "felenergy" }
+        local legacySacrificeEnabled
+        if type(p.enabled) == "table" then
+            legacySacrificeEnabled = p.enabled.sacrifice
+        end
+        if type(p.enabled) ~= "table" then p.enabled = {} end
+        if legacySacrificeEnabled ~= nil then
+            for _, key in ipairs(sacrificeKeys) do
+                if p.enabled[key] == nil then p.enabled[key] = legacySacrificeEnabled end
+            end
+            p.enabled.sacrifice = nil
+        end
+        for _, key in ipairs(sacrificeKeys) do
+            if p.enabled[key] == nil then p.enabled[key] = true end
+        end
+        if type(p.buffOrder) == "table" then
+            local migratedOrder = {}
+            for _, key in ipairs(p.buffOrder) do
+                if key == "sacrifice" then
+                    for _, sacrificeKey in ipairs(sacrificeKeys) do
+                        migratedOrder[#migratedOrder + 1] = sacrificeKey
+                    end
+                else
+                    migratedOrder[#migratedOrder + 1] = key
+                end
+            end
+            p.buffOrder = migratedOrder
         end
         p.buffOrder = NormalizeOrder(p.buffOrder, keys.buff)
         p.consumeOrder = NormalizeOrder(p.consumeOrder, keys.consume)

@@ -192,6 +192,7 @@ function methods:HookScript(key, value) self.scripts[key] = value end
 function methods:RegisterForClicks(...) self.clicks = {...} end
 function methods:EnableMouse(value) self.mouse = value end
 function methods:IsShown() return self.shown end
+function methods:IsMouseOver() return rawget(self, 'mouseOver') == true end
 function methods:CreateTexture() return CreateFrame('Texture', nil, self) end
 function methods:CreateFontString() return CreateFrame('FontString', nil, self) end
 function methods:AddAuraSlot(key, filter, options)
@@ -624,9 +625,18 @@ assert(profile.multiDotEnabled == false and root.shown == false)
 assert(WarlockHudMultiTarget.Toggle() == true)
 assert(profile.multiDotEnabled == true and root.shown == true)
 profile.multiDotAlpha = 0.6
+profile.multiDotBackgroundAlpha = 0.4
+profile.multiDotBorderAlpha = 0
 profile.multiDotHideOutOfCombat = true
 assert(WarlockHudMultiTarget.UpdateAppearance() == true)
-assert(root.alpha == 0.6 and root.shown == false)
+assert(root.alpha == 1 and root.shown == false)
+assert(WarlockHudMultiTarget.CloseButton:IsShown() == false)
+root.mouseOver = true
+root.scripts.OnEnter()
+assert(WarlockHudMultiTarget.CloseButton:IsShown() == true)
+root.mouseOver = false
+root.scripts.OnLeave()
+assert(WarlockHudMultiTarget.CloseButton:IsShown() == false)
 assert(root.driver[1] == 'visibility' and root.driver[2] == '[combat]show;hide')
 combat = true
 root:SetShown(true) -- the client applies the secure visibility driver

@@ -2,12 +2,14 @@
 WarlockHudWindowChrome = {}
 local BORDER_COLOR = { 1, 0.82, 0.2, 0.5 }
 
-function WarlockHudWindowChrome.SetBackground(frame, bodyAlpha)
+function WarlockHudWindowChrome.SetBackground(frame, bodyAlpha, onCreated)
     local background = frame:CreateTexture(nil, "BACKGROUND")
+    if onCreated then onCreated(background) end
     background:SetPoint("TOPLEFT", frame, "TOPLEFT", 0, 0)
     if bodyAlpha then
         background:SetPoint("BOTTOMRIGHT", frame, "TOPRIGHT", 0, -25)
         local body = frame:CreateTexture(nil, "BACKGROUND", nil, 1)
+        if onCreated then onCreated(body) end
         body:SetPoint("TOPLEFT", frame, "TOPLEFT", 0, -25)
         body:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", 0, 0)
         body:SetColorTexture(0.035, 0.035, 0.045, bodyAlpha)
@@ -17,26 +19,30 @@ function WarlockHudWindowChrome.SetBackground(frame, bodyAlpha)
     background:SetColorTexture(0.035, 0.035, 0.045, 0.88)
 end
 
-function WarlockHudWindowChrome.AddBorder(frame)
+function WarlockHudWindowChrome.AddBorder(frame, onCreated)
     local border = CreateFrame("Frame", nil, frame)
     border:SetAllPoints(frame)
     border:SetFrameLevel(frame:GetFrameLevel() + 3)
     local left = border:CreateTexture(nil, "OVERLAY")
+    if onCreated then onCreated(left) end
     left:SetPoint("TOPLEFT", border, "TOPLEFT", 1, -1)
     left:SetPoint("BOTTOMLEFT", border, "BOTTOMLEFT", 1, 1)
     left:SetWidth(1)
     left:SetColorTexture(BORDER_COLOR[1], BORDER_COLOR[2], BORDER_COLOR[3], BORDER_COLOR[4])
     local right = border:CreateTexture(nil, "OVERLAY")
+    if onCreated then onCreated(right) end
     right:SetPoint("TOPRIGHT", border, "TOPRIGHT", -1, -1)
     right:SetPoint("BOTTOMRIGHT", border, "BOTTOMRIGHT", -1, 1)
     right:SetWidth(1)
     right:SetColorTexture(BORDER_COLOR[1], BORDER_COLOR[2], BORDER_COLOR[3], BORDER_COLOR[4])
     local top = border:CreateTexture(nil, "OVERLAY")
+    if onCreated then onCreated(top) end
     top:SetPoint("TOPLEFT", border, "TOPLEFT", 1, 0)
     top:SetPoint("TOPRIGHT", border, "TOPRIGHT", -1, 0)
     top:SetHeight(1)
     top:SetColorTexture(BORDER_COLOR[1], BORDER_COLOR[2], BORDER_COLOR[3], BORDER_COLOR[4])
     local bottom = border:CreateTexture(nil, "OVERLAY")
+    if onCreated then onCreated(bottom) end
     bottom:SetPoint("BOTTOMLEFT", border, "BOTTOMLEFT", 2, 1)
     bottom:SetPoint("BOTTOMRIGHT", border, "BOTTOMRIGHT", -2, 1)
     bottom:SetHeight(1)

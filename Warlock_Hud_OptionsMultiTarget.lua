@@ -86,44 +86,48 @@ function WarlockHudOptionsMultiTarget.Build(context)
             * 100) / 5 + 0.5) * 5)
     end
 
-    Text(multiDotPanel, "Transparency", 20, -388, "GameFontHighlight")
-    local alphaValue = Text(multiDotPanel, "100%", 400, -388, "GameFontHighlight")
-    local alphaSlider = CreateFrame("Slider", nil, multiDotPanel, "OptionsSliderTemplate")
-    alphaSlider:SetSize(165, 17)
-    alphaSlider:SetPoint("TOPLEFT", multiDotPanel, "TOPLEFT", 203, -385)
-    alphaSlider:SetMinMaxValues(30, 100)
-    alphaSlider:SetValueStep(5)
-    alphaSlider:SetScript("OnValueChanged", function(_, value)
-        if InCombatLockdown() then
-            local current = math.floor(((Profile().multiDotAlpha or 1) * 100) / 5 + 0.5) * 5
-            if value ~= current then alphaSlider:SetValue(current) end
-            return
+    local function AddOpacitySlider(label, y, setting)
+        Text(multiDotPanel, label, 20, y, "GameFontHighlight")
+        local valueText = Text(multiDotPanel, "100%", 400, y, "GameFontHighlight")
+        local slider = CreateFrame("Slider", nil, multiDotPanel, "OptionsSliderTemplate")
+        slider:SetSize(165, 17)
+        slider:SetPoint("TOPLEFT", multiDotPanel, "TOPLEFT", 203, y + 3)
+        slider:SetMinMaxValues(0, 100)
+        slider:SetValueStep(5)
+        slider:SetScript("OnValueChanged", function(_, value)
+            if InCombatLockdown() then
+                local current = math.floor(((Profile()[setting] or 1) * 100) / 5 + 0.5) * 5
+                if value ~= current then slider:SetValue(current) end
+                return
+            end
+            local percent = math.max(0, math.min(100, math.floor(value / 5 + 0.5) * 5))
+            valueText:SetText(percent .. "%")
+            local p = Profile()
+            if p and p[setting] ~= percent / 100 then
+                p[setting] = percent / 100
+                if WarlockHudMultiTarget then WarlockHudMultiTarget.UpdateAppearance() end
+            end
+        end)
+        refreshers[#refreshers + 1] = function()
+            slider:SetValue(math.floor(((Profile()[setting] or 1) * 100) / 5 + 0.5) * 5)
         end
-        local percent = math.max(30, math.min(100, math.floor(value / 5 + 0.5) * 5))
-        alphaValue:SetText(percent .. "%")
-        local p = Profile()
-        if p and p.multiDotAlpha ~= percent / 100 then
-            p.multiDotAlpha = percent / 100
-            if WarlockHudMultiTarget then WarlockHudMultiTarget.UpdateAppearance() end
-        end
-    end)
-    refreshers[#refreshers + 1] = function()
-        alphaSlider:SetValue(math.floor(((Profile().multiDotAlpha or 1) * 100) / 5 + 0.5) * 5)
     end
+    AddOpacitySlider("Background transparency", -388, "multiDotBackgroundAlpha")
+    AddOpacitySlider("Border transparency", -417, "multiDotBorderAlpha")
 
-    Text(multiDotPanel, "Controls & Limitations", 20, -427, "GameFontNormal")
+    Text(multiDotPanel, "Controls & Limitations", 20, -456, "GameFontNormal")
     Text(multiDotPanel,
         "Move or resize outside combat. In combat, target through the world or standard controls.",
-        20, -450, "GameFontHighlightSmall")
+        20, -479, "GameFontHighlightSmall")
     Text(multiDotPanel,
         "Available DoT timers are native. Last-seen rows may remain briefly; aura data can be protected.",
-        20, -473, "GameFontHighlightSmall")
+        20, -502, "GameFontHighlightSmall")
     Text(multiDotPanel,
         "Brand follows Target DoTs. Rows show health and a 20% marker.",
-        20, -496, "GameFontHighlightSmall")
+        20, -525, "GameFontHighlightSmall")
     Text(multiDotPanel,
         "Damage colors: Corruption amber, Bane violet, Siphon teal, Immolate red.",
-        20, -519, "GameFontHighlightSmall")
+        20, -548, "GameFontHighlightSmall")
     Text(multiDotPanel, "Timer decimals follow Tracked Auras.",
-        20, -542, "GameFontHighlightSmall")
+        20, -571, "GameFontHighlightSmall")
 end
