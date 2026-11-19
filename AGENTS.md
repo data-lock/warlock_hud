@@ -25,7 +25,7 @@ Warlock HUD is a World of Warcraft: Forever beta addon. The `.toc` file defines 
 - Work through settings improvements one reviewable item at a time. After each item, state what changed and give the user a focused in-game check before starting the next item.
 - Save settings immediately as the current implementation does. A visual rebuild may wait until it is safe. Keep that distinction clear in the UI.
 - Keep destructive Soul Shard behavior clearly explained. Do not alter deletion logic as part of copy or layout work.
-- Notification descriptions must match `Warlock_Hud_Notifications.lua`. The revised Soulstone announcement still needs in-game verification.
+- Notification descriptions must match `Notifications/Warlock_Hud_Notifications.lua`. The revised Soulstone announcement still needs in-game verification.
 - Update the `.toc` version for an in-game review build so the user can identify which files loaded.
 
 ## Local plan and verification

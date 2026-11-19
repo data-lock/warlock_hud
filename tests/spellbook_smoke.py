@@ -19,7 +19,7 @@ GetTalentInfo = function(tab, index)
     return 'Demonic Brand', nil, nil, nil, talentRank
 end
 ''')
-lua.execute(Path("Warlock_Hud_Spellbook.lua").read_text(encoding="utf-8"))
+lua.execute(Path("Core/Warlock_Hud_Spellbook.lua").read_text(encoding="utf-8"))
 lua.execute(r'''
 assert(WarlockHudSpellbook.KnowsDemonicBrand() == false)
 talentRank = 2

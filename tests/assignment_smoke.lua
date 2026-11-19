@@ -93,7 +93,7 @@ WarlockHudAPI = {
     },
 }
 
-assert(loadfile("Warlock_Hud_Assignments.lua"))()
+assert(loadfile("Assignments/Warlock_Hud_Assignments.lua"))()
 local function event(name, ...)
     frame.OnEvent(frame, name, ...)
 end
@@ -223,7 +223,7 @@ assert(WarlockHudDB.assignmentCache.entries["Player-1"].curse == "ELEMENTS"
     and WarlockHudDB.assignmentCache.entries["Player-1"].bane == "DOOM"
     and WarlockHudDB.assignmentCache.entries["Player-1"].soulstone == "Player-2",
     "all assignment categories should be saved")
-assert(loadfile("Warlock_Hud_Assignments.lua"))()
+assert(loadfile("Assignments/Warlock_Hud_Assignments.lua"))()
 event("PLAYER_LOGIN")
 assert(WarlockHudAssignmentSpell("curse").name == "Curse of the Elements"
     and WarlockHudAssignmentSpell("bane").name == "Bane of Doom"
@@ -275,7 +275,7 @@ function UIDropDownMenu_SetText() end
 function UIDropDownMenu_EnableDropDown() end
 function UIDropDownMenu_DisableDropDown() end
 C_Spell.GetSpellTexture = function(id) return id and "icon:" .. id end
-assert(loadfile("Warlock_Hud_WindowChrome.lua"))()
+assert(loadfile("Core/Warlock_Hud_WindowChrome.lua"))()
 
 WarlockHudOpenAssignments()
 local window = ui.WarlockHudAssignmentsWindow
@@ -342,7 +342,7 @@ WarlockHudSetAssignment("Player-1", "curse", "ELEMENTS")
 WarlockHudSetAssignment("Player-1", "soulstone", "Player-1")
 assert(WarlockHudSoulstoneAssignmentTarget() == "Player-1",
     "solo self-assignment should be available during the session")
-assert(loadfile("Warlock_Hud_Assignments.lua"))()
+assert(loadfile("Assignments/Warlock_Hud_Assignments.lua"))()
 event("PLAYER_LOGIN")
 assert(WarlockHudAssignmentSpell("curse") == nil
     and WarlockHudSoulstoneAssignmentTarget() == nil

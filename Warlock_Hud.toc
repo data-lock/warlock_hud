@@ -1,50 +1,50 @@
 ## Interface: 16001
 ## Title: Warlock HUD
 ## Notes: Configurable Warlock aura and cooldown HUD with profiles
-## Version: 1.1.14
+## Version: 1.1.14-review.1
 ## SavedVariables: WarlockHudDB
 ## IconTexture: 626007
 
-Warlock_Hud_Effects.lua
-Warlock_Hud_Profile.lua
-Warlock_Hud_Fonts.lua
-Warlock_Hud_WindowChrome.lua
-Warlock_Hud_OnboardingState.lua
-Warlock_Hud_Spellbook.lua
-Warlock_Hud_PlayerEffects.lua
-Warlock_Hud_Debug.lua
-Warlock_Hud_Shards.lua
+Core/Warlock_Hud_Effects.lua
+Core/Warlock_Hud_Profile.lua
+Core/Warlock_Hud_Fonts.lua
+Core/Warlock_Hud_WindowChrome.lua
+Onboarding/Warlock_Hud_OnboardingState.lua
+Core/Warlock_Hud_Spellbook.lua
+Core/Warlock_Hud_PlayerEffects.lua
+Core/Warlock_Hud_Debug.lua
+SoulShards/Warlock_Hud_Shards.lua
 Warlock_Hud.lua
-Warlock_Hud_MultiTargetIdentity.lua
-Warlock_Hud_MultiTargetLayout.lua
-Warlock_Hud_MultiTargetAuras.lua
-Warlock_Hud_MultiTargetProbe.lua
-Warlock_Hud_MultiTargetDamage.lua
-Warlock_Hud_MultiTarget.lua
-Warlock_Hud_WandClick.lua
-Warlock_Hud_ChannelTicks.lua
-Warlock_Hud_Downranks.lua
-Warlock_Hud_Grimoires.lua
-Warlock_Hud_AssignmentProbe.lua
-Warlock_Hud_Assignments.lua
-Warlock_Hud_Sharing.lua
-Warlock_Hud_OptionsTrackedAuras.lua
-Warlock_Hud_OptionsRows.lua
-Warlock_Hud_OptionsGeneral.lua
-Warlock_Hud_OptionsPetHealth.lua
-Warlock_Hud_OptionsMultiTarget.lua
-Warlock_Hud_OptionsProfiles.lua
-Warlock_Hud_OptionsSharing.lua
-Warlock_Hud_OptionsNotifications.lua
-Warlock_Hud_OptionsSummons.lua
-Warlock_Hud_OptionsStones.lua
-Warlock_Hud_OptionsShards.lua
-Warlock_Hud_OptionsAbout.lua
-Warlock_Hud_Options.lua
-Warlock_Hud_Minimap.lua
-Warlock_Hud_Onboarding.lua
-Warlock_Hud_Notifications.lua
-Warlock_Hud_SummonQueue.lua
-Warlock_Hud_SummonQueueUI.lua
-Warlock_Hud_Nameplates.lua
-Warlock_Hud_PetHealth.lua
+MultiTarget/Warlock_Hud_MultiTargetIdentity.lua
+MultiTarget/Warlock_Hud_MultiTargetLayout.lua
+MultiTarget/Warlock_Hud_MultiTargetAuras.lua
+MultiTarget/Warlock_Hud_MultiTargetProbe.lua
+MultiTarget/Warlock_Hud_MultiTargetDamage.lua
+MultiTarget/Warlock_Hud_MultiTarget.lua
+SpellFeedback/Warlock_Hud_WandClick.lua
+SpellFeedback/Warlock_Hud_ChannelTicks.lua
+SpellFeedback/Warlock_Hud_Downranks.lua
+Pets/Warlock_Hud_Grimoires.lua
+Assignments/Warlock_Hud_AssignmentProbe.lua
+Assignments/Warlock_Hud_Assignments.lua
+Profiles/Warlock_Hud_Sharing.lua
+Options/Warlock_Hud_OptionsTrackedAuras.lua
+Options/Warlock_Hud_OptionsRows.lua
+Options/Warlock_Hud_OptionsGeneral.lua
+Options/Warlock_Hud_OptionsPetHealth.lua
+Options/Warlock_Hud_OptionsMultiTarget.lua
+Options/Warlock_Hud_OptionsProfiles.lua
+Options/Warlock_Hud_OptionsSharing.lua
+Options/Warlock_Hud_OptionsNotifications.lua
+Options/Warlock_Hud_OptionsSummons.lua
+Options/Warlock_Hud_OptionsStones.lua
+Options/Warlock_Hud_OptionsShards.lua
+Options/Warlock_Hud_OptionsAbout.lua
+Options/Warlock_Hud_Options.lua
+Minimap/Warlock_Hud_Minimap.lua
+Onboarding/Warlock_Hud_Onboarding.lua
+Notifications/Warlock_Hud_Notifications.lua
+Summons/Warlock_Hud_SummonQueue.lua
+Summons/Warlock_Hud_SummonQueueUI.lua
+Nameplates/Warlock_Hud_Nameplates.lua
+Pets/Warlock_Hud_PetHealth.lua

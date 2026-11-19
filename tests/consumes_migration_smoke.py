@@ -7,8 +7,8 @@ source = Path("Warlock_Hud.lua").read_text(encoding="utf-8")
 assert source.count('consumeAuras:AddAuraSlot("Well Fed"') == 1
 assert 'playerAuras:AddAuraSlot("Well Fed"' not in source
 lua = LuaRuntime(unpack_returned_tuples=True)
-lua.execute(Path("Warlock_Hud_Effects.lua").read_text(encoding="utf-8"))
-lua.execute(Path("Warlock_Hud_Profile.lua").read_text(encoding="utf-8"))
+lua.execute(Path("Core/Warlock_Hud_Effects.lua").read_text(encoding="utf-8"))
+lua.execute(Path("Core/Warlock_Hud_Profile.lua").read_text(encoding="utf-8"))
 lua.execute("""
 consumeState = { keys = {'wellfed', 'flask', 'spelldamage', 'shadow', 'fire', 'wizardoil', 'manaregen'} }
 NormalizeProfileForTest = WarlockHudProfile.CreateNormalizer({

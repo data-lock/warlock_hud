@@ -30,7 +30,7 @@ WarlockHudAPI = {
     NormalizeSummonKeywords = function(s) return s:match('^[A-Za-z0-9, ]+$') and s end,
 }
 """)
-lua.execute(Path("Warlock_Hud_Sharing.lua").read_text(encoding="utf-8"))
+lua.execute(Path("Profiles/Warlock_Hud_Sharing.lua").read_text(encoding="utf-8"))
 code = lua.eval("WarlockHudSharing.Export({ bars=true }, false)")
 plain = base64.b64decode(code[6:]).decode("utf-8")
 lua.globals().future_code = "WHUD1:" + base64.b64encode(

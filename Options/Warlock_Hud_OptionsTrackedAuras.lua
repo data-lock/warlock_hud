@@ -1,4 +1,4 @@
--- Tracked Auras settings page. Built by Warlock_Hud_Options.lua after its shared controls exist.
+-- Tracked Auras settings page. Built by Options/Warlock_Hud_Options.lua after its shared controls exist.
 WarlockHudOptionsTrackedAuras = {}
 
 function WarlockHudOptionsTrackedAuras.Build(context)

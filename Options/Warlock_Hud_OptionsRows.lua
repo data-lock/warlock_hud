@@ -1,4 +1,4 @@
--- Row settings pages. Each page is built by Warlock_Hud_Options.lua after shared controls exist.
+-- Row settings pages. Each page is built by Options/Warlock_Hud_Options.lua after shared controls exist.
 WarlockHudOptionsRows = {}
 
 function WarlockHudOptionsRows.BuildLayout(context)

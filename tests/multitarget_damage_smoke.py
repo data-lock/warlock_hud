@@ -36,8 +36,8 @@ CreateFrame = function()
     return driver
 end
 ''')
-lua.execute(Path("Warlock_Hud_MultiTargetIdentity.lua").read_text(encoding="utf-8"))
-lua.execute(Path("Warlock_Hud_MultiTargetDamage.lua").read_text(encoding="utf-8"))
+lua.execute(Path("MultiTarget/Warlock_Hud_MultiTargetIdentity.lua").read_text(encoding="utf-8"))
+lua.execute(Path("MultiTarget/Warlock_Hud_MultiTargetDamage.lua").read_text(encoding="utf-8"))
 lua.execute(r'''
 assert(WarlockHudMultiTargetIdentity.FormatNumber(9000) == '9.00k')
 assert(WarlockHudMultiTargetIdentity.FormatNumber(10000) == '10.00k')
