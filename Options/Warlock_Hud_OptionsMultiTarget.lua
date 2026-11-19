@@ -1,4 +1,4 @@
--- Multi-Target DoTs settings page. The panel is created by Warlock_Hud_Options.lua.
+-- Multi-Target DoTs settings page. The panel is created by Options/Warlock_Hud_Options.lua.
 WarlockHudOptionsMultiTarget = {}
 
 function WarlockHudOptionsMultiTarget.Build(context)

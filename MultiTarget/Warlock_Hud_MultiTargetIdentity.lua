@@ -1,5 +1,5 @@
 -- Unit identity and row presentation for the Multi-Target tracker.
--- Native aura containers remain owned by Warlock_Hud_MultiTarget.lua.
+-- Native aura containers remain owned by MultiTarget/Warlock_Hud_MultiTarget.lua.
 WarlockHudMultiTargetIdentity = {}
 
 function WarlockHudMultiTargetIdentity.FormatNumber(value)

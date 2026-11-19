@@ -21,7 +21,7 @@ C_UnitAuras = { GetBuffDataByIndex = function(unit, index)
 end }
 report = function(message) messages[#messages + 1] = message end
 ''')
-lua.execute(Path("Warlock_Hud_Debug.lua").read_text(encoding="utf-8"))
+lua.execute(Path("Core/Warlock_Hud_Debug.lua").read_text(encoding="utf-8"))
 lua.execute(r'''
 combat = true
 WarlockHudDebug.TracePetBuffs(report)

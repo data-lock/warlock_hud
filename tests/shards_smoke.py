@@ -24,7 +24,7 @@ C_Container = {
     end,
 }
 ''')
-lua.execute(Path("Warlock_Hud_Shards.lua").read_text(encoding="utf-8"))
+lua.execute(Path("SoulShards/Warlock_Hud_Shards.lua").read_text(encoding="utf-8"))
 lua.execute(r'''
 assert(WarlockHudShards.IsSoulShardBag(0) == false)
 assert(WarlockHudShards.IsSoulShardBag(1) == true)

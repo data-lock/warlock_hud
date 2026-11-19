@@ -4,7 +4,7 @@ from pathlib import Path
 from lupa import LuaRuntime
 
 source = Path("Warlock_Hud.lua").read_text(encoding="utf-8")
-spellbook_source = Path("Warlock_Hud_Spellbook.lua").read_text(encoding="utf-8")
+spellbook_source = Path("Core/Warlock_Hud_Spellbook.lua").read_text(encoding="utf-8")
 lua = LuaRuntime(unpack_returned_tuples=True)
 lua.execute("""
 C_Spell = { GetSpellTexture = function(identifier)
