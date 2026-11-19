@@ -2,130 +2,120 @@
 
 **Your Warlock. Your HUD. Your raid, organized.**
 
-Warlock HUD is an all-in-one combat HUD and utility toolkit built specifically for **World of Warcraft: Forever**.
+Warlock HUD is a customizable combat HUD and utility toolkit for **World of Warcraft: Forever**. Keep your DoTs, cooldowns, buffs, consumables, and Soul Shards in view, while coordinating Warlock assignments and summon requests with your group.
 
-From tracking DoTs across multiple enemies to coordinating raid assignments, managing summons, and keeping your buffs and consumables in check, Warlock HUD brings the tools you need into one customizable addon.
+It started as a personal addon and has grown through suggestions, testing, and feedback from fellow Warlocks.
 
 **Less time managing your UI. More time playing your Warlock.**
 
 ![Warlock HUD in action](https://raw.githubusercontent.com/data-lock/warlock_hud/main/screenshots/whud-ui-1-slim.jpg)
 
-## Welcome to 1.0!
+## Get Started
 
-After an extensive beta and plenty of feedback from fellow Warlocks, Warlock HUD is ready for its first major release!
+Choose a starting preset in the welcome screen:
 
-Getting started is easier than ever with a new welcome experience:
+- **Basic** sets up the core HUD: DoTs, buffs, procs, cooldowns, consumables, and Soul Shards.
+- **Advanced** adds Multi-Target DoTs, damage estimates, threat indicators, and summon tools.
 
-- **Basic** — A clean, ready-to-play HUD with essential DoTs, buffs, procs, cooldowns, consumables, and Soul Shards.
-- **Advanced** — Everything in Basic, plus Multi-Target DoTs, predictive damage, threat awareness, and summon tools.
+Presets are starting points. You can change individual features afterward. Applying a preset updates the selected profile while keeping other profiles and Edit Mode positions.
 
-All features remain available in Settings, and existing profiles are preserved unless you choose to apply a preset.
+![Getting Started](https://raw.githubusercontent.com/data-lock/warlock_hud/main/screenshots/whud_options_0_welcome.png)
 
-![Choose your setup](https://raw.githubusercontent.com/data-lock/warlock_hud/main/screenshots/whud_options_0_welcome.png)
-
-## Multi-Target DoT Tracking
+## Multi-Target DoTs
 
 **Spread the DoTs. Keep track of the chaos.**
 
-Track up to **16 enemies** in a compact, customizable window featuring:
+Track up to **16 enemies** in a compact, customizable window:
 
-- Blizzard-native DoT icons and countdowns.
-- Enemy health, portraits, raid markers, and 20% execute indicators.
-- Predicted remaining damage from Corruption, Immolate, Siphon Life, and Bane of Agony.
-- A red portrait warning when estimated DoT damage exceeds a mob's remaining health.
-- Personal threat awareness: LOW, MED, or HIGH.
-- Last-seen enemies that retain estimated DoT information when they leave your view.
-- Demonic Brand tracking, including native stacks and countdowns.
+- Track Corruption, Immolate, Siphon Life, Banes, and Demonic Brand with native icons, timers, and stacks where available.
+- See enemy health and raid markers, with optional 20% and 35% health markers.
+- Compare estimated remaining DoT damage with enemy health, with a visual warning when the estimate is lethal.
+- Monitor your group's threat with LOW, MED, and HIGH indicators when the game exposes that information.
+- Keep last-seen targets in view along with their estimated DoT state.
+- Adjust the window size, scale, layout, transparency, and icon visibility.
 
-![Multi-Target DoTs in action](https://raw.githubusercontent.com/data-lock/warlock_hud/main/screenshots/warlock_hud_mtd.gif)
+![Multi-Target DoTs](https://raw.githubusercontent.com/data-lock/warlock_hud/main/screenshots/warlock_hud_mtd.gif)
 
-Predicted damage is an estimate, not a guaranteed kill. Forever's protected combat APIs can also limit enemy discovery and available information. The window is view-only; target enemies through normal game controls.
+Damage predictions are estimates, not guaranteed kills. WoW: Forever restricts some combat information, which can limit target discovery and estimates. The Multi-Target window is view-only; select enemies through normal game controls.
 
-## Your Complete Warlock HUD
+## Combat HUD
 
-Track everything important without cluttering your screen.
+### Spells, cooldowns, and procs
 
-**Combat & DoTs**
-- Corruption, Immolate, Siphon Life, Banes, Curses, Drains, and Demonic Brand.
-- Blizzard-native aura countdowns, including decimal timing where supported.
-- Conflagrate, Fear, Healthstone, Soulstone, and racial cooldowns.
-- Nightfall, Power Infusion, and other important effects.
+- Track Corruption, Immolate, Siphon Life, Banes, Curses, Drains, and Demonic Brand.
+- Keep cooldowns, racial abilities, pet abilities, and important procs in sight when available to your character.
+- Show castbar tick markers for Drain spells, Rain of Fire, and Wrack.
+- Get optional warnings when you cast a lower-rank spell while a higher rank is known.
 
-**Buffs & Consumables**
-- Demon Armor, Soul Link, Demonic Sacrifice, and group buffs.
-- Well Fed, Wizard Oils, Firestone, flasks, elixirs, and mana-regeneration effects.
-- Optional reminders when important buffs are confirmed missing.
+### Buffs and consumables
 
-**Warlock Utilities**
-- Soul Shard counts, reserve thresholds, and overflow warnings.
-- Healthstone distribution and Soulstone recipient tracking.
-- Demon status and pet grimoire tracking.
-- Outdated spell-rank warnings and Drain, Wrack, and Rain of Fire channel tick markers.
+- Track Demon Armor, Soul Link, each Demonic Sacrifice effect, and group buffs.
+- Keep Well Fed, flasks, elixirs, weapon oils, Firestones, Spellstones, and mana-regeneration effects visible.
+- Choose which reminders to show when supported buffs or consumes are missing.
+- Use native countdowns wherever the client makes them available.
+
+### Demons and Soul Shards
+
+- Get a reminder when your demon is missing and a customizable flashing alert when your pet reaches 35% health or less.
+- Check known and missing grimoires while visiting demon trainers.
+- Track Soul Shards with configurable reserve, low-count, and overflow warnings.
 
 ![Warlock HUD bars](https://raw.githubusercontent.com/data-lock/warlock_hud/main/screenshots/whud-ui-2-demo-all.jpg)
 
-## Raid Assignments — PallyPower for Warlocks!
+## Raid Assignments
 
-Coordinate your Warlocks without juggling spreadsheets or raid chat.
+Coordinate Warlocks without juggling spreadsheets or raid chat:
 
-Assign and synchronize:
-
-- **Curses** — Who casts which Curse.
-- **Banes** — Which Bane each Warlock uses.
-- **Control** — Fear and Banish assignments using raid markers.
-- **Soulstones** — Who is responsible for each recipient.
-
-Assignments synchronize between Warlock HUD users, can be announced to your group, and integrate with your HUD to highlight incorrect Curse or Bane casts.
+- Assign Curses and Banes across your group.
+- Assign Fear or Banish to raid-marked targets.
+- Set Soulstone responsibilities.
+- Synchronize assignments with other Warlock HUD users, announce them to your group, and highlight casts that don’t match your assignment.
 
 ## Summon Request Queue
 
-**No more hunting through raid chat for "123"!**
+**No more hunting through raid chat for “123”!**
 
-Warlock HUD automatically collects summon requests from party, raid, instance chat, and group-member whispers.
+Collect requests from party, raid, instance chat, and eligible group-member whispers. Review them in a movable queue with waiting timers, summon buttons, and pending indicators. Requests can clear automatically when players arrive nearby. Keywords, request sources, and group announcements are configurable.
 
-Manage requests through a movable queue with waiting timers, summon buttons, pending indicators, and automatic removal when players arrive nearby.
+Summoning still requires your interaction.
 
-Keywords and request sources are configurable. Summoning still requires your interaction.
+![Summon Request Queue](https://raw.githubusercontent.com/data-lock/warlock_hud/main/screenshots/whud_summon_window.png)
 
-![Summon request queue](https://raw.githubusercontent.com/data-lock/warlock_hud/main/screenshots/whud_summon_window.png)
+## Healthstones and Soulstones
+
+- Track completed Healthstone trades and review who you’ve supplied.
+- Optionally place a Healthstone into an empty trade with a group member. You must accept the trade yourself.
+- Track an assigned Soulstone recipient and show its status when the aura is confirmed. Optional reminders can flag expiry or uncertain loss.
+
+A completed Healthstone trade records that a stone was supplied; it can’t confirm the recipient still has it.
 
 ## Make It Yours
 
-Your HUD should work the way you play.
+- Move, resize, and reorder HUD elements; customize icon sizes, fonts, visibility, and colors.
+- Choose which spells, buffs, procs, and consumes to track.
+- Scale the Multi-Target, Summon, and Assignment windows independently.
+- Create profiles for different playstyles and specializations, switch profiles with dual spec, and export or import settings to share.
 
-- Move, resize, reorder, and customize your HUD rows.
-- Choose tracked spells, buffs, consumables, and reminders.
-- Customize fonts, icons, visibility, and colors.
-- Create profiles for different playstyles and specializations.
-- Automatically switch profiles with dual spec.
-- Export and import configurations to share with other Warlocks.
+Open settings with **`/whud`** or **`/whub`**. Use Edit Mode and the built-in HUD demo to arrange your layout before combat.
 
-Open settings with **`/whud`** or **`/whub`**.
+![Warlock HUD Settings](https://raw.githubusercontent.com/data-lock/warlock_hud/main/screenshots/whud_options_3_rows_and_layouts.png)
 
-![Warlock HUD settings](https://raw.githubusercontent.com/data-lock/warlock_hud/main/screenshots/whud_options_3_rows_and_layouts.png)
+## Built for WoW: Forever
 
-## Built for WoW Forever
+Warlock HUD is designed specifically for **World of Warcraft: Forever (1.60.1)**. It uses Blizzard-native aura and cooldown rendering where supported and respects the game’s protected combat API restrictions. Some information may be unavailable or estimated during combat.
 
-Warlock HUD is developed specifically for **World of Warcraft: Forever (1.60.1)**.
+## Feedback and Community
 
-It uses Blizzard-native aura rendering wherever supported and respects Forever's combat API restrictions. Some information may be unavailable or estimated rather than directly readable during combat.
+Have an idea or found a bug? Leave a CurseForge comment or [open an issue on GitHub](https://github.com/data-lock/warlock_hud/issues). Warlock HUD is open source under the **Apache 2.0 license**.
 
-## Feedback & Community
-
-Warlock HUD started as a personal project and grew into something much bigger thanks to feedback from fellow Warlocks.
-
-Have an idea, found a bug, or want to help shape what comes next?
-
-**Leave a CurseForge comment or open an issue on [GitHub](https://github.com/data-lock/warlock_hud).**
+[View the source code and releases on GitHub](https://github.com/data-lock/warlock_hud)
 
 ### Thank You!
 
 A huge thank you to my guildmates in **Tabula Rasa [EU]** for helping test and improve Warlock HUD, especially **Tiny** and **Wheat**.
 
-And thank you to **stevegeoffmcgeofforington**, **GamaKatsu**, **Drugnanov**, and **devast** for their feature suggestions and feedback.
+Thanks also to **stevegeoffmcgeofforington**, **GamaKatsu**, **Drugnanov**, **devast**, and everyone who has shared ideas, bug reports, and testing along the way.
 
-Special acknowledgement to the developer of [DoesItDie](https://www.curseforge.com/wow/addons/does-it-die), whose approach to Forever's protected health values helped inspire Warlock HUD's lethal DoT indicator.
+Special acknowledgement to the developer of [DoesItDie](https://www.curseforge.com/wow/addons/does-it-die), whose work with Forever’s protected health values helped inspire Warlock HUD’s lethal DoT indicator.
 
-Most of all, thanks to everyone who has downloaded, tested, reported bugs, or suggested improvements throughout the beta.
-
-**See you in Forever! 💜**
+**See you in Forever!**
