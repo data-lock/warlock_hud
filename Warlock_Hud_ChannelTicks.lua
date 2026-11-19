@@ -5,6 +5,7 @@ local DRAIN_IDS = {
     [689] = true, [699] = true, [709] = true, [7651] = true,
     [11699] = true, [11700] = true,
     [5138] = true, [6226] = true, [11703] = true, [11704] = true,
+    [1316697] = true, -- Wrack (WoW: Forever)
 }
 local RAIN_OF_FIRE_IDS = {
     [5740] = true, [6219] = true, [11677] = true, [11678] = true,
@@ -52,7 +53,9 @@ local function CurrentChannel()
     local positions = TickPositions(name, spellID)
     if not positions then return false, "other channel" end
     local isRainOfFire = Public(spellID) and RAIN_OF_FIRE_IDS[spellID]
-    return positions, isRainOfFire and "Rain of Fire channel" or "drain channel"
+    local isWrack = Public(spellID) and spellID == 1316697
+    return positions, isRainOfFire and "Rain of Fire channel"
+        or isWrack and "Wrack channel" or "drain channel"
 end
 
 local function CreateOverlay(bar)

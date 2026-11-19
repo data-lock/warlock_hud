@@ -970,6 +970,15 @@ WarlockHudOptionsGeneral.Build({
     IsDemoShown = function() return iconDemo and iconDemo:IsShown() end,
     refreshers = refreshers,
 })
+local petHealthAlert = WarlockHudOptionsPetHealth.Build({
+    Panel = Panel,
+    Text = Text,
+    Check = Check,
+    Button = Button,
+    Profile = Profile,
+    MarkChanged = MarkChanged,
+    refreshers = refreshers,
+})
 WarlockHudOptionsRows.BuildLayout({
     api = api,
     layout = layout,
@@ -1184,6 +1193,8 @@ registration:SetScript("OnEvent", function(_, event)
     Settings.RegisterCanvasLayoutSubcategory(category, consumeLayout, "Consumes")
     Settings.RegisterCanvasLayoutSubcategory(category, buffLayout, "Buffs")
     Settings.RegisterCanvasLayoutSubcategory(category, procLayout, "Procs")
+    Settings.RegisterCanvasLayoutSubcategory(category, petHealthAlert,
+        "Pet Health Alert")
     Settings.RegisterCanvasLayoutSubcategory(category, shards, "Soul Shards")
     Settings.RegisterCanvasLayoutSubcategory(category, stones, "Stones")
     Settings.RegisterCanvasLayoutSubcategory(category, assignmentsPanel, "Assignments")

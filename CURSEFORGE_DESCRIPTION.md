@@ -60,7 +60,7 @@ Track everything important without cluttering your screen.
 - Soul Shard counts, reserve thresholds, and overflow warnings.
 - Healthstone distribution and Soulstone recipient tracking.
 - Demon status and pet grimoire tracking.
-- Outdated spell-rank warnings and Drain channel tick markers.
+- Outdated spell-rank warnings and Drain, Wrack, and Rain of Fire channel tick markers.
 
 ![Warlock HUD bars](https://raw.githubusercontent.com/data-lock/warlock_hud/main/screenshots/whud-ui-2-demo-all.jpg)
 

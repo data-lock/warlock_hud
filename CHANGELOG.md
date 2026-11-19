@@ -1,5 +1,12 @@
 # Changelog
 
+## v1.1.14
+
+- Add a configurable low-health pet alert at 35% health: enable/disable, color, flash cycle, and minimum/maximum opacity are available under Pet Health Alert.
+- Add WoW: Forever Wrack to the supported castbar channel tick markers.
+
+See `releases/v1.1.14.md` for release notes.
+
 ## v1.1.13
 
 - Track Burning Shadow, Fel Stamina, Touch of Fire, and Fel Energy as separate Buffs entries so simultaneous Demonic Sacrifice effects can each display.
