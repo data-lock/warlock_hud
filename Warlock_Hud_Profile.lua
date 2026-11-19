@@ -150,6 +150,21 @@ function WarlockHudProfile.CreateNormalizer(keys)
             p.consumesSchemaVersion = 1
         end
         if type(p.enabled) ~= "table" then p.enabled = {} end
+        p.petHealthAlertEnabled = p.petHealthAlertEnabled ~= false
+        local alertFrequency = tonumber(p.petHealthAlertFrequency) or 0.3
+        p.petHealthAlertFrequency = math.max(0.15, math.min(1,
+            math.floor(alertFrequency / 0.05 + 0.5) * 0.05))
+        p.petHealthAlertMinAlpha = math.max(5, math.min(100,
+            math.floor((tonumber(p.petHealthAlertMinAlpha) or 12) + 0.5)))
+        p.petHealthAlertMaxAlpha = math.max(p.petHealthAlertMinAlpha, math.min(100,
+            math.floor((tonumber(p.petHealthAlertMaxAlpha) or 100) + 0.5)))
+        for _, key in ipairs({ "petHealthAlertColorR", "petHealthAlertColorG",
+            "petHealthAlertColorB" }) do
+            local channel = tonumber(p[key])
+            p[key] = channel and math.max(0, math.min(1, channel))
+                or (key == "petHealthAlertColorR" and 1
+                    or key == "petHealthAlertColorG" and 0.015 or 0.015)
+        end
         -- New categories stay opt-in even when an older share code omits them.
         for _, key in ipairs(keys.consume) do
             if key ~= "wellfed" and p.enabled[key] == nil then
