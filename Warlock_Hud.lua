@@ -2733,6 +2733,26 @@ local function DebugState()
             .. (profile.consumesEnabled ~= false and "on" or "off")
             .. "; " .. table.concat(consumeStates, ", "))
         output("Consumes slots: " .. table.concat(consumeSlots, ", "))
+        local sacrificeStates = {}
+        for _, key in ipairs(SACRIFICE_KEYS) do
+            local buff = SACRIFICE_BUFFS[key]
+            local ids = {}
+            for _, spellID in ipairs(buff.ids) do
+                ids[#ids + 1] = tostring(spellID)
+            end
+            local state = ReadDemonologyBuff(buff)
+            local active = state == true and "active"
+                or state == false and "inactive" or "unknown"
+            local holder = groupBuffIcons.holders
+                and groupBuffIcons.holders[key]
+            sacrificeStates[#sacrificeStates + 1] = key .. "="
+                .. (Enabled(key) and "on" or "off") .. "/"
+                .. active .. "/slot-"
+                .. (buffSlotCreated[key] and "built" or "absent")
+                .. "/holder-" .. (holder and "built" or "absent")
+                .. "/IDs-" .. table.concat(ids, ",")
+        end
+        output("Demonic Sacrifice: " .. table.concat(sacrificeStates, "; "))
     end
     output("Trackers: target " .. (container and "ready" or "not initialized")
         .. ", player " .. (playerAuraContainer and "ready" or "not initialized")

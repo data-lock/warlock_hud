@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.1.15
+
+- Add Demonic Sacrifice diagnostics to `/whud debug`, including configured spell IDs, aura detection state, and Buff slot/holder status.
+
+See `releases/v1.1.15.md` for release notes.
+
 ## v1.1.14
 
 - Add a configurable low-health pet alert at 35% health: enable/disable, color, flash cycle, and minimum/maximum opacity are available under Pet Health Alert.
