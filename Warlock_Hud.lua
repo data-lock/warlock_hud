@@ -873,30 +873,38 @@ local function ReadWeaponCoating()
         return nil
     end
     local ok, status, remainingMs = pcall(function()
-        local enchants = C_Item.GetWeaponEnchantInfo(0)
-        if (issecretvalue and issecretvalue(enchants))
-            or type(enchants) ~= "table" then return nil end
         local oilFound = false
-        for _, enchant in ipairs(enchants) do
-            if (issecretvalue and issecretvalue(enchant))
-                or type(enchant) ~= "table" then return nil end
-            local present, enchantType, id = enchant.hasEnchant,
-                enchant.enchantType, enchant.enchantID
-            if issecretvalue and (issecretvalue(present)
-                or issecretvalue(enchantType) or issecretvalue(id)) then return nil end
-            if present and type(id) ~= "number" then return nil end
-            if present and consumeState.firestoneEnchantIDs[id] then
-                local timeLeft = enchant.timeLeft
-                if issecretvalue and issecretvalue(timeLeft) then
-                    return "firestone"
+        local slots = { 0, 1, 2 }
+        for _, slot in ipairs(slots) do
+            local enchants = C_Item.GetWeaponEnchantInfo(slot)
+            if (issecretvalue and issecretvalue(enchants))
+                or type(enchants) ~= "table" then return nil end
+            for _, enchant in ipairs(enchants) do
+                if (issecretvalue and issecretvalue(enchant))
+                    or type(enchant) ~= "table" then return nil end
+                local present, enchantType, id, iconID = enchant.hasEnchant,
+                    enchant.enchantType, enchant.enchantID, enchant.enchantIconID
+                if issecretvalue and (issecretvalue(present)
+                    or issecretvalue(enchantType) or issecretvalue(id)
+                    or issecretvalue(iconID)) then return nil end
+                if present and type(id) ~= "number"
+                    and iconID ~= WarlockHudPlayerEffects.SpellstoneEnchantIconID then
+                    return nil
                 end
-                return "firestone", type(timeLeft) == "number" and timeLeft or nil
+                if present and consumeState.firestoneEnchantIDs[id] then
+                    local timeLeft = enchant.timeLeft
+                    if issecretvalue and issecretvalue(timeLeft) then
+                        return "firestone"
+                    end
+                    return "firestone", type(timeLeft) == "number" and timeLeft or nil
+                end
+                if present and consumeState.spellstoneEnchantIDs
+                    and (consumeState.spellstoneEnchantIDs[id]
+                        or iconID == WarlockHudPlayerEffects.SpellstoneEnchantIconID) then
+                    return "spellstone"
+                end
+                if present and consumeState.oilEnchantIDs[id] then oilFound = true end
             end
-            if present and consumeState.spellstoneEnchantIDs
-                and consumeState.spellstoneEnchantIDs[id] then
-                return "spellstone"
-            end
-            if present and consumeState.oilEnchantIDs[id] then oilFound = true end
         end
         return oilFound and "oil" or false
     end)

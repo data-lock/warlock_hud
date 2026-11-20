@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.1.16
+
+- Fix Spellstone weapon tracking on WoW: Forever by recognizing its enchant icon and checking all weapon slots.
+
+See `releases/v1.1.16.md` for release notes.
+
 ## v1.1.15
 
 - Add Demonic Sacrifice diagnostics to `/whud debug`, including configured spell IDs, aura detection state, and Buff slot/holder status.

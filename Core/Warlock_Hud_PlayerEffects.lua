@@ -145,4 +145,7 @@ WarlockHudPlayerEffects = {
         [3615] = true, [3616] = true, [3617] = true,
         [3618] = true, [3619] = true, [3620] = true,
     },
+    -- Forever's Spellstone item/enchant icon. Some builds expose the Forever
+    -- effect rather than one of the legacy enchant IDs above.
+    SpellstoneEnchantIconID = 134131,
 }
