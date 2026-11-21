@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.1.17
+
+- Fix the weapon coating reminder to show Spellstone as active when detected, matching Firestone and Wizard Oil coloring.
+
+See `releases/v1.1.17.md` for release notes.
+
 ## v1.1.16
 
 - Fix Spellstone weapon tracking on WoW: Forever by recognizing its enchant icon and checking all weapon slots.

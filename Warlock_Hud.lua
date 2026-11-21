@@ -929,9 +929,12 @@ local function UpdateConsumableGlows()
     local oilGlow = consumeState.glows.wizardoil
     if oilGlow then
         local coating, remainingMs = ReadWeaponCoating()
-        SetMissingGlow(oilGlow, coating == "firestone" and true
-            or coating == "oil" and true or coating,
-            profile.colorActiveConsumes)
+        local coatingActive = coating == "firestone" or coating == "spellstone"
+            or coating == "oil"
+        local coatingStatus
+        if coatingActive then coatingStatus = true
+        elseif coating == false then coatingStatus = false end
+        SetMissingGlow(oilGlow, coatingStatus, profile.colorActiveConsumes)
         if coating ~= nil and consumeState.oilIcon then
             consumeState.coating = coating
             local texture = coating == "firestone" and consumeState.firestoneTexture
