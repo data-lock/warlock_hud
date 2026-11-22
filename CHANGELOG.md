@@ -1,5 +1,12 @@
 # Changelog
 
+## v1.1.18
+
+- Improve Ritual of Summoning announcements by resolving the selected target's name when the cast event omits it.
+- Keep summon-queue recipient names as the preferred fallback.
+
+See `releases/v1.1.18.md` for release notes.
+
 ## v1.1.17
 
 - Fix the weapon coating reminder to show Spellstone as active when detected, matching Firestone and Wizard Oil coloring.

@@ -677,6 +677,24 @@ local function TargetLabel(target)
     return "your target"
 end
 
+local function CurrentTargetLabel()
+    if GetUnitName then
+        local ok, name = pcall(GetUnitName, "target", true)
+        if ok and Public(name) and type(name) == "string" and name ~= "" then
+            return name
+        end
+    end
+    if UnitName then
+        local ok, name, realm = pcall(UnitName, "target")
+        if ok and Public(name) and type(name) == "string" and name ~= "" then
+            if Public(realm) and type(realm) == "string" and realm ~= "" then
+                return name .. "-" .. realm
+            end
+            return name
+        end
+    end
+end
+
 local function AnnounceSoulstone(target)
     local now = GetTime()
     if now - lastSoulstoneAt < 2 then return end
@@ -894,6 +912,9 @@ events:SetScript("OnEvent", function(_, event, ...)
         if unit ~= "player" or not Public(spellID) then return end
         if spellID == 698 or IsSoulstoneCast(spellID) then
             local label = TargetLabel(target)
+            if label == "your target" then
+                label = CurrentTargetLabel() or label
+            end
             if Public(castGUID) then pendingCasts[castGUID] = label end
             if spellID ~= 698 then
                 TraceSoulstone("SENT", "spell=" .. spellID .. " target=" .. label
@@ -912,7 +933,7 @@ events:SetScript("OnEvent", function(_, event, ...)
             local queueClicked = WarlockHudConsumeSummonQueueRecipient
                 and WarlockHudConsumeSummonQueueRecipient()
             if label == "your target" then
-                label = queueClicked or label
+                label = queueClicked or CurrentTargetLabel() or label
             end
             WarlockHudTraceSummon("ANNOUNCEMENT", "recipient=" .. label
                 .. " source=" .. (queueClicked and "queue click"
