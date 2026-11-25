@@ -138,12 +138,20 @@ WarlockHudPlayerEffects = {
     },
     OilEnchantIDs = { [2623] = true, [2626] = true,
         [2627] = true, [2628] = true },
-    -- Confirmed from C_Item.GetWeaponEnchantInfo(0) in Forever.
-    FirestoneEnchantIDs = { [1803] = true },
-    -- Spellstone weapon enchant ranks.
+    -- Classic and Forever weapon-enchant IDs for Firestone ranks 1-5 and
+    -- the higher-rank Firestones. Forever Rank 2 reports ID 1823.
+    FirestoneEnchantIDs = {
+        [1803] = true, [1823] = true, [1824] = true, [1825] = true,
+        [2645] = true, [3597] = true, [3609] = true, [3610] = true,
+        [3611] = true, [3612] = true, [3613] = true, [3614] = true,
+    },
+    FirestoneEnchantIconID = 134085,
+    -- Classic Spellstone enchant IDs plus Forever's rank effect spell IDs,
+    -- in case GetWeaponEnchantInfo reports the effect rather than legacy ID.
     SpellstoneEnchantIDs = {
         [3615] = true, [3616] = true, [3617] = true,
         [3618] = true, [3619] = true, [3620] = true,
+        [1237152] = true, [1237156] = true, [1237159] = true,
     },
     -- Forever's Spellstone item/enchant icon. Some builds expose the Forever
     -- effect rather than one of the legacy enchant IDs above.

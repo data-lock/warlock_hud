@@ -913,11 +913,16 @@ local function ReadWeaponCoating()
                 if issecretvalue and (issecretvalue(present)
                     or issecretvalue(enchantType) or issecretvalue(id)
                     or issecretvalue(iconID)) then return nil end
+                local firestoneIcon = iconID
+                    == WarlockHudPlayerEffects.FirestoneEnchantIconID
+                local spellstoneIcon = iconID
+                    == WarlockHudPlayerEffects.SpellstoneEnchantIconID
                 if present and type(id) ~= "number"
-                    and iconID ~= WarlockHudPlayerEffects.SpellstoneEnchantIconID then
+                    and not firestoneIcon and not spellstoneIcon then
                     return nil
                 end
-                if present and consumeState.firestoneEnchantIDs[id] then
+                if present and (consumeState.firestoneEnchantIDs[id]
+                    or firestoneIcon) then
                     local timeLeft = enchant.timeLeft
                     if issecretvalue and issecretvalue(timeLeft) then
                         return "firestone"
@@ -926,7 +931,7 @@ local function ReadWeaponCoating()
                 end
                 if present and consumeState.spellstoneEnchantIDs
                     and (consumeState.spellstoneEnchantIDs[id]
-                        or iconID == WarlockHudPlayerEffects.SpellstoneEnchantIconID) then
+                        or spellstoneIcon) then
                     return "spellstone"
                 end
                 if present and consumeState.oilEnchantIDs[id] then oilFound = true end

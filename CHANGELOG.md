@@ -1,5 +1,12 @@
 # Changelog
 
+## v1.1.20
+
+- Recognize all Firestone weapon enchant ranks, including Forever Rank 2 (enchant ID 1823), with an icon fallback.
+- Extend Spellstone recognition to Forever's rank effect IDs while retaining legacy enchant IDs and the icon fallback.
+
+See `releases/v1.1.20.md` for release notes.
+
 ## v1.1.19
 
 - Add a Soulstone ready flash toggle to the Stones settings page; the reminder pulses when the cooldown is ready, even if you need to create or carry a Soulstone.
