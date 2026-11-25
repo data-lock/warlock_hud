@@ -573,7 +573,10 @@ local function UpdateVisualState()
         entry.border:SetAlpha(hasAttackableTarget and 1 or 0.5)
     end
     for _, entry in ipairs(itemIcons) do
-        entry.icon:SetAlpha(1)
+        local soulstonePulsing = entry.stone
+            and entry.stone.name == "Soulstone"
+            and entry.glow and entry.glow:IsShown()
+        if not soulstonePulsing then entry.icon:SetAlpha(1) end
         entry.border:SetAlpha(1)
     end
 end
@@ -632,8 +635,20 @@ local function UpdateStones()
             cooldownActive = duration > 0 and start + duration > GetTime()
         end
         if start and duration then
-            -- The widget accepts cooldown values without inspecting them in Lua.
-            pcall(entry.cooldown.SetCooldown, entry.cooldown, start, duration)
+            -- Avoid restarting the native swipe every polling tick. Keep secret
+            -- cooldown values on the widget's native path without comparing them.
+            local readable = not issecretvalue
+                or (not issecretvalue(start) and not issecretvalue(duration))
+            local changed = not readable or entry.lastCooldownStart ~= start
+                or entry.lastCooldownDuration ~= duration
+            if changed then
+                local ok = pcall(entry.cooldown.SetCooldown,
+                    entry.cooldown, start, duration)
+                if ok and readable then
+                    entry.lastCooldownStart = start
+                    entry.lastCooldownDuration = duration
+                end
+            end
         end
         if entry.stone.name == "Soulstone" then
             local ready
@@ -649,7 +664,11 @@ local function UpdateStones()
                 and WarlockHudSoulstoneAssignmentTarget()
             local status = target and WarlockHudSoulstoneAuraStatus
                 and WarlockHudSoulstoneAuraStatus(target)
-            local flash = target and status == false and ready == true
+            local stones = profile.stones
+            local flashEnabled = not stones
+                or stones.soulstoneReadyFlash ~= false
+            local applied = status == true
+            local flash = flashEnabled and ready == true
             if WarlockHudSoulstoneWarningState then
                 WarlockHudSoulstoneWarningState.owned = owned
                 WarlockHudSoulstoneWarningState.ready = ready
@@ -662,15 +681,22 @@ local function UpdateStones()
                     and (tostring(start) .. "/" .. tostring(duration)) or "secret"
             end
             entry.glow:SetShown(flash and true or false)
-            entry.icon:SetDesaturated(not owned and not flash)
+            entry.icon:SetDesaturated(not (owned or applied or flash))
+            entry.icon:SetVertexColor(1, flash and 0.3 or 1,
+                flash and 0.3 or 1, 1)
             if not flash then entry.icon:SetAlpha(1) end
         else
             entry.icon:SetDesaturated(not owned)
         end
+        local reminderActive = entry.stone.name == "Soulstone"
+            and entry.glow and entry.glow:IsShown()
         local shown = not showOnlyActive or cooldownActive ~= false
+            or reminderActive
         if entry.icon then entry.icon:SetShown(shown) end
         if entry.border then entry.border:SetShown(shown) end
-        if entry.cooldown.SetShown then entry.cooldown:SetShown(shown) end
+        if entry.cooldown.SetShown then
+            entry.cooldown:SetShown(shown and not reminderActive)
+        end
         if entry.glow then entry.glow:SetShown(shown
             and entry.glow:IsShown()) end
     end

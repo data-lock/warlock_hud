@@ -1,5 +1,13 @@
 # Changelog
 
+## v1.1.19
+
+- Add a Soulstone ready flash toggle to the Stones settings page; the reminder pulses when the cooldown is ready, even if you need to create or carry a Soulstone.
+- Keep Soulstone grey until one is owned or confirmed applied when the ready flash is disabled, and preserve normal item cooldown display outside the alert.
+- Smooth the Soulstone alert by avoiding repeated cooldown resets and competing alpha updates.
+
+See `releases/v1.1.19.md` for release notes.
+
 ## v1.1.18
 
 - Improve Ritual of Summoning announcements by resolving the selected target's name when the cast event omits it.
