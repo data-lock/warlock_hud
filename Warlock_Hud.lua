@@ -362,7 +362,8 @@ local function VisibleOrder(order)
             hasSpell = KnownSpellID(19028) == true
         elseif key == "conflagrate" then
             hasSpell = WarlockHudRowVisibility.ConflagrateSpellID() ~= nil
-        elseif key == "deathcoil" or key == "shadowward" then
+        elseif key == "deathcoil" or key == "shadowward"
+            or key == "soulfire" or key == "feldomination" then
             hasSpell = false
             for _, spell in ipairs(WarlockHudPlayerEffects.WarlockCooldowns) do
                 if spell.key == key then

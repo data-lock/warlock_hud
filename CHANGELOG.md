@@ -1,5 +1,12 @@
 # Changelog
 
+## v1.1.21
+
+- Add Soul Fire (both Forever spell ranks) and Fel Domination cooldowns to the
+  configurable Utility row. Fel Domination appears when its talent is learned.
+
+See `releases/v1.1.21.md` for release notes.
+
 ## v1.1.20
 
 - Recognize all Firestone weapon enchant ranks, including Forever Rank 2 (enchant ID 1823), with an icon fallback.

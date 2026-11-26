@@ -14,6 +14,7 @@ local LABELS = {
     banish = "Banish",
     conflagrate = "Conflagrate",
     deathcoil = "Death Coil", shadowward = "Shadow Ward",
+    soulfire = "Soul Fire", feldomination = "Fel Domination",
     torment = "Torment",
     suffering = "Suffering",
     phaseshift = "Phase Shift",
@@ -58,6 +59,8 @@ local ICON_HELP = {
     conflagrate = "Shows Conflagrate and its cooldown when learned. The icon pulses when your Immolate is active on the current target.",
     deathcoil = "Shows Death Coil and its cooldown when learned.",
     shadowward = "Shows Shadow Ward and its cooldown when learned.",
+    soulfire = "Shows Soul Fire and its cooldown when learned.",
+    feldomination = "Shows Fel Domination and its cooldown when talented.",
     torment = "Shows the active pet's Torment ability and its cooldown when known (Voidwalker).",
     suffering = "Shows the active Voidwalker's Suffering ability and its cooldown when known.",
     phaseshift = "Shows the active Imp's Phase Shift ability and its cooldown when known.",
@@ -282,7 +285,8 @@ local function IconForKey(key)
     end
     local spellIDs = {
         fear = 5782, banish = 710, conflagrate = 1293817,
-        deathcoil = 6789, shadowward = 6229, torment = 3716,
+        deathcoil = 6789, shadowward = 6229, soulfire = 6353,
+        feldomination = 18708, torment = 3716,
         suffering = 17735, phaseshift = 4511, lashofpain = 7814,
         soothingkiss = 6360, devourmagic = 19505, spelllock = 19244,
         armor = 706, wellfed = 19705, flask = 17628,
