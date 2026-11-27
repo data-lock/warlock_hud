@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.1.22
+
+- Raise the default yellow Soul Shard warning threshold from 18 to 24 and migrate profiles at the previous default pair (4/18). Other thresholds remain unchanged.
+
+See `releases/v1.1.22.md` for release notes.
+
 ## v1.1.21
 
 - Add Soul Fire (both Forever spell ranks) and Fel Domination cooldowns to the
