@@ -195,10 +195,16 @@ function WarlockHudProfile.CreateNormalizer(keys)
             end
             p.shardWarningDefaultsV2 = true
         end
+        if not p.shardWarningDefaultsV3 then
+            if p.shardLowThreshold == 4 and p.shardHighThreshold == 18 then
+                p.shardHighThreshold = 24
+            end
+            p.shardWarningDefaultsV3 = true
+        end
         p.shardLowThreshold = math.max(0, math.min(63,
             math.floor(tonumber(p.shardLowThreshold) or 4)))
         p.shardHighThreshold = math.max(p.shardLowThreshold + 1, math.min(64,
-            math.floor(tonumber(p.shardHighThreshold) or 18)))
+            math.floor(tonumber(p.shardHighThreshold) or 24)))
         p.mainOrder, p.cooldownOrder = NormalizeTargetAndUtility(
             p.mainOrder, p.cooldownOrder, effects.MainKeys, keys.cooldown)
         if not p.banishUtilityOrderV1 then
